@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import false, select
 from sqlalchemy.orm import Session
 
 from app.core.security import create_access_token, verify_password
@@ -26,7 +26,7 @@ class AuthService:
 
     def login(self, username: str, password: str) -> str:
         user = self.db.scalars(
-            select(User).where(User.username == username, User.is_deleted.is_(False))
+            select(User).where(User.username == username, User.is_deleted == false())
         ).first()
         if (
             user is None

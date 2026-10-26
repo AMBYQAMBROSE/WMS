@@ -6,13 +6,6 @@ from sqlalchemy import engine_from_config, pool
 from app.core.config import settings
 from app.models.base import Base
 
-# 把所有模型模块 import 进来，确保 Base.metadata 收集到所有表定义
-import app.models.tenant  # noqa: E402,F401
-import app.models.user  # noqa: E402,F401
-import app.models.business_partner  # noqa: E402,F401
-import app.models.item  # noqa: E402,F401
-import app.models.location  # noqa: E402,F401
-
 config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

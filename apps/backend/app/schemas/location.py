@@ -1,4 +1,5 @@
 import uuid
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
@@ -6,7 +7,7 @@ from pydantic import BaseModel, ConfigDict
 class LocationBase(BaseModel):
     code: str
     name: str
-    location_type: str  # WAREHOUSE / ZONE / AISLE / RACK / BIN
+    location_type: Literal["WAREHOUSE", "ZONE", "AISLE", "RACK", "BIN", "DOCK"]
     parent_id: uuid.UUID | None = None
     is_pickable: bool = False
     is_locked: bool = False

@@ -187,34 +187,41 @@
 
 ---
 
-## 5. 单据框架骨架（Phase 1 只搭骨架，具体类型字段在对应 Phase 补）
+## 5. 单据框架（Phase 2 已实现，PO / GRN / PUTAWAY 共用）
 
 ### `document_header`
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `tenant_id` | FK→tenant | |
-| `doc_type` | nvarchar(30) | `PO`/`GRN`/`SO`/`DO`/`ADJUST`/`TRANSFER`/`RETURN`... |
+| `doc_type` | nvarchar(30) | 已用：`PO` / `GRN` / `PUTAWAY`；后续 `SO`/`DO`/`ADJUST`/`TRANSFER`/`RETURN`... |
 | `doc_no` | nvarchar(50) | 按 `doc_number_rule` 生成，唯一（同租户+doc_type内） |
-| `status` | nvarchar(30) | 状态机当前状态，具体枚举值由 `doc_type` 决定 |
-| `partner_id` | FK→business_partner（可空） | 往来对象（供应商/客户），Adjustment 等单据可为空 |
+| `status` | nvarchar(30) | 状态机当前状态，枚举值由 `doc_type` 决定（见第 8 节） |
+| `partner_id` | FK→business_partner（可空） | 往来对象（供应商/客户） |
+| `ref_document_id` | FK→document_header（可空） | 来源单据：GRN→PO、PUTAWAY→GRN |
+| `location_id` | FK→location（可空） | 单据级仓位，如 GRN 的收货暂存位 |
+| `expected_date` | date（可空） | PO 预计到货日 |
+| `posted_at` | datetime（可空） | 过账时间 |
 | `remark` | nvarchar(400) | 可空 |
 
 ### `document_line`
 | 字段 | 类型 | 说明 |
 |---|---|---|
-| `document_id` | FK→document_header | |
+| `document_id` | FK→document_header | `(document_id, line_no)` 唯一 |
 | `line_no` | int | 行号 |
-| `item_id` | FK→item | |
-| `uom_id` | FK→uom | |
-| `qty_planned` | decimal(18,4) | 计划数量（下单量/应收量等） |
-| `qty_actual` | decimal(18,4) | 实际数量（实收/实拣等），默认 0 |
-| `location_id` | FK→location（可空） | 目标/来源仓位，视单据类型而定 |
+| `item_id` / `uom_id` | FK | 数量按此单位记录，入账时换算成基本单位 |
+| `qty_planned` | decimal(18,4) | PO：订购量；GRN：建单时该采购行未收量（仅参考）；PUTAWAY：上架量 |
+| `qty_actual` | decimal(18,4) | PO：累计已收；GRN：本单实收；PUTAWAY：上架量 |
+| `batch_no` / `expiry_date` | 可空 | 仅商品启用批次/效期管理时保存，否则强制为空 |
+| `from_location_id` / `to_location_id` | FK→location（可空） | 移库类单据的来源/目标仓位 |
+| `ref_line_id` | FK→document_line（可空） | GRN 行→PO 行 |
 
-> 各具体单据类型的专属字段（如 GRN 的质检结果、PO 的采购价）在对应 Phase 用「1:1 扩展表」承载，例如 `grn_line_ext(document_line_id FK, qc_result, ...)`，Phase 1 不预先建，避免猜测字段。
+> 设计取舍：批次、效期、来源/目标仓位几乎所有会动库存的单据都要用，所以放在通用行表上；只有某一类单据独有的字段（如质检结果、采购价）才用「1:1 扩展表」，在用到时再建。
 
 ---
 
-## 6. 库存流水骨架（Phase 1 建表占位，Phase 3 实现业务逻辑）
+## 6. 库存（Phase 2 已实现）
+
+库存只能通过 `stock_service.apply_movements` 改变：同一事务内写一条流水并更新余额，余额不能为负，余额为 0 时删除该行。数量一律为商品基本单位。
 
 ### `stock_ledger`
 | 字段 | 类型 | 说明 |
@@ -225,11 +232,11 @@
 | `batch_no` | nvarchar(50) | 可空 |
 | `expiry_date` | date | 可空 |
 | `qty_change` | decimal(18,4) | 正数入、负数出 |
-| `movement_type` | nvarchar(30) | `RECEIVE`/`PUTAWAY`/`PICK`/`ADJUST`/`MOVE`/`COUNT`... |
+| `movement_type` | nvarchar(30) | 已用：`RECEIVE` / `PUTAWAY_OUT` / `PUTAWAY_IN`；后续 `PICK`/`ADJUST`/`MOVE`/`COUNT`... |
 | `ref_document_line_id` | FK→document_line（可空） | 关联到触发这条流水的单据行 |
 | `occurred_at` | datetime2 | 业务发生时间（可能晚于 created_at） |
 
-### `stock_balance`（汇总视图或定时物化表，Phase 1 先占位不实现刷新逻辑）
+### `stock_balance`（与流水同事务更新；唯一键 `(tenant_id, item_id, location_id, batch_no, expiry_date)`，SQL Server 把 NULL 视为相等，无批次库存每个商品+仓位只有一行）
 | 字段 | 类型 |
 |---|---|
 | `tenant_id` | FK→tenant |
@@ -237,6 +244,20 @@
 | `location_id` | FK→location |
 | `batch_no` | nvarchar(50) |
 | `qty_on_hand` | decimal(18,4) |
+
+---
+
+## 8. 入库状态机（Phase 2）
+
+| 单据 | 状态流转 | 说明 |
+|---|---|---|
+| PO 采购单 | `DRAFT` →确认→ `CONFIRMED` →收货→ `PARTIALLY_RECEIVED` → `RECEIVED` | 仅草稿可修改；草稿/已确认可取消（→`CANCELLED`）；部分收货可结案（→`CLOSED`） |
+| GRN 收货单 | `DRAFT` →过账→ `POSTED`；`DRAFT` →取消→ `CANCELLED` | 过账时写入库存、累加 PO 已收量并更新 PO 状态；默认禁止超收，租户开启 `ALLOW_OVER_RECEIPT` 后允许 |
+| PUTAWAY 上架单 | `DRAFT` →过账→ `POSTED`；`DRAFT` →取消→ `CANCELLED` | 目标仓位必须是 BIN；过账时校验来源库存 |
+
+仓位类型：`WAREHOUSE` / `ZONE` / `AISLE` / `RACK` / `BIN` / `DOCK`，只有 `BIN`（储位）和 `DOCK`（收发货暂存区）能存放库存；锁定或停用的仓位不能出入库。
+
+并发控制：所有单据变更先对表头加 `UPDLOCK`；GRN 过账加锁顺序固定为 GRN → PO；库存余额行按固定顺序加 `UPDLOCK, HOLDLOCK`，防止超收、超发和死锁。
 
 ---
 

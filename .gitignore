@@ -7,6 +7,9 @@ venv/
 # Node
 node_modules/
 dist/
+*.tsbuildinfo
+apps/web/vite.config.js
+apps/web/vite.config.d.ts
 
 # Env files
 .env

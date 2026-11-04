@@ -18,13 +18,14 @@ def _service(db: Session, user: CurrentUser) -> PurchaseOrderService:
 def list_purchase_orders(
     status_filter: str | None = Query(default=None, alias="status"),
     partner_id: uuid.UUID | None = None,
+    doc_no: str | None = None,
     skip: int = 0,
     limit: int = Query(default=50, le=500),
     db: Session = Depends(get_db_session),
     user: CurrentUser = Depends(require_permission("purchase_order.read")),
 ):
     return _service(db, user).list(
-        status=status_filter, partner_id=partner_id, skip=skip, limit=limit
+        status=status_filter, partner_id=partner_id, doc_no=doc_no, skip=skip, limit=limit
     )
 
 

@@ -1,47 +1,60 @@
 import { useState } from "react";
 
+import { PlusOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { Button, Checkbox, Form, Input, InputNumber, Space, Table } from "antd";
 
 import { apiClient } from "@/api/client";
+import { useCan } from "@/api/me";
 import type { Item } from "@/api/types";
+import MasterSearch, { MASTER_LIST_LIMIT } from "@/components/MasterSearch";
+import { YesNo } from "@/components/ui";
 import CreateModal from "@/components/CreateModal";
 import { UomSelect, useUoms } from "@/components/selects";
 
-const yesNo = (v: boolean) => (v ? "是" : "否");
+const yesNo = (v: boolean) => <YesNo value={v} />;
 
 export default function ItemsPage() {
+  const can = useCan();
+  const [keyword, setKeyword] = useState("");
   const [creating, setCreating] = useState(false);
   const { data: uoms } = useUoms();
   const { data, isLoading } = useQuery({
-    queryKey: ["items"],
-    queryFn: async () => (await apiClient.get<Item[]>("/items", { params: { limit: 500 } })).data,
+    queryKey: ["items", keyword],
+    queryFn: async () => (await apiClient.get<Item[]>("/items", { params: { limit: MASTER_LIST_LIMIT, keyword: keyword || undefined } })).data,
   });
   const uomCode = (id: string) => uoms?.find((u) => u.id === id)?.code ?? "";
 
   return (
-    <Space direction="vertical" style={{ width: "100%" }}>
-      <Button type="primary" onClick={() => setCreating(true)}>
-        新建商品
-      </Button>
+    <Space orientation="vertical" style={{ width: "100%" }}>
+      <MasterSearch
+        placeholder="SKU / name / barcode" onSearch={setKeyword} shown={data?.length}
+        actions={
+          can("item.create") && (
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>
+              New item
+            </Button>
+          )
+        }
+      />
       <Table<Item>
         rowKey="id"
         loading={isLoading}
         dataSource={data}
         columns={[
           { title: "SKU", dataIndex: "sku_code" },
-          { title: "名称", dataIndex: "name" },
-          { title: "条码", dataIndex: "barcode" },
-          { title: "分类", dataIndex: "category" },
-          { title: "基本单位", dataIndex: "base_uom_id", render: uomCode },
-          { title: "批次管理", dataIndex: "is_batch_managed", render: yesNo },
-          { title: "效期管理", dataIndex: "is_expiry_managed", render: yesNo },
-          { title: "启用", dataIndex: "is_active", render: yesNo },
+          { title: "Name", dataIndex: "name" },
+          { title: "Barcode", dataIndex: "barcode" },
+          { title: "Category", dataIndex: "category" },
+          { title: "Base unit", dataIndex: "base_uom_id", render: uomCode },
+          { title: "Batch managed", dataIndex: "is_batch_managed", render: yesNo },
+          { title: "Expiry managed", dataIndex: "is_expiry_managed", render: yesNo },
+          { title: "Active", dataIndex: "is_active", render: yesNo },
         ]}
       />
       <CreateModal
         open={creating}
-        title="新建商品"
+        title="New item"
         path="/items"
         queryKey="items"
         initialValues={{ is_batch_managed: false, is_expiry_managed: false }}
@@ -52,25 +65,25 @@ export default function ItemsPage() {
             <Form.Item name="sku_code" label="SKU" rules={[{ required: true }]}>
               <Input />
             </Form.Item>
-            <Form.Item name="name" label="名称" rules={[{ required: true }]}>
+            <Form.Item name="name" label="Name" rules={[{ required: true }]}>
               <Input />
             </Form.Item>
-            <Form.Item name="base_uom_id" label="基本单位" rules={[{ required: true }]}>
+            <Form.Item name="base_uom_id" label="Base unit" rules={[{ required: true }]}>
               <UomSelect />
             </Form.Item>
-            <Form.Item name="barcode" label="条码">
+            <Form.Item name="barcode" label="Barcode">
               <Input />
             </Form.Item>
-            <Form.Item name="category" label="分类">
+            <Form.Item name="category" label="Category">
               <Input />
             </Form.Item>
             <Form.Item name="is_batch_managed" valuePropName="checked">
-              <Checkbox>批次管理</Checkbox>
+              <Checkbox>Batch managed</Checkbox>
             </Form.Item>
             <Form.Item name="is_expiry_managed" valuePropName="checked">
-              <Checkbox>效期管理</Checkbox>
+              <Checkbox>Expiry managed</Checkbox>
             </Form.Item>
-            <Form.Item name="shelf_life_days" label="保质期（天）">
+            <Form.Item name="shelf_life_days" label="Shelf life (days)">
               <InputNumber min={1} style={{ width: "100%" }} />
             </Form.Item>
           </>

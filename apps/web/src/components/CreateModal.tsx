@@ -31,7 +31,7 @@ export default function CreateModal<T extends object>({
   const mutation = useMutation({
     mutationFn: (values: T) => apiClient.post(path, values),
     onSuccess: () => {
-      message.success("已创建");
+      message.success("Created");
       queryClient.invalidateQueries({ queryKey: [queryKey] });
       form.resetFields();
       onClose();

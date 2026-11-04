@@ -4,6 +4,8 @@ import { useAuthStore } from "@/stores/authStore";
 
 export const apiClient = axios.create({
   baseURL: "/api/v1",
+  // Send array parameters as ids=a&ids=b (FastAPI's format) instead of axios's default ids[]=a
+  paramsSerializer: { indexes: null },
 });
 
 apiClient.interceptors.request.use((config) => {

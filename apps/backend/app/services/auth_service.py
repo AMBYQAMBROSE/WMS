@@ -4,25 +4,27 @@ from sqlalchemy import false, select
 from sqlalchemy.orm import Session
 
 from app.core.security import create_access_token, verify_password
-from app.models.user import RolePermission, User, UserRole
+from app.models.user import Role, RolePermission, User, UserRole
+
+
+def load_permissions(db: Session, user_id: uuid.UUID) -> set[str]:
+    stmt = (
+        select(RolePermission.permission_code)
+        .join(UserRole, UserRole.role_id == RolePermission.role_id)
+        .join(Role, Role.id == UserRole.role_id)
+        .where(UserRole.user_id == user_id, Role.is_deleted == false())
+    )
+    return set(db.scalars(stmt))
 
 
 class AuthService:
-    """Phase 1 假设 username 在部署内全局唯一（单租户部署为主）。
-    如果一套部署内要跑多个子公司(tenant)且 username 可能重复，
-    需要登录时额外传 tenant_code 来定位用户，当前不做这个假设外的处理。
+    """Phase 1 assumes usernames are unique within a deployment (mostly single-tenant deployments).
+    If one deployment runs several subsidiaries (tenants) with possibly duplicate usernames,
+    login would need a tenant_code to find the user; that case is not handled yet.
     """
 
     def __init__(self, db: Session):
         self.db = db
-
-    def _load_permissions(self, user_id: uuid.UUID) -> list[str]:
-        stmt = (
-            select(RolePermission.permission_code)
-            .join(UserRole, UserRole.role_id == RolePermission.role_id)
-            .where(UserRole.user_id == user_id)
-        )
-        return list(self.db.scalars(stmt))
 
     def login(self, username: str, password: str) -> str:
         user = self.db.scalars(
@@ -33,9 +35,8 @@ class AuthService:
             or user.password_hash is None
             or not verify_password(password, user.password_hash)
         ):
-            raise ValueError("用户名或密码错误")
+            raise ValueError("Incorrect username or password")
         if not user.is_active:
-            raise ValueError("账号已停用")
-
-        permissions = self._load_permissions(user.id)
-        return create_access_token(user.id, user.tenant_id, permissions)
+            raise ValueError("Account is deactivated")
+        # Permissions are not put in the token: they are read from the database on every request, so role changes and deactivation apply immediately
+        return create_access_token(user.id, user.tenant_id)

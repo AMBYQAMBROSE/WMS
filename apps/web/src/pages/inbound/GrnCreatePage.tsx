@@ -3,13 +3,14 @@ import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Card, DatePicker, Empty, Form, Input, InputNumber, Select, Space, Table, message } from "antd";
 import type { Dayjs } from "dayjs";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router";
 
 import { apiClient } from "@/api/client";
 import { showError } from "@/api/errors";
 import type { Document, DocumentLine, DocumentSummary } from "@/api/types";
 import { preventEnterSubmit, useDocument } from "@/components/documents";
 import { LocationSelect } from "@/components/selects";
+import { FormFooter } from "@/components/ui";
 
 interface GrnLineValues {
   po_line_id: string;
@@ -58,11 +59,11 @@ export default function GrnCreatePage() {
       const lines = values.lines
         .filter((l) => l.qty > 0)
         .map((l) => ({ ...l, expiry_date: l.expiry_date?.format("YYYY-MM-DD") ?? null }));
-      if (!lines.length) throw new Error("没有需要收货的数量");
+      if (!lines.length) throw new Error("Nothing to receive");
       return (await apiClient.post<Document>("/grns", { ...values, po_id: poId, lines })).data;
     },
     onSuccess: (grn) => {
-      message.success(`已生成收货单 ${grn.doc_no}，确认无误后请过账`);
+      message.success(`Created goods receipt ${grn.doc_no}; post it once checked`);
       queryClient.invalidateQueries({ queryKey: ["grns"] });
       navigate(`/grns/${grn.id}`);
     },
@@ -72,15 +73,15 @@ export default function GrnCreatePage() {
   const poLine = (poLineId: string) => po?.lines.find((l) => l.id === poLineId);
 
   return (
-    <Card title="新建收货单">
-      <Space direction="vertical" style={{ width: "100%" }}>
+    <Card title="New goods receipt">
+      <Space orientation="vertical" style={{ width: "100%" }}>
         <Space>
-          采购单：
+          Purchase order:
           <Select
             showSearch
             optionFilterProp="label"
             style={{ width: 360 }}
-            placeholder="选择已确认的采购单"
+            placeholder="Choose a confirmed purchase order"
             value={poId}
             onChange={(v) => setSearchParams({ po: v })}
             options={(receivablePos ?? []).map((p) => ({ value: p.id, label: `${p.doc_no} ${p.partner?.name ?? ""}` }))}
@@ -88,14 +89,14 @@ export default function GrnCreatePage() {
         </Space>
 
         {!po ? (
-          <Empty description="请先选择采购单" />
+          <Empty description="Choose a purchase order first" />
         ) : (
           <Form form={form} layout="vertical" onKeyDown={preventEnterSubmit} onFinish={(v) => save.mutate(v)}>
             <Space size="large" wrap>
-              <Form.Item name="location_id" label="收货仓位" rules={[{ required: true }]}>
-                <LocationSelect types={["DOCK", "BIN"]} style={{ width: 260 }} placeholder="一般选收货区" />
+              <Form.Item name="location_id" label="Receiving location" rules={[{ required: true }]}>
+                <LocationSelect types={["DOCK", "BIN"]} style={{ width: 260 }} placeholder="Usually the receiving dock" />
               </Form.Item>
-              <Form.Item name="remark" label="备注">
+              <Form.Item name="remark" label="Remark">
                 <Input style={{ width: 320 }} maxLength={400} />
               </Form.Item>
             </Space>
@@ -109,22 +110,22 @@ export default function GrnCreatePage() {
                   dataSource={fields}
                   columns={[
                     {
-                      title: "商品",
+                      title: "Item",
                       render: (_, f) => {
                         const l = poLine(form.getFieldValue(["lines", f.name, "po_line_id"]));
                         return l && `${l.item.sku_code} ${l.item.name}`;
                       },
                     },
-                    { title: "单位", render: (_, f) => poLine(form.getFieldValue(["lines", f.name, "po_line_id"]))?.uom.code },
+                    { title: "Unit", render: (_, f) => poLine(form.getFieldValue(["lines", f.name, "po_line_id"]))?.uom.code },
                     {
-                      title: "未收",
+                      title: "Open",
                       render: (_, f) => {
                         const l = poLine(form.getFieldValue(["lines", f.name, "po_line_id"]));
                         return l && remaining(l);
                       },
                     },
                     {
-                      title: "本次实收",
+                      title: "Received now",
                       render: (_, f) => (
                         <Form.Item name={[f.name, "qty"]} noStyle rules={[{ required: true }]}>
                           <InputNumber min={0} />
@@ -132,12 +133,12 @@ export default function GrnCreatePage() {
                       ),
                     },
                     {
-                      title: "批次号",
+                      title: "Batch no.",
                       render: (_, f) => {
                         const l = poLine(form.getFieldValue(["lines", f.name, "po_line_id"]));
                         return l?.item.is_batch_managed ? (
-                          <Form.Item name={[f.name, "batch_no"]} noStyle rules={[{ required: true, message: "必填" }]}>
-                            <Input placeholder="必填" style={{ width: 140 }} />
+                          <Form.Item name={[f.name, "batch_no"]} noStyle rules={[{ required: true, message: "Required" }]}>
+                            <Input placeholder="Required" style={{ width: 140 }} />
                           </Form.Item>
                         ) : (
                           "-"
@@ -145,11 +146,11 @@ export default function GrnCreatePage() {
                       },
                     },
                     {
-                      title: "到期日",
+                      title: "Expiry date",
                       render: (_, f) => {
                         const l = poLine(form.getFieldValue(["lines", f.name, "po_line_id"]));
                         return l?.item.is_expiry_managed ? (
-                          <Form.Item name={[f.name, "expiry_date"]} noStyle rules={[{ required: true, message: "必填" }]}>
+                          <Form.Item name={[f.name, "expiry_date"]} noStyle rules={[{ required: true, message: "Required" }]}>
                             <DatePicker />
                           </Form.Item>
                         ) : (
@@ -158,18 +159,18 @@ export default function GrnCreatePage() {
                       },
                     },
                     {
-                      title: "操作",
+                      title: "Actions",
                       render: (_, f) => {
                         const l = poLine(form.getFieldValue(["lines", f.name, "po_line_id"]));
                         return (
                           <Space>
                             {l?.item.is_batch_managed && (
                               <Button size="small" onClick={() => add({ po_line_id: l.id, qty: 0 }, f.name + 1)}>
-                                拆批次
+                                Split batch
                               </Button>
                             )}
                             <Button size="small" onClick={() => remove(f.name)}>
-                              移除
+                              Remove
                             </Button>
                           </Space>
                         );
@@ -180,12 +181,12 @@ export default function GrnCreatePage() {
               )}
             </Form.List>
 
-            <Space style={{ marginTop: 16 }}>
+            <FormFooter>
               <Button type="primary" htmlType="submit" loading={save.isPending}>
-                生成收货单
+                Create goods receipt
               </Button>
-              <Button onClick={() => navigate(-1)}>返回</Button>
-            </Space>
+              <Button onClick={() => navigate(-1)}>Cancel</Button>
+            </FormFooter>
           </Form>
         )}
       </Space>

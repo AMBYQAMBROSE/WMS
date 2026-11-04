@@ -1,5 +1,6 @@
 import uuid
 
+from sqlalchemy import or_, true
 from sqlalchemy.orm import Session
 
 from app.models.business_partner import BusinessPartner
@@ -12,9 +13,28 @@ class BusinessPartnerService:
         self.repo = BaseRepository(db, BusinessPartner)
 
     def list(
-        self, tenant_id: uuid.UUID, skip: int = 0, limit: int = 50
+        self,
+        tenant_id: uuid.UUID,
+        skip: int = 0,
+        limit: int = 50,
+        keyword: str | None = None,
+        ids: list[uuid.UUID] | None = None,
+        role: str | None = None,
+        active_only: bool = False,
     ) -> list[BusinessPartner]:
-        return self.repo.list(tenant_id, skip, limit)
+        """role: supplier / customer; partners of type "both" count for either"""
+        conditions = []
+        if keyword := (keyword or "").strip():
+            conditions.append(
+                or_(BusinessPartner.code.contains(keyword, autoescape=True), BusinessPartner.name.contains(keyword, autoescape=True))
+            )
+        if ids:
+            conditions.append(BusinessPartner.id.in_(ids))
+        if role:
+            conditions.append(BusinessPartner.partner_type.in_([role, "both"]))
+        if active_only:
+            conditions.append(BusinessPartner.is_active == true())
+        return self.repo.list(tenant_id, skip, limit, *conditions)
 
     def get(self, tenant_id: uuid.UUID, id: uuid.UUID) -> BusinessPartner | None:
         return self.repo.get(tenant_id, id)

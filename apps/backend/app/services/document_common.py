@@ -6,26 +6,53 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import false, select
 from sqlalchemy.orm import Session
 
+from app.core.db import numbering_engine
 from app.core.errors import ConflictError, DomainError, NotFoundError
 from app.models.business_partner import BusinessPartner
-from app.models.document import DocNumberRule, DocumentHeader
+from app.models.document import DocNumberRule, DocumentHeader, DocumentLocation
 from app.models.item import Item, Uom
 from app.models.location import STOCK_LOCATION_TYPES, Location
+from app.models.reason_code import ReasonCode
 from app.models.tenant import Tenant, TenantFeatureFlag
 
 DOC_PO = "PO"
 DOC_GRN = "GRN"
 DOC_PUTAWAY = "PUTAWAY"
+DOC_ADJUST = "ADJUST"
+DOC_MOVE = "MOVE"
+DOC_COUNT = "COUNT"
+DOC_SO = "SO"
+DOC_PICK = "PICK"
+DOC_SHIP = "SHIP"
+DOC_RETURN_IN = "RETURN_IN"
+DOC_RETURN_OUT = "RETURN_OUT"
+DOC_REPACK = "REPACK"
+
+# Status of a cycle count in progress: locations covered by such a count are frozen for stock movements
+COUNT_IN_PROGRESS = "COUNTING"
 
 DEFAULT_PATTERN = "{PREFIX}{YYYY}{MM}{DD}-{SEQ:4}"
-DEFAULT_PREFIXES = {DOC_PO: "PO", DOC_GRN: "GRN", DOC_PUTAWAY: "PA"}
+DEFAULT_PREFIXES = {
+    DOC_PO: "PO",
+    DOC_GRN: "GRN",
+    DOC_PUTAWAY: "PA",
+    DOC_ADJUST: "ADJ",
+    DOC_MOVE: "MV",
+    DOC_COUNT: "CC",
+    DOC_SO: "SO",
+    DOC_PICK: "PK",
+    DOC_SHIP: "DO",
+    DOC_RETURN_IN: "RI",
+    DOC_RETURN_OUT: "RO",
+    DOC_REPACK: "RP",
+}
 
-FEATURE_ALLOW_OVER_RECEIPT = "ALLOW_OVER_RECEIPT"
+from app.core.feature_catalog import FEATURE_ALLOW_OVER_RECEIPT  # noqa: E402,F401  still exported from here
 
 _SEQ_TOKEN = re.compile(r"\{SEQ:(\d+)\}")
 _DATE_TOKENS = (("{YYYY}", "%Y"), ("{MM}", "%m"), ("{DD}", "%d"))
 
-# SQL Server 行锁提示：读取的同时加更新锁，直到事务结束，防止并发过账
+# SQL Server row lock hint: take an update lock while reading, held until the transaction ends, to prevent concurrent posting
 LOCK_ROW = "WITH (UPDLOCK, ROWLOCK)"
 LOCK_RANGE = "WITH (UPDLOCK, HOLDLOCK)"
 
@@ -41,32 +68,37 @@ def tenant_now(db: Session, tenant_id: uuid.UUID) -> datetime:
 
 
 def next_doc_no(db: Session, tenant_id: uuid.UUID, doc_type: str) -> str:
-    rule = db.scalars(
-        select(DocNumberRule)
-        .with_hint(DocNumberRule, LOCK_RANGE, "mssql")
-        .where(DocNumberRule.tenant_id == tenant_id, DocNumberRule.doc_type == doc_type)
-    ).first()
-    if rule is None:
-        rule = DocNumberRule(
-            tenant_id=tenant_id,
-            doc_type=doc_type,
-            prefix=DEFAULT_PREFIXES.get(doc_type, doc_type),
-            pattern=DEFAULT_PATTERN,
-        )
-        db.add(rule)
+    """Take the next document number. It is taken in a separate short transaction and committed at once: inside the business
+    transaction the numbering row would stay locked until that transaction ends, so documents of one type could only be created one at a time (p95 of 7 s in load tests).
+    Trade-off: if the business transaction rolls back the number is lost, so numbers can have gaps (as in most ERPs)."""
+    with Session(bind=numbering_engine, autoflush=False) as numbering:
+        rule = numbering.scalars(
+            select(DocNumberRule)
+            .with_hint(DocNumberRule, LOCK_RANGE, "mssql")
+            .where(DocNumberRule.tenant_id == tenant_id, DocNumberRule.doc_type == doc_type)
+        ).first()
+        if rule is None:
+            rule = DocNumberRule(
+                tenant_id=tenant_id,
+                doc_type=doc_type,
+                prefix=DEFAULT_PREFIXES.get(doc_type, doc_type),
+                pattern=DEFAULT_PATTERN,
+            )
+            numbering.add(rule)
 
-    now = tenant_now(db, tenant_id)
-    period = "".join(now.strftime(fmt) for token, fmt in _DATE_TOKENS if token in rule.pattern)
-    if rule.current_period != period:
-        rule.current_period = period
-        rule.current_seq = 0
-    rule.current_seq += 1
-    db.flush()
+        now = tenant_now(numbering, tenant_id)
+        period = "".join(now.strftime(fmt) for token, fmt in _DATE_TOKENS if token in rule.pattern)
+        if rule.current_period != period:
+            rule.current_period = period
+            rule.current_seq = 0
+        rule.current_seq += 1
+        seq, pattern, prefix = rule.current_seq, rule.pattern, rule.prefix
+        numbering.commit()
 
-    doc_no = rule.pattern.replace("{PREFIX}", rule.prefix)
+    doc_no = pattern.replace("{PREFIX}", prefix)
     for token, fmt in _DATE_TOKENS:
         doc_no = doc_no.replace(token, now.strftime(fmt))
-    return _SEQ_TOKEN.sub(lambda m: str(rule.current_seq).zfill(int(m.group(1))), doc_no)
+    return _SEQ_TOKEN.sub(lambda m: str(seq).zfill(int(m.group(1))), doc_no)
 
 
 def is_feature_enabled(db: Session, tenant_id: uuid.UUID, feature_code: str) -> bool:
@@ -90,13 +122,30 @@ def get_document(
         DocumentHeader.is_deleted == false(),
     )
     if lock:
-        # 所有对单据(含明细)的修改都先锁表头，明细不单独加锁
+        # Every change to a document (including lines) locks the header first; lines are not locked separately
         stmt = stmt.with_hint(DocumentHeader, LOCK_ROW, "mssql").execution_options(
             populate_existing=True
         )
     document = db.scalars(stmt).unique().first()
     if document is None:
-        raise NotFoundError("单据不存在")
+        raise NotFoundError("Document not found")
+    return document
+
+
+def find_by_client_request(
+    db: Session, tenant_id: uuid.UUID, doc_type: str, client_request_id: str | None
+) -> DocumentHeader | None:
+    """Idempotent submit: if a document already exists for this request ID, return it. If another document type uses the ID, the client has a bug: report a conflict."""
+    if not client_request_id:
+        return None
+    document = db.scalars(
+        select(DocumentHeader).where(
+            DocumentHeader.tenant_id == tenant_id,
+            DocumentHeader.client_request_id == client_request_id,
+        )
+    ).unique().first()
+    if document is not None and document.doc_type != doc_type:
+        raise ConflictError(f"Request ID already used by document {document.doc_no}")
     return document
 
 
@@ -107,6 +156,7 @@ def list_documents(
     status: str | None = None,
     partner_id: uuid.UUID | None = None,
     ref_document_id: uuid.UUID | None = None,
+    doc_no: str | None = None,
     skip: int = 0,
     limit: int = 50,
 ) -> list[DocumentHeader]:
@@ -115,45 +165,68 @@ def list_documents(
         DocumentHeader.doc_type == doc_type,
         DocumentHeader.is_deleted == false(),
     )
+    if doc_no:
+        stmt = stmt.where(DocumentHeader.doc_no == doc_no.strip())
     if status:
         stmt = stmt.where(DocumentHeader.status == status)
     if partner_id:
         stmt = stmt.where(DocumentHeader.partner_id == partner_id)
     if ref_document_id:
         stmt = stmt.where(DocumentHeader.ref_document_id == ref_document_id)
-    stmt = stmt.order_by(DocumentHeader.created_at.desc(), DocumentHeader.id).offset(skip).limit(limit)
+    # Both columns descending so the index (tenant_id, doc_type, created_at[, id]) can be read backwards without sorting the whole document type
+    stmt = stmt.order_by(DocumentHeader.created_at.desc(), DocumentHeader.id.desc()).offset(skip).limit(limit)
     return list(db.scalars(stmt).unique())
 
 
 def require_status(document: DocumentHeader, allowed: tuple[str, ...], action: str) -> None:
     if document.status not in allowed:
-        raise ConflictError(f"单据 {document.doc_no} 当前状态为 {document.status}，不能{action}")
+        raise ConflictError(f"Document {document.doc_no} is {document.status}; cannot {action}")
 
 
 def get_supplier(db: Session, tenant_id: uuid.UUID, partner_id: uuid.UUID) -> BusinessPartner:
     partner = db.get(BusinessPartner, partner_id)
     if partner is None or partner.tenant_id != tenant_id or partner.is_deleted:
-        raise DomainError("供应商不存在")
+        raise DomainError("Supplier not found")
     if not partner.is_active:
-        raise DomainError(f"供应商 {partner.code} 已停用")
+        raise DomainError(f"Supplier {partner.code} is inactive")
     if partner.partner_type not in ("supplier", "both"):
-        raise DomainError(f"{partner.code} 不是供应商")
+        raise DomainError(f"{partner.code} is not a supplier")
+    return partner
+
+
+def get_reason(db: Session, tenant_id: uuid.UUID, reason_code_id: uuid.UUID | None, category: str, label: str) -> ReasonCode:
+    reason = db.get(ReasonCode, reason_code_id) if reason_code_id else None
+    if reason is None or reason.tenant_id != tenant_id or reason.is_deleted or reason.category != category:
+        raise DomainError(f"{label} not found")
+    if not reason.is_active:
+        raise DomainError(f"{label} {reason.code} is inactive")
+    return reason
+
+
+def get_customer(db: Session, tenant_id: uuid.UUID, partner_id: uuid.UUID) -> BusinessPartner:
+    partner = db.get(BusinessPartner, partner_id)
+    if partner is None or partner.tenant_id != tenant_id or partner.is_deleted:
+        raise DomainError("Customer not found")
+    if not partner.is_active:
+        raise DomainError(f"Customer {partner.code} is inactive")
+    if partner.partner_type not in ("customer", "both"):
+        raise DomainError(f"{partner.code} is not a customer")
     return partner
 
 
 def get_active_item(db: Session, tenant_id: uuid.UUID, item_id: uuid.UUID) -> Item:
     item = db.get(Item, item_id)
     if item is None or item.tenant_id != tenant_id or item.is_deleted:
-        raise DomainError("商品不存在")
+        raise DomainError("Item not found")
     if not item.is_active:
-        raise DomainError(f"商品 {item.sku_code} 已停用")
+        raise DomainError(f"Item {item.sku_code} is inactive")
     return item
 
 
 def get_uom(db: Session, tenant_id: uuid.UUID, uom_id: uuid.UUID) -> Uom:
     uom = db.get(Uom, uom_id)
     if uom is None or uom.tenant_id != tenant_id or uom.is_deleted:
-        raise DomainError("计量单位不存在")
+        raise DomainError("Unit of measure not found")
     return uom
 
 
@@ -162,29 +235,48 @@ def get_stock_location(
 ) -> Location:
     location = db.get(Location, location_id)
     if location is None or location.tenant_id != tenant_id or location.is_deleted:
-        raise DomainError("仓位不存在")
+        raise DomainError("Location not found")
     if not location.is_active:
-        raise DomainError(f"仓位 {location.code} 已停用")
+        raise DomainError(f"Location {location.code} is inactive")
     if location.is_locked:
-        raise DomainError(f"仓位 {location.code} 已锁定")
+        raise DomainError(f"Location {location.code} is locked")
     if location.location_type not in allowed_types:
         raise DomainError(
-            f"仓位 {location.code} 类型为 {location.location_type}，此处只允许 {'/'.join(allowed_types)}"
+            f"Location {location.code} is of type {location.location_type}; only {'/'.join(allowed_types)} allowed here"
         )
+    counting = active_count_for_location(db, tenant_id, location.id)
+    if counting is not None:
+        raise DomainError(f"Location {location.code} is being counted ({counting.doc_no}); stock movements are paused")
     return location
 
 
+def active_count_for_location(
+    db: Session, tenant_id: uuid.UUID, location_id: uuid.UUID
+) -> DocumentHeader | None:
+    return db.scalars(
+        select(DocumentHeader)
+        .join(DocumentLocation, DocumentLocation.document_id == DocumentHeader.id)
+        .where(
+            DocumentHeader.tenant_id == tenant_id,
+            DocumentHeader.doc_type == DOC_COUNT,
+            DocumentHeader.status == COUNT_IN_PROGRESS,
+            DocumentHeader.is_deleted == false(),
+            DocumentLocation.location_id == location_id,
+        )
+    ).unique().first()
+
+
 def normalize_tracking(item: Item, batch_no: str | None, expiry_date):
-    """按商品的批次/效期管理开关校验并规整：未启用管理的商品忽略传入值，避免产生多余的库存维度。"""
+    """Validate and normalize per the item's batch/expiry settings: values for items without those settings are ignored to avoid extra stock dimensions."""
     batch_no = (batch_no or "").strip() or None
     if item.is_batch_managed:
         if batch_no is None:
-            raise DomainError(f"商品 {item.sku_code} 启用了批次管理，必须填写批次号")
+            raise DomainError(f"Item {item.sku_code} is batch managed; a batch number is required")
     else:
         batch_no = None
     if item.is_expiry_managed:
         if expiry_date is None:
-            raise DomainError(f"商品 {item.sku_code} 启用了效期管理，必须填写到期日")
+            raise DomainError(f"Item {item.sku_code} is expiry managed; an expiry date is required")
     else:
         expiry_date = None
     return batch_no, expiry_date

@@ -3,6 +3,10 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+.pytest_cache/
+.ruff_cache/
+# Playwright traces from failed browser tests
+test-results/
 
 # Node
 node_modules/
@@ -19,3 +23,6 @@ apps/web/vite.config.d.ts
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Offline install package output
+deploy/dist/

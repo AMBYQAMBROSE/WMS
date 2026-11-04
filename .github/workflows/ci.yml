@@ -1,0 +1,116 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.15"
+  NODE_VERSION: "26"
+
+jobs:
+  web:
+    name: Web (typecheck + build)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: apps/web/dist
+          retention-days: 3
+
+  mobile:
+    name: Mobile (typecheck)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+
+  backend:
+    name: Backend (lint + tests)
+    runs-on: ubuntu-24.04
+    needs: web
+    services:
+      # Same image and collation as infra/docker for local development
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_SA_PASSWORD: "CiPassword123!"
+          MSSQL_COLLATION: Chinese_PRC_CI_AS
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P 'CiPassword123!' -Q 'SELECT 1' -b"
+          --health-interval 10s --health-timeout 5s --health-retries 20
+    defaults:
+      run:
+        working-directory: apps/backend
+    env:
+      # The tests create and use <database>_test; this database itself is never touched
+      DATABASE_URL: mssql+pyodbc://sa:CiPassword123!@localhost:1433/wms?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ODBC Driver 18
+        run: |
+          curl -sSL -o /tmp/packages-microsoft-prod.deb \
+            "https://packages.microsoft.com/config/ubuntu/$(. /etc/os-release && echo $VERSION_ID)/packages-microsoft-prod.deb"
+          sudo dpkg -i /tmp/packages-microsoft-prod.deb
+          sudo apt-get update
+          sudo ACCEPT_EULA=Y apt-get install -y --no-install-recommends msodbcsql18 unixodbc-dev
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          allow-prereleases: true
+          cache: pip
+          cache-dependency-path: apps/backend/requirements*.txt
+      - run: pip install --prefer-binary -r requirements-dev.txt
+      - run: ruff check .
+      - name: Web API types match the backend
+        run: |
+          python -m scripts.export_openapi
+          cd ../web && npm run gen:api
+          git diff --exit-code -- openapi.json src/api/schema.d.ts \
+            || { echo "::error::API changed: run python -m scripts.export_openapi and npm run gen:api, then commit"; exit 1; }
+      - name: Validate industry presets
+        run: python -m scripts.seed --check
+      - name: API and service tests
+        run: pytest --ignore=tests/e2e
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: apps/web/dist
+      - run: python -m playwright install --with-deps chromium
+      - name: Browser smoke tests
+        run: pytest tests/e2e --tracing retain-on-failure
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: apps/backend/test-results
+          retention-days: 7

@@ -1,0 +1,57 @@
+{
+  "name": "General warehouse",
+  "description": "Basic inbound, inventory and outbound; all extension modules off, enable as needed under System > Feature flags",
+  "features": [],
+  "uoms": [
+    ["EA", "Each"],
+    ["CTN", "Carton"],
+    ["PLT", "Pallet"]
+  ],
+  "reasons": {
+    "ADJUST": [
+      ["DAMAGE", "Damaged / scrapped"],
+      ["EXPIRED", "Expired / scrapped"],
+      ["FOUND", "Found / count gain"],
+      ["LOST", "Lost / count loss"],
+      ["CORRECTION", "Data correction (incl. expiry/batch changes)"],
+      ["OPENING", "Opening stock"]
+    ],
+    "RETURN": [
+      ["DAMAGED", "Damaged"],
+      ["WRONG", "Wrong item / over-shipped"],
+      ["EXPIRY", "Near expiry / expired"],
+      ["QUALITY", "Quality issue"],
+      ["CUSTOMER", "Customer reason (no longer wanted)"]
+    ]
+  },
+  "roles": [
+    {
+      "code": "SUPERVISOR",
+      "name": "Warehouse supervisor",
+      "permissions": [
+        "*.read", "*.create", "*.update", "*.confirm", "*.post", "*.cancel", "*.close",
+        "sales_order.allocate", "cycle_count.count", "cycle_count.view_expected",
+        "pick.confirm", "returnable_asset.manage", "mobile.sync"
+      ],
+      "exclude": ["user.*", "role.*", "system.*"]
+    },
+    {
+      "code": "CLERK",
+      "name": "Warehouse clerk",
+      "permissions": [
+        "item.read", "location.read", "business_partner.read", "uom.read", "stock.read", "reason_code.read",
+        "purchase_order.read", "grn.read", "grn.create", "putaway.read", "putaway.create", "putaway.post",
+        "move.read", "move.create", "move.post", "adjustment.read", "adjustment.create",
+        "cycle_count.read", "cycle_count.count",
+        "sales_order.read", "pick.read", "pick.confirm", "shipment.read", "shipment.create",
+        "mobile.sync"
+      ]
+    },
+    {
+      "code": "VIEWER",
+      "name": "Read-only",
+      "permissions": ["*.read"],
+      "exclude": ["user.read", "role.read", "integration.*"]
+    }
+  ]
+}

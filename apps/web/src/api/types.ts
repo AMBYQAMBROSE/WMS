@@ -1,125 +1,50 @@
-export interface UomBrief {
-  id: string;
-  code: string;
-  name: string;
-}
+/**
+ * API response types, generated from the backend OpenAPI schema (see schema.d.ts and npm run gen:api).
+ * The names here are the ones the app uses; never hand-write a response shape, alias the generated one.
+ */
+import type { components } from "./schema";
 
-export interface PartnerBrief {
-  id: string;
-  code: string;
-  name: string;
-}
+type Schemas = components["schemas"];
 
-export interface ItemBrief {
-  id: string;
-  sku_code: string;
-  name: string;
-  is_batch_managed: boolean;
-  is_expiry_managed: boolean;
-  base_uom: UomBrief;
-}
-
-export interface LocationBrief {
-  id: string;
-  code: string;
-  name: string;
-  location_type: string;
-}
-
-export interface DocumentBrief {
-  id: string;
-  doc_type: string;
-  doc_no: string;
-  status: string;
-}
-
-export interface DocumentLine {
-  id: string;
-  line_no: number;
-  item: ItemBrief;
-  uom: UomBrief;
-  qty_planned: number;
-  qty_actual: number;
-  batch_no: string | null;
-  expiry_date: string | null;
-  from_location: LocationBrief | null;
-  to_location: LocationBrief | null;
-  ref_line_id: string | null;
-}
-
-export interface DocumentSummary {
-  id: string;
-  doc_type: string;
-  doc_no: string;
-  status: string;
-  partner: PartnerBrief | null;
-  ref_document: DocumentBrief | null;
-  location: LocationBrief | null;
-  expected_date: string | null;
-  posted_at: string | null;
-  remark: string | null;
-  created_at: string;
-}
-
-export interface Document extends DocumentSummary {
-  lines: DocumentLine[];
-}
-
-export interface BusinessPartner {
-  id: string;
-  code: string;
-  name: string;
-  partner_type: "customer" | "supplier" | "both";
-  contact_name: string | null;
-  contact_phone: string | null;
-  address: string | null;
-  is_active: boolean;
-}
-
-export interface Item {
-  id: string;
-  sku_code: string;
-  name: string;
-  barcode: string | null;
-  category: string | null;
-  base_uom_id: string;
-  is_batch_managed: boolean;
-  is_expiry_managed: boolean;
-  is_serial_managed: boolean;
-  shelf_life_days: number | null;
-  is_active: boolean;
-}
-
-export interface Location {
-  id: string;
-  code: string;
-  name: string;
-  location_type: string;
-  parent_id: string | null;
-  path: string;
-  is_pickable: boolean;
-  is_locked: boolean;
-  capacity_qty: number | null;
-  is_active: boolean;
-}
-
-export interface StockBalance {
-  id: string;
-  item: ItemBrief;
-  location: LocationBrief;
-  batch_no: string | null;
-  expiry_date: string | null;
-  qty_on_hand: number;
-}
-
-export interface StockLedgerEntry {
-  id: string;
-  item: ItemBrief;
-  location: LocationBrief;
-  batch_no: string | null;
-  expiry_date: string | null;
-  qty_change: number;
-  movement_type: string;
-  ref_line: { id: string; document: DocumentBrief } | null;
-  occurred_at: string;
-}
+export type UomBrief = Schemas["UomBrief"];
+export type PartnerBrief = Schemas["PartnerBrief"];
+export type ItemBrief = Schemas["ItemBrief"];
+export type LocationBrief = Schemas["LocationBrief"];
+export type DocumentBrief = Schemas["DocumentBrief"];
+export type DocumentLine = Schemas["DocumentLineRead"];
+export type ReasonBrief = Schemas["ReasonBrief"];
+export type ReasonCode = Schemas["ReasonCodeRead"];
+export type DocumentSummary = Schemas["DocumentSummary"];
+export type Document = Schemas["DocumentRead"];
+export type CountEntry = Schemas["CountEntryRead"];
+export type CountLine = Schemas["CountLineRead"];
+export type CycleCount = Schemas["CountRead"];
+export type SalesOrderLine = Schemas["SalesOrderLineRead"];
+export type SalesOrder = Schemas["SalesOrderRead"];
+export type PickLine = Schemas["PickLineRead"];
+export type Pick = Schemas["PickRead"];
+export type Shortage = Schemas["ShortageRead"];
+export type ShipmentInfo = Schemas["ShipmentInfoRead"];
+export type Shipment = Schemas["ShipmentRead"];
+export type ShortageRow = Schemas["ShortageReportRow"];
+export type BusinessPartner = Schemas["BusinessPartnerRead"];
+export type Item = Schemas["ItemRead"];
+export type Location = Schemas["LocationRead"];
+export type StockBalance = Schemas["StockBalanceRead"];
+export type StockLedgerEntry = Schemas["StockLedgerRead"];
+export type AssetType = Schemas["AssetTypeRead"];
+export type AssetTxn = Schemas["AssetTxnRead"];
+export type AssetBalance = Schemas["AssetBalanceRow"];
+export type DailyFlow = Schemas["DailyFlow"];
+export type Dashboard = Schemas["Dashboard"];
+export type TurnoverRow = Schemas["TurnoverRow"];
+export type PickerKpiRow = Schemas["PickerKpiRow"];
+export type ExpiryRow = Schemas["ExpiryRow"];
+export type PartnerLedgerRow = Schemas["PartnerLedgerRow"];
+export type Connector = Schemas["ConnectorRead"];
+export type ConnectorWithSecret = Schemas["ConnectorWithSecret"];
+export type EventType = Schemas["EventTypeRead"];
+export type IntegrationJob = Schemas["JobRead"];
+export type IntegrationLog = Schemas["IntegrationLogRead"];
+export type IntegrationJobDetail = Schemas["JobDetail"];
+export type IntegrationSummary = Schemas["IntegrationSummary"];

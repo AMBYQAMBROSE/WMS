@@ -1,0 +1,581 @@
+/* Global look & feel. Component colors come from the antd theme (src/theme); this file covers layout, rhythm and small polish. */
+
+:root {
+  --wms-sider-bg: #0f1222;
+  --wms-surface-border: #e3e7ef;
+  --wms-muted: #6b7280;
+  --wms-grad: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #06b6d4 100%);
+}
+
+[data-theme="dark"] {
+  --wms-surface-border: #232840;
+  --wms-muted: #7c829c;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "cv11", "ss01", "tnum";
+}
+
+/* Scrollbars: thin and quiet */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(120, 128, 160, 0.35) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(120, 128, 160, 0.35);
+  border-radius: 8px;
+}
+
+/* ---------- App shell ---------- */
+
+.wms-sider {
+  position: sticky !important;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+  border-right: 1px solid rgba(255, 255, 255, 0.04);
+}
+.wms-sider .ant-layout-sider-children {
+  display: flex;
+  flex-direction: column;
+}
+.wms-sider-menu {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 12px;
+  border-inline-end: none !important;
+}
+.wms-sider-menu .ant-menu-sub.ant-menu-inline {
+  background: transparent !important;
+}
+.wms-sider-menu.ant-menu-dark .ant-menu-item-selected {
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.45);
+}
+.wms-sider-menu .ant-menu-submenu-title {
+  font-weight: 500;
+}
+
+.wms-brand {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px;
+  color: #fff;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.wms-brand-mark {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--wms-grad);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  box-shadow: 0 6px 18px rgba(79, 70, 229, 0.45);
+}
+.wms-brand-name {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  line-height: 1.1;
+}
+.wms-brand-sub {
+  font-size: 11px;
+  color: rgba(226, 229, 240, 0.45);
+  font-weight: 500;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.wms-sider-footer {
+  flex-shrink: 0;
+  padding: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.wms-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  backdrop-filter: saturate(180%) blur(12px);
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
+  background: rgba(244, 246, 251, 0.78) !important;
+  border-bottom: 1px solid var(--wms-surface-border);
+}
+[data-theme="dark"] .wms-header {
+  background: rgba(11, 13, 23, 0.78) !important;
+}
+
+.wms-content {
+  padding: 24px 28px 40px;
+  width: 100%;
+  max-width: 1680px;
+  margin: 0 auto;
+  animation: wms-fade-in 0.25s ease-out;
+}
+
+@keyframes wms-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---------- Page header ---------- */
+
+.wms-page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.wms-page-title {
+  margin: 0 !important;
+  font-size: 24px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.4px;
+}
+.wms-page-desc {
+  margin-top: 4px;
+  font-size: 14px;
+}
+
+/* Every page body is a vertical stack of surfaces */
+.wms-content > .ant-space-vertical,
+.wms-content > div > .ant-space-vertical {
+  gap: 16px !important;
+}
+
+/* Cards: hairline border, no heavy shadow; hoverable cards lift a little */
+.ant-card {
+  border: 1px solid var(--wms-surface-border) !important;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.03);
+}
+.ant-card .ant-card-head {
+  border-bottom-color: var(--wms-surface-border);
+}
+.ant-card .ant-card-head-title {
+  font-weight: 600;
+}
+.ant-card-hoverable {
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.ant-card-hoverable:hover {
+  transform: translateY(-2px);
+  border-color: rgba(79, 70, 229, 0.35) !important;
+}
+
+/* Tables sitting directly on the page get a card-like surface */
+.wms-content .ant-space-vertical > .ant-space-item > .ant-table-wrapper,
+.wms-content > .ant-table-wrapper,
+.wms-surface {
+  background: var(--ant-color-bg-container);
+  border: 1px solid var(--wms-surface-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.ant-card .ant-table-wrapper,
+.ant-tabs .ant-table-wrapper {
+  border: none !important;
+}
+.ant-table-wrapper .ant-table-thead > tr > th {
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.ant-table-wrapper .ant-table-pagination.ant-pagination {
+  margin: 12px 16px !important;
+}
+.ant-table-wrapper a {
+  font-weight: 500;
+}
+
+/* Tabs that hold tables: render as one surface */
+.wms-content .ant-tabs-card > .ant-tabs-nav,
+.wms-content .ant-space-vertical > .ant-space-item > .ant-tabs {
+  background: var(--ant-color-bg-container);
+  border: 1px solid var(--wms-surface-border);
+  border-radius: 12px;
+  padding: 0 16px 8px;
+}
+
+/* Descriptions: label tone */
+.ant-descriptions .ant-descriptions-item-label {
+  color: var(--ant-color-text-tertiary) !important;
+}
+.ant-descriptions .ant-descriptions-item-content {
+  font-weight: 500;
+}
+
+/* Toolbar above lists */
+.wms-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--ant-color-bg-container);
+  border: 1px solid var(--wms-surface-border);
+  border-radius: 12px;
+}
+.wms-toolbar-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* Status chips */
+.wms-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 20px;
+  white-space: nowrap;
+}
+.wms-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.wms-status-pulse .wms-status-dot {
+  animation: wms-pulse 1.6s ease-in-out infinite;
+}
+@keyframes wms-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 currentColor;
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 0 3px transparent;
+    opacity: 0.55;
+  }
+}
+
+/* Filter chips (status filter on document lists) */
+.wms-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--wms-surface-border);
+  background: transparent;
+  color: var(--ant-color-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+.wms-chip:hover {
+  color: var(--ant-color-primary);
+  border-color: var(--ant-color-primary-border);
+}
+.wms-chip-active,
+.wms-chip-active:hover {
+  color: #fff;
+  background: var(--ant-color-primary);
+  border-color: var(--ant-color-primary);
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+}
+
+/* Stat cards */
+.wms-stat {
+  position: relative;
+  display: block;
+  height: 100%;
+  padding: 18px 20px;
+  border-radius: 14px;
+  background: var(--ant-color-bg-container);
+  border: 1px solid var(--wms-surface-border);
+  color: inherit !important;
+  overflow: hidden;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+a.wms-stat:hover {
+  transform: translateY(-2px);
+  border-color: var(--wms-stat-accent, var(--ant-color-primary));
+  box-shadow: 0 10px 24px -12px var(--wms-stat-accent, rgba(79, 70, 229, 0.5));
+}
+.wms-stat-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.wms-stat-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ant-color-text-secondary);
+}
+.wms-stat-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-size: 17px;
+  flex-shrink: 0;
+}
+.wms-stat-value {
+  margin-top: 10px;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.6px;
+  line-height: 1.15;
+  color: var(--ant-color-text);
+}
+.wms-stat-hint {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--ant-color-text-tertiary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.wms-stat-arrow {
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: all 0.18s ease;
+  color: var(--wms-stat-accent);
+}
+a.wms-stat:hover .wms-stat-arrow {
+  opacity: 1;
+  transform: none;
+}
+
+.wms-section-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 8px 2px 12px;
+}
+.wms-section-title h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* Dashboard hero */
+.wms-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  padding: 24px 28px;
+  color: #fff;
+  background: radial-gradient(1200px 300px at 100% 0%, rgba(6, 182, 212, 0.35), transparent 60%),
+    linear-gradient(120deg, #312e81 0%, #4f46e5 55%, #7c3aed 100%);
+  box-shadow: 0 20px 40px -24px rgba(79, 70, 229, 0.8);
+}
+.wms-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: linear-gradient(90deg, transparent 30%, #000 100%);
+  pointer-events: none;
+}
+.wms-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Empty state */
+.wms-empty {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--ant-color-text-tertiary);
+}
+.wms-empty-icon {
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 10px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  color: var(--ant-color-primary);
+  background: var(--ant-color-primary-bg);
+}
+
+/* Forms on create/edit pages */
+.ant-form-vertical .ant-form-item-label > label {
+  font-weight: 500;
+}
+
+/* Login */
+.wms-login {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(420px, 1fr);
+  background: var(--ant-color-bg-container);
+}
+.wms-login-art {
+  position: relative;
+  overflow: hidden;
+  padding: 48px 56px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: #fff;
+  background: radial-gradient(900px 500px at 0% 100%, rgba(6, 182, 212, 0.35), transparent 60%),
+    radial-gradient(700px 400px at 100% 0%, rgba(124, 58, 237, 0.55), transparent 60%), #111433;
+}
+.wms-login-art::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(ellipse at center, #000 30%, transparent 75%);
+}
+.wms-login-art > * {
+  position: relative;
+}
+.wms-login-form {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+}
+.wms-login-feature {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.wms-login-feature-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  flex-shrink: 0;
+  font-size: 17px;
+}
+@media (max-width: 900px) {
+  .wms-login {
+    grid-template-columns: 1fr;
+  }
+  .wms-login-art {
+    display: none;
+  }
+}
+
+/* Mono for document numbers and codes */
+.wms-mono {
+  font-variant-numeric: tabular-nums slashed-zero;
+  font-weight: 600;
+  letter-spacing: 0.1px;
+}
+
+/* Ad-hoc filter rows (a horizontal Space as the first row of a page) get the toolbar surface too */
+.wms-content > .ant-space-vertical > .ant-space-item:first-child > .ant-space-horizontal {
+  display: flex;
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--ant-color-bg-container);
+  border: 1px solid var(--wms-surface-border);
+  border-radius: 12px;
+}
+
+/* Alerts: softer, rounded */
+.ant-alert {
+  border-radius: 12px !important;
+}
+
+/* Sticky form action bar (inside a card body with 20px padding) */
+.wms-form-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: flex-start;
+  gap: 10px;
+  margin: 24px -20px -20px;
+  padding: 14px 20px;
+  background: var(--ant-color-bg-container);
+  border-top: 1px solid var(--wms-surface-border);
+  border-radius: 0 0 12px 12px;
+  box-shadow: 0 -8px 16px -12px rgba(16, 24, 40, 0.12);
+}
+
+/* Line-entry rows in order forms */
+.wms-lines {
+  border: 1px solid var(--wms-surface-border);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.wms-lines-head,
+.wms-lines-row {
+  display: grid;
+  grid-template-columns: 44px minmax(240px, 1fr) 140px 160px 44px;
+  gap: 12px;
+  align-items: start;
+  padding: 10px 14px;
+}
+.wms-lines-head {
+  background: var(--ant-color-fill-quaternary);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--ant-color-text-secondary);
+}
+.wms-lines-row + .wms-lines-row {
+  border-top: 1px solid var(--wms-surface-border);
+}
+.wms-lines-row .ant-form-item {
+  margin-bottom: 0;
+}
+.wms-lines-no {
+  line-height: 36px;
+  color: var(--ant-color-text-tertiary);
+  font-variant-numeric: tabular-nums;
+}

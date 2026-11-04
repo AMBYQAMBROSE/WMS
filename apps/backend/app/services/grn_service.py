@@ -11,6 +11,7 @@ from app.services.document_common import (
     DOC_GRN,
     DOC_PO,
     FEATURE_ALLOW_OVER_RECEIPT,
+    find_by_client_request,
     get_document,
     get_stock_location,
     is_feature_enabled,
@@ -45,8 +46,13 @@ class GrnService:
         return get_document(self.db, self.tenant_id, DOC_GRN, grn_id, lock=lock)
 
     def create(self, data: GrnIn) -> DocumentHeader:
+        # Must come before all validation: on a retry the PO may already be fully received by the previous request, and validating would report a false error
+        existing = find_by_client_request(self.db, self.tenant_id, DOC_GRN, data.client_request_id)
+        if existing is not None:
+            return existing
+
         po = get_document(self.db, self.tenant_id, DOC_PO, data.po_id)
-        require_status(po, PO_RECEIVABLE, "收货")
+        require_status(po, PO_RECEIVABLE, "receive")
         location = get_stock_location(self.db, self.tenant_id, data.location_id)
         po_lines = {line.id: line for line in po.lines}
 
@@ -55,7 +61,7 @@ class GrnService:
         for line_no, line_in in enumerate(data.lines, start=1):
             po_line = po_lines.get(line_in.po_line_id)
             if po_line is None:
-                raise DomainError(f"第 {line_no} 行不属于采购单 {po.doc_no}")
+                raise DomainError(f"Line {line_no} does not belong to purchase order {po.doc_no}")
             batch_no, expiry_date = normalize_tracking(
                 po_line.item, line_in.batch_no, line_in.expiry_date
             )
@@ -66,7 +72,7 @@ class GrnService:
                     line_no=line_no,
                     item_id=po_line.item_id,
                     uom_id=po_line.uom_id,
-                    # 应收：建单时该采购行的未收数量，仅供参考
+                    # Expected: the PO line's open quantity when the receipt was created, for reference only
                     qty_planned=max(po_line.qty_planned - po_line.qty_actual, Decimal(0)),
                     qty_actual=line_in.qty,
                     batch_no=batch_no,
@@ -88,6 +94,7 @@ class GrnService:
             ref_document_id=po.id,
             location_id=location.id,
             remark=data.remark,
+            client_request_id=data.client_request_id,
             created_by=self.user_id,
             updated_by=self.user_id,
         )
@@ -97,18 +104,18 @@ class GrnService:
         return self.get(grn.id)
 
     def post(self, grn_id: uuid.UUID) -> DocumentHeader:
-        # 加锁顺序固定为 GRN → PO，同一采购单的多张收货单并发过账会在 PO 锁上排队
+        # Lock order is always GRN -> PO, so concurrent receipts of one PO queue on the PO lock
         grn = self.get(grn_id, lock=True)
-        require_status(grn, (GRN_DRAFT,), "过账")
+        require_status(grn, (GRN_DRAFT,), "post")
         po = get_document(self.db, self.tenant_id, DOC_PO, grn.ref_document_id, lock=True)
-        require_status(po, PO_RECEIVABLE, "收货")
+        require_status(po, PO_RECEIVABLE, "receive")
         get_stock_location(self.db, self.tenant_id, grn.location_id)
 
         po_lines = {line.id: line for line in po.lines}
         requested: dict[uuid.UUID, Decimal] = defaultdict(Decimal)
         movements = []
         for line in grn.lines:
-            # 建单后商品的批次/效期开关可能被改过，过账时再校验一次
+            # The item's batch/expiry settings may have changed since creation; validate again at posting
             batch_no, expiry_date = normalize_tracking(line.item, line.batch_no, line.expiry_date)
             requested[line.ref_line_id] += line.qty_actual
             movements.append(
@@ -144,7 +151,7 @@ class GrnService:
 
     def cancel(self, grn_id: uuid.UUID) -> DocumentHeader:
         grn = self.get(grn_id, lock=True)
-        require_status(grn, (GRN_DRAFT,), "取消")
+        require_status(grn, (GRN_DRAFT,), "cancel")
         grn.status = GRN_CANCELLED
         grn.updated_by = self.user_id
         grn.row_version += 1
@@ -160,6 +167,6 @@ class GrnService:
             po_line = po_lines[po_line_id]
             if po_line.qty_actual + qty > po_line.qty_planned:
                 raise DomainError(
-                    f"商品 {po_line.item.sku_code} 超收：订购 {po_line.qty_planned.normalize()}，"
-                    f"已收 {po_line.qty_actual.normalize()}，本次 {qty.normalize()}"
+                    f"Item {po_line.item.sku_code} over-received: ordered {po_line.qty_planned.normalize()}, "
+                    f"received {po_line.qty_actual.normalize()}, this receipt {qty.normalize()}"
                 )

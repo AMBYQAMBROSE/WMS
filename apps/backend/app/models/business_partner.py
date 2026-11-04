@@ -5,7 +5,7 @@ from app.models.base import Base, TenantScopedMixin
 
 
 class BusinessPartner(Base, TenantScopedMixin):
-    """合并 Ninso 的 Outlet(客户/门店) 与 Supplier(供应商)，用 partner_type 区分角色。"""
+    """Merges Ninso's Outlet (customer/store) and Supplier; partner_type tells the roles apart."""
 
     __tablename__ = "business_partner"
     __table_args__ = (UniqueConstraint("tenant_id", "code"),)

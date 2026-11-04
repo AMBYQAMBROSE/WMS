@@ -1,30 +1,76 @@
 export const STATUS_LABELS: Record<string, { text: string; color: string }> = {
-  DRAFT: { text: "草稿", color: "default" },
-  CONFIRMED: { text: "已确认", color: "blue" },
-  PARTIALLY_RECEIVED: { text: "部分收货", color: "orange" },
-  RECEIVED: { text: "已收货", color: "green" },
-  CLOSED: { text: "已结案", color: "purple" },
-  CANCELLED: { text: "已取消", color: "red" },
-  POSTED: { text: "已过账", color: "green" },
+  DRAFT: { text: "Draft", color: "default" },
+  CONFIRMED: { text: "Confirmed", color: "blue" },
+  PARTIALLY_RECEIVED: { text: "Partially received", color: "orange" },
+  RECEIVED: { text: "Received", color: "green" },
+  CLOSED: { text: "Closed", color: "purple" },
+  CANCELLED: { text: "Cancelled", color: "red" },
+  POSTED: { text: "Posted", color: "green" },
+  COUNTING: { text: "Counting", color: "orange" },
+  IN_PROGRESS: { text: "In progress", color: "processing" },
+  PARTIALLY_SHIPPED: { text: "Partially shipped", color: "orange" },
+  SHIPPED: { text: "Shipped", color: "green" },
+  OPEN: { text: "To pick", color: "blue" },
 };
 
 export const PARTNER_TYPE_LABELS: Record<string, string> = {
-  customer: "客户",
-  supplier: "供应商",
-  both: "客户/供应商",
+  customer: "Customer",
+  supplier: "Supplier",
+  both: "Customer/Supplier",
 };
 
 export const LOCATION_TYPE_LABELS: Record<string, string> = {
-  WAREHOUSE: "仓库",
-  ZONE: "库区",
-  AISLE: "巷道",
-  RACK: "货架",
-  BIN: "储位",
-  DOCK: "收发货区",
+  WAREHOUSE: "Warehouse",
+  ZONE: "Zone",
+  AISLE: "Aisle",
+  RACK: "Rack",
+  BIN: "Bin",
+  DOCK: "Dock",
 };
 
 export const MOVEMENT_TYPE_LABELS: Record<string, string> = {
-  RECEIVE: "收货入库",
-  PUTAWAY_OUT: "上架移出",
-  PUTAWAY_IN: "上架移入",
+  RECEIVE: "Receipt",
+  PUTAWAY_OUT: "Putaway out",
+  PUTAWAY_IN: "Putaway in",
+  MOVE_OUT: "Move out",
+  MOVE_IN: "Move in",
+  ADJUST_IN: "Adjustment +",
+  ADJUST_OUT: "Adjustment -",
+  COUNT_GAIN: "Count gain",
+  COUNT_LOSS: "Count loss",
+  PICK_OUT: "Pick out",
+  PICK_IN: "Pick to staging",
+  SHIP_OUT: "Shipment",
+  RETURN_IN: "Customer return",
+  RETURN_OUT: "Return to supplier",
+  REPACK_OUT: "Repack consumed",
+  REPACK_IN: "Repack produced",
+};
+
+export const PERMISSION_MODULE_LABELS: Record<string, string> = {
+  inbound: "Inbound",
+  inventory: "Inventory",
+  outbound: "Outbound",
+  returns: "Returns & returnable assets",
+  master_data: "Master data",
+  mobile: "PDA",
+  system: "System",
+  report: "Dashboard & reports",
+  integration: "Integrations",
+};
+
+/** Document type in the stock ledger -> frontend route, for linking document numbers to their detail page */
+export const DOC_PATHS: Record<string, string> = {
+  PO: "purchase-orders",
+  GRN: "grns",
+  PUTAWAY: "putaways",
+  MOVE: "moves",
+  ADJUST: "adjustments",
+  COUNT: "cycle-counts",
+  SO: "sales-orders",
+  PICK: "picks",
+  SHIP: "shipments",
+  RETURN_IN: "returns-in",
+  RETURN_OUT: "returns-out",
+  REPACK: "repacks",
 };

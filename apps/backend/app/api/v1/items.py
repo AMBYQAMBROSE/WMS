@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_db_session, require_permission
@@ -13,11 +13,15 @@ router = APIRouter(prefix="/items", tags=["items"])
 @router.get("", response_model=list[ItemRead])
 def list_items(
     skip: int = 0,
-    limit: int = 50,
+    limit: int = Query(default=50, ge=1, le=500),
+    keyword: str | None = Query(default=None, max_length=100),
+    ids: list[uuid.UUID] | None = Query(default=None, max_length=200),
+    active_only: bool = False,
     db: Session = Depends(get_db_session),
     current_user: CurrentUser = Depends(require_permission("item.read")),
 ) -> list[ItemRead]:
-    return ItemService(db).list(current_user.tenant_id, skip, limit)
+    # Dropdown search: keyword fuzzy match; ids to display already selected values (up to 200); limit capped at 500, so large master data uses search rather than loading everything
+    return ItemService(db).list(current_user.tenant_id, skip, limit, keyword, ids, active_only)
 
 
 @router.post("", response_model=ItemRead, status_code=status.HTTP_201_CREATED)
@@ -37,7 +41,7 @@ def get_item(
 ) -> ItemRead:
     item = ItemService(db).get(current_user.tenant_id, item_id)
     if item is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="未找到该商品")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
     return item
 
 
@@ -51,7 +55,7 @@ def update_item(
     service = ItemService(db)
     item = service.get(current_user.tenant_id, item_id)
     if item is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="未找到该商品")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
     return service.update(item, data, current_user.id)
 
 
@@ -64,5 +68,5 @@ def delete_item(
     service = ItemService(db)
     item = service.get(current_user.tenant_id, item_id)
     if item is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="未找到该商品")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
     service.delete(item)

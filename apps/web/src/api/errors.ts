@@ -13,17 +13,17 @@ export function getErrorMessage(error: unknown): string {
     if (Array.isArray(detail)) {
       return (detail as ValidationIssue[])
         .map((issue) => `${issue.loc.slice(1).join(".")}: ${issue.msg}`)
-        .join("；");
+        .join("; ");
     }
-    if (error.response?.status === 403) return "没有操作权限";
-    return "操作失败，请稍后重试";
+    if (error.response?.status === 403) return "You do not have permission for this action";
+    return "The operation failed, please try again later";
   }
   if (error instanceof Error) return error.message;
-  return "操作失败，请稍后重试";
+  return "The operation failed, please try again later";
 }
 
-// 不能写成 onError: (e) => message.error(...)：message 返回的 thenable 要等提示框关闭才 resolve，
-// React Query 会等它，导致按钮在出错后还转圈约 3 秒、期间点击无效
+// Do not write onError: (e) => message.error(...): the thenable message returns resolves only when the toast closes,
+// and React Query waits for it, so buttons keep spinning for about 3 s after an error and ignore clicks
 export function showError(error: unknown): void {
   message.error(getErrorMessage(error));
 }

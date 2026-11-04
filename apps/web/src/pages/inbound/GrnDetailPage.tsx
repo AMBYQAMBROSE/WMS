@@ -1,10 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { Button, Card, Descriptions, Space, Spin, Table } from "antd";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router";
 
 import { apiClient } from "@/api/client";
+import { useCan } from "@/api/me";
 import type { DocumentSummary } from "@/api/types";
 import StatusTag from "@/components/StatusTag";
+import { DocTitle } from "@/components/ui";
 import {
   ActionButton,
   DocumentLinesTable,
@@ -16,6 +18,7 @@ import {
 export default function GrnDetailPage() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
+  const can = useCan();
   const { data: grn, isLoading } = useDocument("grns", id);
   const action = useDocumentAction("grns", id);
   const { data: putaways } = useQuery({
@@ -28,59 +31,58 @@ export default function GrnDetailPage() {
   const run = (name: string) => () => action.mutate(name);
 
   return (
-    <Space direction="vertical" style={{ width: "100%" }}>
+    <Space orientation="vertical" style={{ width: "100%" }}>
       <Card
-        title={`收货单 ${grn.doc_no}`}
+        title={<DocTitle label={"Goods receipt"} no={grn.doc_no} status={grn.status} />}
         extra={
           <Space>
             {grn.status === "DRAFT" && (
               <>
-                <ActionButton type="primary" label="过账" confirm="过账后库存立即增加且不能撤销，继续？" onConfirm={run("post")} loading={action.isPending} />
-                <ActionButton danger label="取消" confirm="确定取消该收货单？" onConfirm={run("cancel")} loading={action.isPending} />
+                <ActionButton perm="grn.post" type="primary" label="Post" confirm="Posting increases stock immediately and cannot be undone. Continue?" onConfirm={run("post")} loading={action.isPending} />
+                <ActionButton perm="grn.cancel" danger label="Cancel" confirm="Cancel this goods receipt?" onConfirm={run("cancel")} loading={action.isPending} />
               </>
             )}
-            {grn.status === "POSTED" && (
+            {grn.status === "POSTED" && can("putaway.create") && (
               <Button type="primary" onClick={() => navigate(`/putaways/new?grn=${id}`)}>
-                生成上架单
+                Create putaway
               </Button>
             )}
           </Space>
         }
       >
         <Descriptions column={3}>
-          <Descriptions.Item label="状态"><StatusTag status={grn.status} /></Descriptions.Item>
-          <Descriptions.Item label="采购单">
+          <Descriptions.Item label="Purchase order">
             {grn.ref_document && <Link to={`/purchase-orders/${grn.ref_document.id}`}>{grn.ref_document.doc_no}</Link>}
           </Descriptions.Item>
-          <Descriptions.Item label="供应商">{grn.partner?.name}</Descriptions.Item>
-          <Descriptions.Item label="收货仓位">{grn.location?.code} {grn.location?.name}</Descriptions.Item>
-          <Descriptions.Item label="过账时间">{formatDateTime(grn.posted_at)}</Descriptions.Item>
-          <Descriptions.Item label="备注">{grn.remark}</Descriptions.Item>
+          <Descriptions.Item label="Supplier">{grn.partner?.name}</Descriptions.Item>
+          <Descriptions.Item label="Receiving location">{grn.location?.code} {grn.location?.name}</Descriptions.Item>
+          <Descriptions.Item label="Posted">{formatDateTime(grn.posted_at)}</Descriptions.Item>
+          <Descriptions.Item label="Remark">{grn.remark}</Descriptions.Item>
         </Descriptions>
       </Card>
 
-      <Card title="明细">
+      <Card title="Lines">
         <DocumentLinesTable
           lines={grn.lines}
           columns={[
-            { title: "建单时未收", dataIndex: "qty_planned" },
-            { title: "实收数量", dataIndex: "qty_actual" },
-            { title: "批次号", dataIndex: "batch_no" },
-            { title: "到期日", dataIndex: "expiry_date" },
+            { title: "Open at creation", dataIndex: "qty_planned" },
+            { title: "Received", dataIndex: "qty_actual" },
+            { title: "Batch no.", dataIndex: "batch_no" },
+            { title: "Expiry date", dataIndex: "expiry_date" },
           ]}
         />
       </Card>
 
-      <Card title="上架记录">
+      <Card title="Putaways">
         <Table<DocumentSummary>
           rowKey="id"
           size="small"
           pagination={false}
           dataSource={putaways}
           columns={[
-            { title: "上架单号", dataIndex: "doc_no", render: (v: string, r) => <Link to={`/putaways/${r.id}`}>{v}</Link> },
-            { title: "状态", dataIndex: "status", render: (v: string) => <StatusTag status={v} /> },
-            { title: "过账时间", dataIndex: "posted_at", render: formatDateTime },
+            { title: "Putaway no.", dataIndex: "doc_no", render: (v: string, r) => <Link to={`/putaways/${r.id}`}>{v}</Link> },
+            { title: "Status", dataIndex: "status", render: (v: string) => <StatusTag status={v} /> },
+            { title: "Posted", dataIndex: "posted_at", render: formatDateTime },
           ]}
         />
       </Card>

@@ -9,3 +9,5 @@ pyjwt==2.15.1
 bcrypt==5.0.0
 python-multipart==0.0.32
 tzdata==2026.5
+openpyxl==3.1.5
+et-xmlfile==2.0.0

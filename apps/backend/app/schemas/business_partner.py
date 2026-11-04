@@ -1,12 +1,15 @@
 import uuid
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
+
+PartnerType = Literal["customer", "supplier", "both"]
 
 
 class BusinessPartnerBase(BaseModel):
     code: str
     name: str
-    partner_type: str  # customer / supplier / both
+    partner_type: PartnerType
     contact_name: str | None = None
     contact_phone: str | None = None
     address: str | None = None
@@ -19,7 +22,7 @@ class BusinessPartnerCreate(BusinessPartnerBase):
 
 class BusinessPartnerUpdate(BaseModel):
     name: str | None = None
-    partner_type: str | None = None
+    partner_type: PartnerType | None = None
     contact_name: str | None = None
     contact_phone: str | None = None
     address: str | None = None

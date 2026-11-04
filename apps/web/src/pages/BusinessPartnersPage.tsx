@@ -1,42 +1,55 @@
 import { useState } from "react";
 
+import { PlusOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { Button, Form, Input, Select, Space, Table } from "antd";
 
 import { apiClient } from "@/api/client";
+import { useCan } from "@/api/me";
 import type { BusinessPartner } from "@/api/types";
+import MasterSearch, { MASTER_LIST_LIMIT } from "@/components/MasterSearch";
+import { YesNo } from "@/components/ui";
 import CreateModal from "@/components/CreateModal";
 import { PARTNER_TYPE_LABELS } from "@/constants/labels";
 
 export default function BusinessPartnersPage() {
+  const can = useCan();
+  const [keyword, setKeyword] = useState("");
   const [creating, setCreating] = useState(false);
   const { data, isLoading } = useQuery({
-    queryKey: ["business-partners"],
+    queryKey: ["business-partners", keyword],
     queryFn: async () =>
-      (await apiClient.get<BusinessPartner[]>("/business-partners", { params: { limit: 500 } })).data,
+      (await apiClient.get<BusinessPartner[]>("/business-partners", { params: { limit: MASTER_LIST_LIMIT, keyword: keyword || undefined } })).data,
   });
 
   return (
-    <Space direction="vertical" style={{ width: "100%" }}>
-      <Button type="primary" onClick={() => setCreating(true)}>
-        新建业务伙伴
-      </Button>
+    <Space orientation="vertical" style={{ width: "100%" }}>
+      <MasterSearch
+        placeholder="Code / name" onSearch={setKeyword} shown={data?.length}
+        actions={
+          can("business_partner.create") && (
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>
+              New business partner
+            </Button>
+          )
+        }
+      />
       <Table<BusinessPartner>
         rowKey="id"
         loading={isLoading}
         dataSource={data}
         columns={[
-          { title: "编码", dataIndex: "code" },
-          { title: "名称", dataIndex: "name" },
-          { title: "类型", dataIndex: "partner_type", render: (v: string) => PARTNER_TYPE_LABELS[v] ?? v },
-          { title: "联系人", dataIndex: "contact_name" },
-          { title: "电话", dataIndex: "contact_phone" },
-          { title: "启用", dataIndex: "is_active", render: (v: boolean) => (v ? "是" : "否") },
+          { title: "Code", dataIndex: "code" },
+          { title: "Name", dataIndex: "name" },
+          { title: "Type", dataIndex: "partner_type", render: (v: string) => PARTNER_TYPE_LABELS[v] ?? v },
+          { title: "Contact", dataIndex: "contact_name" },
+          { title: "Phone", dataIndex: "contact_phone" },
+          { title: "Active", dataIndex: "is_active", render: (v: boolean) => <YesNo value={v} /> },
         ]}
       />
       <CreateModal
         open={creating}
-        title="新建业务伙伴"
+        title="New business partner"
         path="/business-partners"
         queryKey="business-partners"
         initialValues={{ partner_type: "supplier" }}
@@ -44,24 +57,24 @@ export default function BusinessPartnersPage() {
       >
         {() => (
           <>
-            <Form.Item name="code" label="编码" rules={[{ required: true }]}>
+            <Form.Item name="code" label="Code" rules={[{ required: true }]}>
               <Input />
             </Form.Item>
-            <Form.Item name="name" label="名称" rules={[{ required: true }]}>
+            <Form.Item name="name" label="Name" rules={[{ required: true }]}>
               <Input />
             </Form.Item>
-            <Form.Item name="partner_type" label="类型" rules={[{ required: true }]}>
+            <Form.Item name="partner_type" label="Type" rules={[{ required: true }]}>
               <Select
                 options={Object.entries(PARTNER_TYPE_LABELS).map(([value, label]) => ({ value, label }))}
               />
             </Form.Item>
-            <Form.Item name="contact_name" label="联系人">
+            <Form.Item name="contact_name" label="Contact">
               <Input />
             </Form.Item>
-            <Form.Item name="contact_phone" label="电话">
+            <Form.Item name="contact_phone" label="Phone">
               <Input />
             </Form.Item>
-            <Form.Item name="address" label="地址">
+            <Form.Item name="address" label="Address">
               <Input />
             </Form.Item>
           </>

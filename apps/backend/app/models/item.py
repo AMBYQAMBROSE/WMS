@@ -34,7 +34,7 @@ class Item(Base, TenantScopedMixin):
 
 
 class ItemBarcode(Base, TenantScopedMixin):
-    """一品多码：同一个 SKU 在不同包装单位下可能有不同条码（整箱码/单件码）。"""
+    """Multiple barcodes per item: one SKU may have different barcodes per packing unit (carton/unit barcode)."""
 
     __tablename__ = "item_barcode"
     __table_args__ = (UniqueConstraint("tenant_id", "barcode"),)
@@ -45,7 +45,7 @@ class ItemBarcode(Base, TenantScopedMixin):
 
 
 class ItemUomConversion(Base, TenantScopedMixin):
-    """单位换算，如 1 CTN = 12 EA。"""
+    """Unit conversion, e.g. 1 CTN = 12 EA."""
 
     __tablename__ = "item_uom_conversion"
 

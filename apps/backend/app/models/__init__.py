@@ -1,9 +1,12 @@
-# 导入全部模型，确保任何一处 import app.models.xxx 时外键引用的表都已注册到 Base.metadata
+# Import every model so that tables referenced by foreign keys are registered in Base.metadata wherever app.models.xxx is imported
 from app.models import (  # noqa: F401
     business_partner,
     document,
+    integration,
     item,
     location,
+    reason_code,
+    returnable_asset,
     stock,
     tenant,
     user,

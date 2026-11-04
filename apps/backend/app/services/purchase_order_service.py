@@ -59,14 +59,14 @@ class PurchaseOrderService:
 
     def update(self, po_id: uuid.UUID, data: PurchaseOrderIn) -> DocumentHeader:
         po = self.get(po_id, lock=True)
-        require_status(po, (PO_DRAFT,), "修改")
+        require_status(po, (PO_DRAFT,), "edit")
         get_supplier(self.db, self.tenant_id, data.partner_id)
         new_lines = self._build_lines(data.lines)
 
         po.partner_id = data.partner_id
         po.expected_date = data.expected_date
         po.remark = data.remark
-        # 先删旧行再插新行，否则 (document_id, line_no) 唯一约束会冲突
+        # Delete old lines before inserting new ones, otherwise the (document_id, line_no) unique constraint conflicts
         po.lines.clear()
         self.db.flush()
         po.lines.extend(new_lines)
@@ -75,14 +75,14 @@ class PurchaseOrderService:
         return self.get(po.id)
 
     def confirm(self, po_id: uuid.UUID) -> DocumentHeader:
-        return self._transition(po_id, (PO_DRAFT,), PO_CONFIRMED, "确认")
+        return self._transition(po_id, (PO_DRAFT,), PO_CONFIRMED, "confirm")
 
     def cancel(self, po_id: uuid.UUID) -> DocumentHeader:
-        return self._transition(po_id, (PO_DRAFT, PO_CONFIRMED), PO_CANCELLED, "取消")
+        return self._transition(po_id, (PO_DRAFT, PO_CONFIRMED), PO_CANCELLED, "cancel")
 
     def close(self, po_id: uuid.UUID) -> DocumentHeader:
-        """部分收货后不再等剩余数量，手工结案。"""
-        return self._transition(po_id, (PO_PARTIALLY_RECEIVED,), PO_CLOSED, "结案")
+        """Manually close after partial receipt instead of waiting for the rest."""
+        return self._transition(po_id, (PO_PARTIALLY_RECEIVED,), PO_CLOSED, "close")
 
     def _transition(
         self, po_id: uuid.UUID, allowed: tuple[str, ...], target: str, action: str
@@ -99,7 +99,7 @@ class PurchaseOrderService:
         for line_no, line in enumerate(lines_in, start=1):
             item = get_active_item(self.db, self.tenant_id, line.item_id)
             get_uom(self.db, self.tenant_id, line.uom_id)
-            # 下单时就校验单位能换算，避免收货时才发现
+            # Check unit conversions when ordering rather than finding out at receipt
             to_base_qty(self.db, self.tenant_id, item, line.uom_id, line.qty)
             lines.append(
                 DocumentLine(

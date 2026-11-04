@@ -1,65 +1,94 @@
 # WMS
 
-多租户/多部署友好的仓库管理系统。设计背景、架构决策、路线图见 [docs/PLAN.md](docs/PLAN.md)，字段级数据模型见 [docs/data-model.md](docs/data-model.md)。
+A warehouse management system designed for multiple tenants and multiple deployments. For background, architecture decisions and the roadmap see [docs/PLAN.md](docs/PLAN.md); for the field-level data model see [docs/data-model.md](docs/data-model.md).
 
-当前进度：**Phase 2 入库（Web）已完成**——采购单 → 收货 → 上架全流程、库存余额与流水查询；Phase 1 的主数据与鉴权权限框架。
+Status: **Phase 8 go-live preparation is complete (waiting for the first customer pilot)**:
+- Large-volume load tests and the resulting performance fixes ([docs/performance.md](docs/performance.md))
+- Go-live data import (items, locations, business partners, opening stock)
+- Cutover runbook, UAT cases and user guide
 
-## 目录结构
+Earlier phases:
+- Phase 7: integration framework and reports ([docs/integration.md](docs/integration.md))
+- Phase 6: standardized on-prem deployment: offline install package, install/upgrade/rollback/backup scripts, industry presets ([docs/deployment.md](docs/deployment.md))
+- Phase 5: extension modules, each switched on or off by a feature flag: returns, cross-docking, repacking, returnable assets
+- Phase 4: outbound (order → allocate → pick → ship), shortage report, role and user management
+- Phase 3: inventory (adjustments, moves, cycle counts)
+- Phase 2.5: PDA scan-to-receive and putaway (offline queue, idempotent submits)
+- Phase 2: inbound
+- Phase 1: master data and the authentication framework
+
+## Directory layout
 
 ```
 WMS/
 ├── apps/
-│   ├── web/       React + TypeScript + Vite 前端
-│   └── backend/   FastAPI + SQLAlchemy 后端
+│   ├── web/       React + TypeScript + Vite frontend (web console)
+│   ├── mobile/    React Native (Expo SDK 58) PDA app
+│   └── backend/   FastAPI + SQLAlchemy backend
+├── tools/perf/    Load-test tools: large-volume data generation, business-peak and stress tests (see docs/performance.md)
+├── deploy/        On-prem deployment: packaging, install/upgrade/rollback/backup scripts, production docker-compose
 ├── infra/
-│   └── docker/    docker-compose 部署编排
+│   └── docker/    SQL Server container for local development
+├── VERSION        Release version (baked into the images at packaging time)
 └── docs/
-    ├── PLAN.md        架构与路线图
-    └── data-model.md  字段级数据模型
+    ├── PLAN.md        Architecture and roadmap
+    ├── data-model.md  Field-level data model
+    ├── deployment.md  On-prem deployment runbook (SOP)
+    ├── integration.md External system integration guide
+    ├── performance.md Load-test report and server sizing
+    ├── go-live.md     Go-live cutover runbook
+    ├── uat.md         User acceptance test cases
+    └── user-guide.md  User guide (training material)
 ```
 
-## 开发环境要求
+## Development requirements
 
-- Node.js（已验证 26.x）
-- Python 3.15（已验证）。Windows 上 `python` 命令可能指向 Microsoft Store 的占位程序，请用 `py` 启动器
-- Docker Desktop（本地跑 SQL Server 容器）
+- Node.js (verified with 26.x)
+- Python 3.15 (verified). On Windows the `python` command may point to the Microsoft Store stub; use the `py` launcher.
+- Docker Desktop (to run the SQL Server container locally)
 - [ODBC Driver 18 for SQL Server](https://learn.microsoft.com/sql/connect/odbc/download-odbc-driver-for-sql-server)
-- C/C++ 编译工具（pyodbc、PyYAML 在 Python 3.15 上暂无预编译包，pip 会从源码构建）
+- A C/C++ build toolchain: pyodbc and PyYAML have no prebuilt wheels for Python 3.15 yet, so pip builds them from source.
 
-## 第一次启动
+## First start
 
-### 1. 启动数据库并建库
+### 1. Start the database and create it
 
 ```powershell
 cd infra/docker
 docker compose up -d db
 ```
 
-容器不会自动建业务库，用任意 SQL 客户端连 `localhost,1433`（sa / `YourPassword123!`）执行一次：
+The container does not create the application database. Connect to `localhost,1433` (sa / `YourPassword123!`) with any SQL client and run once:
 
 ```sql
 IF DB_ID('wms') IS NULL CREATE DATABASE wms
 ```
 
-### 2. 后端
+### 2. Backend
 
 ```powershell
 cd apps/backend
 py -3.15 -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install --prefer-binary -r requirements.txt
-Copy-Item .env.example .env          # 按需修改数据库连接串
-alembic upgrade head                 # 建表
+Copy-Item .env.example .env          # edit the database connection string as needed
+alembic upgrade head                 # create tables
 $env:SEED_ADMIN_PASSWORD = "Admin@123"
-python -m scripts.seed               # 初始化租户/权限/管理员/计量单位，可重复执行
-uvicorn app.main:app --reload
+python -m scripts.seed               # tenant/permissions/admin/units of measure; safe to rerun; --preset picks an industry preset
+uvicorn app.main:app --port 8000
+# In another terminal: the integration push worker (optional without external systems; events queue up and are sent once it starts)
+python -m app.worker
 ```
 
-API 文档：`http://localhost:8000/docs`，默认管理员账号 `admin`，密码为 `SEED_ADMIN_PASSWORD` 设置的值。
+API docs: `http://localhost:8000/docs`. The default admin account is `admin`, with the password set in `SEED_ADMIN_PASSWORD`.
 
-新增或修改模型后生成迁移：`alembic revision --autogenerate -m "说明"`，再 `alembic upgrade head`。
+> `--reload` is unreliable on this development machine (Windows + Python 3.15). The log shows "Reloading", but the child process that handles requests is not replaced and keeps running the old code. Restart manually after changing backend code. If port 8000 is still taken after stopping the server, kill the leftover `python.exe` (`multiprocessing.spawn`) child process.
+>
+> For a real PDA to reach the backend over the LAN, add `--host 0.0.0.0` and allow port 8000 through the Windows firewall.
 
-## 前端启动
+After adding or changing models, generate a migration with `alembic revision --autogenerate -m "description"`, then run `alembic upgrade head`.
+
+## Frontend
 
 ```powershell
 cd apps/web
@@ -67,44 +96,160 @@ npm install
 npm run dev
 ```
 
-默认 `http://localhost:5173`，开发模式下 `/api` 会被 Vite 代理到 `http://localhost:8000`。
+The dev server runs at `http://localhost:5173`. In dev mode Vite proxies `/api` to `http://localhost:8000`.
 
-## 用 Docker Compose 一键起（含 SQL Server 容器）
+API response types (`src/api/types.ts`) are aliases of types generated from the backend's OpenAPI schema. After changing a backend schema, regenerate them and commit both files (CI fails if they are stale):
 
 ```powershell
-cd infra/docker
-docker compose up --build
+cd apps/backend; python -m scripts.export_openapi   # writes apps/web/openapi.json
+cd ../web; npm run gen:api                           # writes src/api/schema.d.ts
 ```
 
-## 当前已实现的 API（Phase 1 范围）
+## Tests and checks
 
-- `POST /api/v1/auth/login` — 登录换 JWT
-- `GET/POST/PUT/DELETE /api/v1/business-partners` — 业务伙伴（客户/供应商）
-- `GET/POST/PUT/DELETE /api/v1/items` — 商品主数据
-- `GET/POST/PUT/DELETE /api/v1/locations` — 仓位（自引用树）
-- `GET/POST /api/v1/users` — 用户（含角色分配）
-- `GET /api/v1/uoms` — 计量单位
-- `/api/v1/purchase-orders` — 采购单：列表/新建/详情/修改(草稿)，`/{id}/confirm`、`/{id}/cancel`、`/{id}/close`
-- `/api/v1/grns` — 收货单：列表(可按 `po_id` 筛)/新建/详情，`/{id}/post`、`/{id}/cancel`
-- `/api/v1/putaways` — 上架单：列表(可按 `grn_id` 筛)/新建/详情，`/{id}/post`、`/{id}/cancel`
-- `GET /api/v1/stock/balances`、`GET /api/v1/stock/ledger` — 库存余额与流水
+CI (`.github/workflows/ci.yml`) runs all of these on every push and pull request.
 
-状态流转、并发控制规则见 [docs/data-model.md](docs/data-model.md) 第 8 节。
+```powershell
+cd apps/backend
+pip install --prefer-binary -r requirements-dev.txt
+python -m playwright install chromium   # once, for the browser tests
+ruff check .                            # lint
+pytest --ignore=tests/e2e               # API and service tests
+pytest                                  # also browser tests; build the web app first (cd apps/web; npm run build)
+```
 
-还没有：角色/权限管理 API；计量单位和单位换算(`item_uom_conversion`)的维护 API（目前只能直接写库，所以界面上下单只能用商品的基本单位，或已在库里配好换算的单位）；出库等 Phase 3+ 模块；移动端项目。
+- Tests run against a separate database: the name from `DATABASE_URL` with `_test` appended (override with `TEST_DATABASE_URL`). It is created, migrated and seeded automatically, and the development database is never touched.
+- Tests share that database and don't clean up after themselves. Each test creates its own master data with unique codes; follow the same pattern (see `tests/helpers.py`).
+- The browser tests sign in, open every page and fail on any error in the browser console. To also catch React and antd warnings, point them at a development build: `npx vite build --mode development --outDir <dir>`, then set `WEB_DIST=<dir>`.
+- Web: `npm run typecheck`; mobile: `npm run typecheck`.
 
-## SQL Server 方言注意事项
+## Mobile (PDA)
 
-开发中已经踩过的坑，写新模型/查询时注意：
-- **文本列一律用 `Unicode(n)`（NVARCHAR），不要用 `String(n)`**：`String` 在 SQL Server 生成 VARCHAR，默认排序规则下中文会被存成 `???`
-- 布尔过滤不要用 `.is_(False)`（会生成 SQL Server 不支持的 `IS 0`），用 `== false()`
-- 分页 `.offset()` 必须配 `.order_by()`
-- 新增模型后要在 `app/models/__init__.py` 里导入，否则运行时外键找不到被引用的表
-- 行锁用 `.with_hint(Model, "WITH (UPDLOCK, ROWLOCK)", "mssql")`，配 `populate_existing=True` 确保拿到加锁后的最新值（见 `services/document_common.py`）
-- `SessionLocal` 关闭了 autoflush：同一事务内先改后查，记得先 `db.flush()`
+```powershell
+cd apps/mobile
+npm install
+npm run web          # preview in the browser: http://localhost:19006 (the backend's CORS allows this origin)
+npm run typecheck    # type check
+npx expo-doctor      # dependency/config check
+```
 
-## 前端注意事项
+Install dependencies with `npx expo install <package>`, which picks versions compatible with SDK 58. Don't use `npm install <package>` directly.
 
-- React Query 的 `onError` 用 `showError`（`src/api/errors.ts`），不要写 `(e) => message.error(...)`：antd 的 message 返回值会被等待到提示框关闭，按钮会在出错后再转圈约 3 秒且点击无效
-- 单据录入表单加 `onKeyDown={preventEnterSubmit}`：扫码枪每次扫描都带回车，不能让回车直接提交单据
-- 开发模式下 antd 表单偶尔会在控制台打印 "There may be circular references"，这是 rc-field-form 比较字段元数据时的误报，与业务代码无关
+**Building for devices** (not yet verified on this machine; needs extra setup):
+- **Local build**: install Android Studio / Android SDK + JDK, run `npx expo prebuild`, then `npx expo run:android --variant release`. No Expo account is needed, which suits isolated networks.
+- **Cloud build**: `npx eas-cli@latest build -p android`. Needs an Expo account and internet access.
+- `app.json` enables Android `usesCleartextTraffic`. On-site backends usually use plain http, which Android 9+ blocks by default.
+
+**PDA features**:
+- Receive, put away and move.
+- Count: cycle counts are started in the web console. On the PDA, choose a count, then scan locations and items. The quantity field is not prefilled with the book quantity.
+- Pick: guided in bin order (scan bin → scan item → confirm quantity). Short picks are allowed, and a line can be skipped and picked later. The pick list is posted once every line is confirmed.
+
+**Scanner setup**: set the PDA to keyboard wedge mode (Keystroke/DataWedge keyboard output) with the barcode suffix set to **Enter**. The app's scan field keeps focus and hides the soft keyboard by default; tap "Keyboard" to type by hand.
+
+**Offline use and resubmits**:
+- After sign-in, master data (items, barcodes, unit conversions, stockable locations) is downloaded to the device. Barcodes are resolved locally, so scanning works offline.
+- Purchase orders and location stock are fetched fresh and cached while online. Offline, the cache is used and the app warns that the data may be out of date.
+- Submits go to a local queue and are sent to the server in order:
+  - **Offline or server error**: kept and retried every 20 seconds.
+  - **Session expired**: paused until the user signs in again.
+  - **Rejected under business rules** (over-receipt, insufficient stock, ...): moved to the "Failed" list for manual handling. A draft already created on the server is cancelled automatically.
+- Every submit carries a unique `client_request_id`. If the same ID is submitted again (for example, the request reached the server but the response was lost), the server returns the existing document instead of posting twice.
+- Count entries have "set" semantics (resubmitting gives the same result), so they need no request ID.
+
+**Known limitations**:
+- On native, PDA master data is stored as a file (expo-file-system). This is verified in the browser preview; file I/O on a real device still needs testing once an Android device is available.
+- The submit queue belongs to the device, not the user. If user A submits offline and user B later signs in on the same device, A's records are submitted as B.
+- Sign-in tokens expire after 60 minutes (`ACCESS_TOKEN_EXPIRE_MINUTES`), so users must sign in again during a full shift. A refresh token can be added later.
+
+## Deploying to a customer site
+
+For packaging, installing, upgrading, rolling back and backing up, see [docs/deployment.md](docs/deployment.md). In short:
+
+```bash
+bash deploy/build-release.sh --with-db          # build machine: produces deploy/dist/wms-<VERSION>.tar.gz
+bash install.sh --dir /opt/wms --preset standard  # customer server: run after extracting the package
+```
+
+- In production (`APP_ENV=production`) the backend requires a random `JWT_SECRET_KEY` and refuses to start with the default. The install script generates one.
+- `GET /api/v1/health` returns the version.
+- `GET /api/v1/health/ready` checks the database connection and that the schema version matches the code.
+
+## Implemented APIs
+
+**Authentication and access**
+- `POST /api/v1/auth/login`: sign in and get a JWT
+- `GET /api/v1/auth/me`: current user and permissions (the frontend uses it to show menus and buttons)
+- `/api/v1/users` (including `PUT /{id}` to change profile/roles/active and `POST /{id}/reset-password`), `/api/v1/roles`, `GET /api/v1/permissions`: user, role and permission management
+
+**Master data**
+- `GET/POST/PUT/DELETE /api/v1/business-partners`: business partners (customers/suppliers)
+- `GET/POST/PUT/DELETE /api/v1/items`: items
+- `GET/POST/PUT/DELETE /api/v1/locations`: locations (self-referencing tree)
+- `GET /api/v1/uoms`: units of measure
+- `/api/v1/reason-codes`: reason codes such as adjustment reasons; list, create, update
+
+**Inbound**
+- `/api/v1/purchase-orders`: purchase orders; list, create, detail, edit (draft), `/{id}/confirm`, `/{id}/cancel`, `/{id}/close`
+- `GET /api/v1/purchase-orders?doc_no=`: exact lookup by document number (used when the PDA scans a PO number)
+- `/api/v1/grns`: goods receipts; list (filter by `po_id`), create, detail, `/{id}/post`, `/{id}/cancel`
+- `/api/v1/putaways`: putaways; list (filter by `grn_id`), create, detail, `/{id}/post`, `/{id}/cancel`
+
+**Inventory**
+- `/api/v1/moves`: moves; same endpoints as putaways (both are generated by one factory in `api/v1/transfers.py`)
+- `/api/v1/adjustments`: stock adjustments; list, create, detail, `/{id}/post` (approve and post), `/{id}/cancel`
+- `/api/v1/cycle-counts`: cycle counts; list, start, detail, `/{id}/counts` (enter counts, safe to resubmit), `/{id}/recount`, `/{id}/post`, `/{id}/cancel`
+- `GET /api/v1/stock/balances`, `GET /api/v1/stock/ledger`: stock balances and ledger
+
+**Outbound**
+- `/api/v1/sales-orders`: sales orders; list, create, detail (with fulfilment progress), edit (draft), `/{id}/confirm`, `/{id}/allocate` (creates pick lists), `/{id}/cancel`, `/{id}/close`
+  - `GET /sales-orders/shortages`: shortage report
+  - Allocation accepts `source_location_id` for cross-docking; requires `CROSS_DOCK` to be enabled.
+- `/api/v1/picks`: pick lists; list, detail, `/{id}/lines/{line_id}/confirm` (enter the picked quantity, safe to resubmit), `/{id}/confirm-all`, `/{id}/post`, `/{id}/cancel`
+- `/api/v1/shipments`: shipments; create from an order (picked but unshipped goods are filled in), detail, `/{id}/info` (loading details), `/{id}/post`, `/{id}/cancel`
+
+**Extension modules** (controlled by feature flags)
+- `/api/v1/returns-in`, `/api/v1/returns-out`, `/api/v1/repacks`: customer returns, returns to supplier and repacks; list, create, detail, `/{id}/post`, `/{id}/cancel`
+- `/api/v1/returnable-assets`: returnable assets; `/types`, `/transactions` (lend/return records), `/balances` (outstanding balances)
+
+**Reports, integration and system**
+- `GET /api/v1/reports/dashboard|turnover|picker-kpi|expiry|partner-ledger`: dashboard and reports (permission `report.read`)
+- `/api/v1/integration`: integrations; `/connectors` (create/update/delete, `/test`, `/rotate-secret`), `/jobs` (push log, `/{id}/retry`), `/event-types`, `/summary`
+- `GET /api/v1/mobile/master-data`: PDA master data download (permission `mobile.sync`)
+- `GET /api/v1/features`, `PUT /api/v1/features/{code}`: feature flags (changes require `system.settings`)
+
+**Idempotent submits**: creating a GRN or putaway accepts a `client_request_id` (8–64 characters).
+
+For status transitions and concurrency rules see section 8 of [docs/data-model.md](docs/data-model.md).
+
+Not yet implemented:
+- Maintenance screens for units of measure and unit conversions (`item_uom_conversion`)
+- Outbound checking/packing, wave picking and replenishment suggestions
+- Return handling on the PDA
+
+**Extension modules** (returns, cross-docking, repacking, returnable assets) are off by default. Enable them per tenant under "System → Feature flags".
+
+**Permissions**: permissions are not stored in the sign-in token; each request reads them from the database. Changes to role permissions or deactivated accounts under "System" therefore **take effect immediately**, without the affected user signing in again.
+- The system role ADMIN always has every permission and cannot be edited or deleted.
+- Administrators cannot deactivate themselves or remove their own user-management permission.
+
+**Example split of duties** (create roles under "System → Roles"):
+- **Clerks**: data-entry permissions such as `adjustment.create`, `cycle_count.count` and `pick.confirm`.
+- **Supervisors**: additionally `adjustment.post`, `cycle_count.post` and `pick.post` (approve and post, request recounts), plus `cycle_count.view_expected` (see book quantities while counting).
+- Users without `view_expected` count blind.
+
+## SQL Server dialect notes
+
+Pitfalls already hit during development; keep them in mind when writing new models or queries:
+- **Always use `Unicode(n)` (NVARCHAR) for text columns, never `String(n)`.** On SQL Server, `String` creates VARCHAR, and with the default collation non-Latin text (such as Chinese) is stored as `???`.
+- For boolean filters, use `== false()`, not `.is_(False)`. The latter generates `IS 0`, which SQL Server does not support.
+- Paging with `.offset()` requires `.order_by()`.
+- Import new models in `app/models/__init__.py`, or foreign keys cannot find the referenced table at runtime.
+- For row locks, use `.with_hint(Model, "WITH (UPDLOCK, ROWLOCK)", "mssql")` with `populate_existing=True` so you get the latest values after locking (see `services/document_common.py`).
+- `SessionLocal` has autoflush off. To query after a change in the same transaction, call `db.flush()` first.
+
+## Frontend notes
+
+- Use `showError` (`src/api/errors.ts`) for React Query `onError`, not `(e) => message.error(...)`. React Query awaits the returned antd message until it closes, so after an error the button spins for about 3 more seconds and ignores clicks.
+- Add `onKeyDown={preventEnterSubmit}` to document entry forms. Scanners send Enter after every scan, and Enter must not submit the document.
+- In dev mode antd forms occasionally log "There may be circular references". This is a false positive from rc-field-form comparing field metadata and is unrelated to application code.

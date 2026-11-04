@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Unicode, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TenantScopedMixin
 
@@ -14,11 +14,14 @@ class User(Base, TenantScopedMixin):
     username: Mapped[str] = mapped_column(Unicode(100), nullable=False)
     display_name: Mapped[str] = mapped_column(Unicode(100), nullable=False)
     email: Mapped[str | None] = mapped_column(Unicode(200), nullable=True)
-    # 可空：预留未来接入 AD/SSO 时可以没有本地密码。auth_provider 标记登录方式，当前只实现 "local"。
+    # Nullable: leaves room for AD/SSO users without a local password. auth_provider marks the login method; only "local" is implemented.
     password_hash: Mapped[str | None] = mapped_column(Unicode(255), nullable=True)
     auth_provider: Mapped[str] = mapped_column(Unicode(20), default="local", nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    # Read-only: roles are changed through the user_role table, see UserService.set_roles
+    roles: Mapped[list["Role"]] = relationship(secondary="user_role", lazy="selectin", viewonly=True)
 
 
 class Role(Base, TenantScopedMixin):
@@ -31,7 +34,7 @@ class Role(Base, TenantScopedMixin):
 
 
 class Permission(Base):
-    """权限点清单是系统级的，不分租户，由代码/迁移脚本维护，不提供增删 API。"""
+    """The permission list is system-wide, not per tenant; maintained by code/migrations, no create/delete API."""
 
     __tablename__ = "permission"
 

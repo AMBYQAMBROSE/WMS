@@ -9,7 +9,7 @@ class Tenant(Base, AuditMixin):
 
     code: Mapped[str] = mapped_column(Unicode(50), unique=True, nullable=False)
     name: Mapped[str] = mapped_column(Unicode(200), nullable=False)
-    default_locale: Mapped[str] = mapped_column(Unicode(10), default="zh-CN", nullable=False)
+    default_locale: Mapped[str] = mapped_column(Unicode(10), default="en-US", nullable=False)
     default_timezone: Mapped[str] = mapped_column(
         Unicode(50), default="Asia/Shanghai", nullable=False
     )

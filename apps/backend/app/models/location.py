@@ -7,12 +7,12 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.models.base import Base, TenantScopedMixin
 
 LOCATION_TYPES = ("WAREHOUSE", "ZONE", "AISLE", "RACK", "BIN", "DOCK")
-# 只有这两类仓位能实际存放库存；DOCK 是收货/发货暂存区
+# Only these two location types actually hold stock; DOCK is the receiving/shipping staging area
 STOCK_LOCATION_TYPES = ("BIN", "DOCK")
 
 
 class Location(Base, TenantScopedMixin):
-    """仓位结构，自引用树：WAREHOUSE > ZONE > AISLE > RACK > BIN/DOCK，替代 Ninso 的 BinNum/Rack/BinType。"""
+    """Location structure as a self-referencing tree: WAREHOUSE > ZONE > AISLE > RACK > BIN/DOCK, replacing Ninso's BinNum/Rack/BinType."""
 
     __tablename__ = "location"
     __table_args__ = (UniqueConstraint("tenant_id", "code"),)

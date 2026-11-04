@@ -1,44 +1,57 @@
 import { useState } from "react";
 
+import { PlusOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { Button, Checkbox, Form, Input, Select, Space, Table } from "antd";
 
 import { apiClient } from "@/api/client";
+import { useCan } from "@/api/me";
 import type { Location } from "@/api/types";
+import MasterSearch, { MASTER_LIST_LIMIT } from "@/components/MasterSearch";
+import { YesNo } from "@/components/ui";
 import CreateModal from "@/components/CreateModal";
 import { LocationSelect } from "@/components/selects";
 import { LOCATION_TYPE_LABELS } from "@/constants/labels";
 
-const yesNo = (v: boolean) => (v ? "是" : "否");
+const yesNo = (v: boolean) => <YesNo value={v} />;
 
 export default function LocationsPage() {
+  const can = useCan();
+  const [keyword, setKeyword] = useState("");
   const [creating, setCreating] = useState(false);
   const { data, isLoading } = useQuery({
-    queryKey: ["locations"],
-    queryFn: async () => (await apiClient.get<Location[]>("/locations", { params: { limit: 500 } })).data,
+    queryKey: ["locations", keyword],
+    queryFn: async () => (await apiClient.get<Location[]>("/locations", { params: { limit: MASTER_LIST_LIMIT, keyword: keyword || undefined } })).data,
   });
 
   return (
-    <Space direction="vertical" style={{ width: "100%" }}>
-      <Button type="primary" onClick={() => setCreating(true)}>
-        新建仓位
-      </Button>
+    <Space orientation="vertical" style={{ width: "100%" }}>
+      <MasterSearch
+        placeholder="Location code / name" onSearch={setKeyword} shown={data?.length}
+        actions={
+          can("location.create") && (
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>
+              New location
+            </Button>
+          )
+        }
+      />
       <Table<Location>
         rowKey="id"
         loading={isLoading}
         dataSource={data}
         columns={[
-          { title: "编码", dataIndex: "code" },
-          { title: "名称", dataIndex: "name" },
-          { title: "类型", dataIndex: "location_type", render: (v: string) => LOCATION_TYPE_LABELS[v] ?? v },
-          { title: "路径", dataIndex: "path" },
-          { title: "可拣货", dataIndex: "is_pickable", render: yesNo },
-          { title: "锁定", dataIndex: "is_locked", render: yesNo },
+          { title: "Code", dataIndex: "code" },
+          { title: "Name", dataIndex: "name" },
+          { title: "Type", dataIndex: "location_type", render: (v: string) => LOCATION_TYPE_LABELS[v] ?? v },
+          { title: "Path", dataIndex: "path" },
+          { title: "Pickable", dataIndex: "is_pickable", render: yesNo },
+          { title: "Locked", dataIndex: "is_locked", render: yesNo },
         ]}
       />
       <CreateModal
         open={creating}
-        title="新建仓位"
+        title="New location"
         path="/locations"
         queryKey="locations"
         initialValues={{ location_type: "BIN", is_pickable: false, is_locked: false }}
@@ -46,28 +59,28 @@ export default function LocationsPage() {
       >
         {() => (
           <>
-            <Form.Item name="code" label="编码" rules={[{ required: true }]}>
+            <Form.Item name="code" label="Code" rules={[{ required: true }]}>
               <Input />
             </Form.Item>
-            <Form.Item name="name" label="名称" rules={[{ required: true }]}>
+            <Form.Item name="name" label="Name" rules={[{ required: true }]}>
               <Input />
             </Form.Item>
-            <Form.Item name="location_type" label="类型" rules={[{ required: true }]}>
+            <Form.Item name="location_type" label="Type" rules={[{ required: true }]}>
               <Select
                 options={Object.entries(LOCATION_TYPE_LABELS).map(([value, label]) => ({
                   value,
-                  label: `${label}（${value}）`,
+                  label: `${label} (${value})`,
                 }))}
               />
             </Form.Item>
-            <Form.Item name="parent_id" label="上级仓位">
-              <LocationSelect allowClear placeholder="不选则为顶层" />
+            <Form.Item name="parent_id" label="Parent location">
+              <LocationSelect allowClear placeholder="Leave empty for a top-level location" />
             </Form.Item>
             <Form.Item name="is_pickable" valuePropName="checked">
-              <Checkbox>可拣货</Checkbox>
+              <Checkbox>Pickable</Checkbox>
             </Form.Item>
             <Form.Item name="is_locked" valuePropName="checked">
-              <Checkbox>锁定</Checkbox>
+              <Checkbox>Locked</Checkbox>
             </Form.Item>
           </>
         )}

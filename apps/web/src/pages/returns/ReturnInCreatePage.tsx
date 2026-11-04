@@ -1,0 +1,122 @@
+import { useEffect } from "react";
+
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Alert, Button, Card, Form, Input, Space, Spin, message } from "antd";
+import type { Dayjs } from "dayjs";
+import { Link, useNavigate, useSearchParams } from "react-router";
+
+import { apiClient } from "@/api/client";
+import { showError } from "@/api/errors";
+import type { Document, SalesOrder } from "@/api/types";
+import StockLinesEditor, { toLinePayload } from "@/components/StockLinesEditor";
+import { preventEnterSubmit } from "@/components/documents";
+import { CustomerSelect, ReasonSelect } from "@/components/selects";
+import { FormFooter } from "@/components/ui";
+
+interface LineValues {
+  item_id?: string;
+  uom_id?: string;
+  qty?: number;
+  disposition: "RESTOCK" | "SCRAP";
+  location_id?: string;
+  batch_no?: string;
+  expiry_date?: Dayjs;
+  ref_line_id?: string;
+}
+
+interface FormValues {
+  partner_id: string;
+  reason_code_id: string;
+  remark?: string;
+  lines: LineValues[];
+}
+
+export default function ReturnInCreatePage() {
+  const [params] = useSearchParams();
+  const soId = params.get("so") ?? undefined;
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [form] = Form.useForm<FormValues>();
+
+  const { data: so, isLoading } = useQuery({
+    queryKey: ["sales-orders", soId],
+    queryFn: async () => (await apiClient.get<SalesOrder>(`/sales-orders/${soId}`)).data,
+    enabled: !!soId,
+  });
+
+  useEffect(() => {
+    if (!so) return;
+    // Prefill the returnable quantity from the original order (shipped - returned), in base units
+    const lines = so.lines
+      .filter((l) => l.shipped - l.returned > 0)
+      .map((l) => ({
+        item_id: l.item.id,
+        uom_id: l.item.base_uom.id,
+        qty: l.shipped - l.returned,
+        disposition: "RESTOCK" as const,
+        ref_line_id: l.id,
+      }));
+    form.setFieldsValue({ partner_id: so.partner?.id, lines: lines.length ? lines : [{ disposition: "RESTOCK" }] });
+  }, [so, form]);
+
+  const save = useMutation({
+    mutationFn: async (values: FormValues) => {
+      const lines = values.lines.map((l) => {
+        const payload = toLinePayload(l);
+        return l.disposition === "SCRAP" ? { ...payload, location_id: null } : payload;
+      });
+      return (await apiClient.post<Document>("/returns-in", { ...values, ref_document_id: soId ?? null, lines })).data;
+    },
+    onSuccess: (doc) => {
+      message.success(`Created customer return ${doc.doc_no}; post it after inspection`);
+      queryClient.invalidateQueries({ queryKey: ["returns-in"] });
+      navigate(`/returns-in/${doc.id}`);
+    },
+    onError: showError,
+  });
+
+  if (soId && isLoading) return <Spin />;
+
+  return (
+    <Card title="New customer return">
+      {so && (
+        <Alert
+          style={{ marginBottom: 16 }}
+          type="info"
+          showIcon
+          title={
+            <span>
+              Linked to order <Link to={`/sales-orders/${so.id}`}>{so.doc_no}</Link>: returnable quantities (shipped - returned) are prefilled; reduce them or delete lines as needed.
+            </span>
+          }
+        />
+      )}
+      <Form
+        form={form}
+        layout="vertical"
+        initialValues={{ lines: [{ disposition: "RESTOCK" }] }}
+        onKeyDown={preventEnterSubmit}
+        onFinish={(v) => save.mutate(v)}
+      >
+        <Space size="large" wrap>
+          <Form.Item name="partner_id" label="Customer" rules={[{ required: true }]}>
+            <CustomerSelect style={{ width: 260 }} disabled={!!so} />
+          </Form.Item>
+          <Form.Item name="reason_code_id" label="Return reason" rules={[{ required: true }]}>
+            <ReasonSelect category="RETURN" style={{ width: 220 }} />
+          </Form.Item>
+          <Form.Item name="remark" label="Remark">
+            <Input style={{ width: 320 }} maxLength={400} />
+          </Form.Item>
+        </Space>
+        <StockLinesEditor form={form} name="lines" locationLabel="Restock location" withDisposition />
+        <FormFooter>
+          <Button type="primary" htmlType="submit" loading={save.isPending}>
+            Create return
+          </Button>
+          <Button onClick={() => navigate(-1)}>Cancel</Button>
+        </FormFooter>
+      </Form>
+    </Card>
+  );
+}

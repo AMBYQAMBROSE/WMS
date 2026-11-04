@@ -14,7 +14,7 @@ def _utcnow() -> datetime:
 
 
 class AuditMixin:
-    """公共审计字段，所有业务表都有。Tenant 表本身只用这个 mixin（它不属于任何租户）。"""
+    """Common audit fields present on every business table. The Tenant table itself only uses this mixin (it belongs to no tenant)."""
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow, nullable=False)
@@ -28,7 +28,7 @@ class AuditMixin:
 
 
 class TenantScopedMixin(AuditMixin):
-    """除 Tenant、Permission(系统级) 外的业务表都继承这个，带 tenant_id 隔离字段。"""
+    """Inherited by every business table except Tenant and Permission (system-wide); adds the tenant_id isolation column."""
 
     tenant_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("tenant.id"), index=True, nullable=False

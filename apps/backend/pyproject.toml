@@ -1,0 +1,30 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+filterwarnings = [
+    # Starlette suggests httpx2 for TestClient; httpx still works and is what FastAPI documents
+    "ignore:Using `httpx` with `starlette.testclient` is deprecated",
+]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 140
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+# pyflakes, pycodestyle errors, isort, bugbear, pyupgrade, simplify
+select = ["F", "E", "I", "B", "UP", "SIM"]
+ignore = [
+    "B008",  # FastAPI dependencies are declared as Depends(...) defaults
+    "SIM108",  # ternaries are not always clearer
+    "E501",  # long lines: comments are often full sentences; no formatter is enforced yet
+    "E741",  # short names like l for a line are used deliberately in comprehensions
+    "UP046",  # Generic[T] base classes are fine
+]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Body", "fastapi.File", "fastapi.Form"]
+
+[tool.ruff.lint.isort]
+# The alembic/ migrations folder would otherwise make the library look first-party
+known-third-party = ["alembic"]

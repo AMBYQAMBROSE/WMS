@@ -1,5 +1,5 @@
 class DomainError(Exception):
-    """业务规则错误，由全局异常处理器转成对应 HTTP 状态码。"""
+    """Business rule violation, converted to the matching HTTP status code by the global exception handler."""
 
     status_code = 400
 
@@ -13,6 +13,6 @@ class NotFoundError(DomainError):
 
 
 class ConflictError(DomainError):
-    """状态冲突，如对已过账的单据再次过账。"""
+    """State conflict, e.g. posting an already posted document."""
 
     status_code = 409

@@ -1,0 +1,8 @@
+# Deployment scripts must use LF, or they fail on Linux
+*.sh text eol=lf
+deploy/docker-compose.yml text eol=lf
+deploy/env.template text eol=lf
+
+# Generated from the backend API (npm run gen:api); CI regenerates them on Linux and diffs
+apps/web/openapi.json text eol=lf linguist-generated
+apps/web/src/api/schema.d.ts text eol=lf linguist-generated

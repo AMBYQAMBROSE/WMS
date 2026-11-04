@@ -1,0 +1,20 @@
+{
+  "extends": "standard",
+  "name": "FMCG distribution",
+  "description": "Multi-customer distribution: returns and returnable assets (pallets/crates) enabled, adds a picker role",
+  "features": ["RETURNS", "RETURNABLE_ASSET"],
+  "uoms": [
+    ["BAG", "Bag"],
+    ["BOX", "Box"]
+  ],
+  "reasons": {
+    "RETURN": [["NEAR_EXPIRY", "Near-expiry exchange"]]
+  },
+  "roles": [
+    {
+      "code": "PICKER",
+      "name": "Picker",
+      "permissions": ["item.read", "location.read", "stock.read", "sales_order.read", "pick.read", "pick.confirm", "mobile.sync"]
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "extends": "standard",
+  "name": "Third-party logistics (3PL)",
+  "description": "Warehousing for clients: cross-docking, repack and returns enabled, over-receipt allowed (actual received quantity counts)",
+  "features": ["CROSS_DOCK", "REPACK", "RETURNS", "ALLOW_OVER_RECEIPT"],
+  "uoms": [["CBM", "Cubic meter"]],
+  "reasons": {
+    "ADJUST": [["OWNER_REQUEST", "Adjusted at the owner's request"]]
+  },
+  "roles": [
+    {
+      "code": "PICKER",
+      "name": "Picker",
+      "permissions": ["item.read", "location.read", "stock.read", "sales_order.read", "pick.read", "pick.confirm", "mobile.sync"]
+    },
+    {
+      "code": "VAS",
+      "name": "Value-added services operator",
+      "permissions": ["item.read", "location.read", "stock.read", "repack.read", "repack.create", "mobile.sync"]
+    }
+  ]
+}

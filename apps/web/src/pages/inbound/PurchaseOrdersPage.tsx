@@ -4,12 +4,13 @@ export default function PurchaseOrdersPage() {
   return (
     <DocumentListPage
       path="purchase-orders"
-      createLabel="新建采购单"
+      createLabel="New purchase order"
+      createPerm="purchase_order.create"
       statuses={["DRAFT", "CONFIRMED", "PARTIALLY_RECEIVED", "RECEIVED", "CLOSED", "CANCELLED"]}
       columns={[
-        { title: "供应商", render: (_, r) => r.partner?.name },
-        { title: "预计到货", dataIndex: "expected_date" },
-        { title: "备注", dataIndex: "remark", ellipsis: true },
+        { title: "Supplier", render: (_, r) => r.partner?.name },
+        { title: "Expected arrival", dataIndex: "expected_date" },
+        { title: "Remark", dataIndex: "remark", ellipsis: true },
       ]}
     />
   );

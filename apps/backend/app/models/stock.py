@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import Date, DateTime, ForeignKey, Numeric, Unicode, UniqueConstraint
+from sqlalchemy import Date, DateTime, ForeignKey, Index, Numeric, Unicode, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TenantScopedMixin
@@ -12,9 +12,11 @@ from app.models.location import Location
 
 
 class StockLedger(Base, TenantScopedMixin):
-    """库存流水：所有库存增减的唯一入口，只增不改。数量一律为基本单位。"""
+    """Stock ledger: the only entry point for stock changes, append-only. Quantities are always base units."""
 
     __tablename__ = "stock_ledger"
+    # Reports scan the ledger by time range (in/out trend, turnover, partner ledger)
+    __table_args__ = (Index("ix_stock_ledger_tenant_time", "tenant_id", "occurred_at"),)
 
     item_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("item.id"), index=True, nullable=False)
     location_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("location.id"), nullable=False)
@@ -33,13 +35,15 @@ class StockLedger(Base, TenantScopedMixin):
 
 
 class StockBalance(Base, TenantScopedMixin):
-    """当前库存余额，与流水在同一事务内同步更新。
-    SQL Server 唯一约束把 NULL 视为相等，所以无批次的库存每个 (商品, 仓位) 只会有一行。
+    """Current stock balance, updated in the same transaction as the ledger.
+    SQL Server unique constraints treat NULLs as equal, so stock without a batch has a single row per (item, location).
     """
 
     __tablename__ = "stock_balance"
     __table_args__ = (
         UniqueConstraint("tenant_id", "item_id", "location_id", "batch_no", "expiry_date"),
+        # PDA scans a location to look up stock
+        Index("ix_stock_balance_location", "location_id"),
     )
 
     item_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("item.id"), nullable=False)
@@ -47,6 +51,10 @@ class StockBalance(Base, TenantScopedMixin):
     batch_no: Mapped[str | None] = mapped_column(Unicode(50), nullable=True)
     expiry_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     qty_on_hand: Mapped[Decimal] = mapped_column(Numeric(18, 4), default=Decimal(0), nullable=False)
+    # Allocated to outbound orders but not yet picked; available = qty_on_hand - qty_allocated, and always qty_on_hand >= qty_allocated
+    qty_allocated: Mapped[Decimal] = mapped_column(
+        Numeric(18, 4), default=Decimal(0), server_default="0", nullable=False
+    )
 
     item: Mapped[Item] = relationship(lazy="joined")
     location: Mapped[Location] = relationship(lazy="joined")

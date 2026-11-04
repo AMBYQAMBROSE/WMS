@@ -20,7 +20,7 @@ def _code_revision() -> str | None:
     return ScriptDirectory.from_config(config).get_current_head()
 
 
-_CODE_REVISION = _code_revision()
+CODE_REVISION = _code_revision()
 
 
 @router.get("/health")
@@ -32,12 +32,12 @@ def health_check() -> dict:
 @router.get("/health/ready")
 def readiness_check():
     """Readiness check: the database is reachable and its schema revision matches the code (the upgrade script uses this to tell whether migration finished)"""
-    body = {"version": settings.app_version, "code_revision": _CODE_REVISION}
+    body = {"version": settings.app_version, "code_revision": CODE_REVISION}
     try:
         with engine.connect() as conn:
             body["db_revision"] = conn.execute(text("SELECT version_num FROM alembic_version")).scalar()
     except Exception as exc:  # noqa: BLE001 - the readiness check only reports the reason, it does not raise
         return JSONResponse(status_code=503, content={**body, "status": "db_unavailable", "detail": str(exc)[:300]})
-    if body["db_revision"] != _CODE_REVISION:
+    if body["db_revision"] != CODE_REVISION:
         return JSONResponse(status_code=503, content={**body, "status": "migration_pending"})
     return {**body, "status": "ready"}

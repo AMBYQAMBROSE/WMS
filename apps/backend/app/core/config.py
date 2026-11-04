@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _DEFAULT_SECRETS = {"change-me", "change-me-to-a-random-secret"}
@@ -29,6 +31,14 @@ class Settings(BaseSettings):
     # Integration worker: poll interval (seconds), retention days for events/jobs/logs
     integration_poll_seconds: float = 2.0
     integration_retention_days: int = 90
+    # Logging (see app/core/observability.py): "text" for development, "json" (one object per line) for log collectors
+    log_format: Literal["text", "json"] = "text"
+    log_level: str = "INFO"
+    # Requests at least this slow are logged as warnings
+    slow_request_ms: int = 1000
+    # OpenTelemetry: set to the customer's OTLP/HTTP collector (e.g. http://otel-collector:4318) to push traces and metrics
+    otel_exporter_otlp_endpoint: str | None = None
+    otel_service_name: str = "wms-backend"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

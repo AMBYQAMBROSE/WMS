@@ -130,7 +130,7 @@ export default function SalesOrderDetailPage() {
   return (
     <Space orientation="vertical" style={{ width: "100%" }}>
       <Card
-        title={<DocTitle label={"Sales order"} no={so.doc_no} status={so.status} />}
+        title={<DocTitle label={"Sales order"} no={so.doc_no} status={so.status} historyOf={so.id} />}
         extra={
           <Space>
             {so.status === "DRAFT" && (

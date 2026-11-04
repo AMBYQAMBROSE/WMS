@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import DomainError, NotFoundError
 from app.core.security import hash_password
+from app.models.audit import record_change
 from app.models.user import Role, User, UserRole
 from app.repositories.base import BaseRepository
 from app.schemas.user import UserCreate, UserUpdate
@@ -87,6 +88,13 @@ class UserService:
         return roles
 
     def _set_roles(self, user: User, roles: list[Role]) -> None:
+        old = sorted(self.db.scalars(select(Role.code).join(UserRole, UserRole.role_id == Role.id).where(UserRole.user_id == user.id)))
+        new = sorted(role.code for role in roles)
+        if old != new:
+            record_change(
+                self.db, tenant_id=user.tenant_id, entity_type="user", entity_id=user.id, entity_label=user.username,
+                changes={"roles": [old, new]},
+            )
         self.db.execute(delete(UserRole).where(UserRole.user_id == user.id))
         for role in roles:
             self.db.add(UserRole(user_id=user.id, role_id=role.id))

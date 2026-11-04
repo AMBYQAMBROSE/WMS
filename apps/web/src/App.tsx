@@ -43,6 +43,8 @@ const RolesPage = lazy(() => import("@/pages/system/RolesPage"));
 const FeaturesPage = lazy(() => import("@/pages/system/FeaturesPage"));
 const IntegrationPage = lazy(() => import("@/pages/system/IntegrationPage"));
 const ImportPage = lazy(() => import("@/pages/system/ImportPage"));
+const AuditLogPage = lazy(() => import("@/pages/system/AuditLogPage"));
+const SystemHealthPage = lazy(() => import("@/pages/system/SystemHealthPage"));
 const DashboardPage = lazy(() => import("@/pages/reports/DashboardPage"));
 const TurnoverReportPage = lazy(() => import("@/pages/reports/TurnoverReportPage"));
 const PickerKpiPage = lazy(() => import("@/pages/reports/PickerKpiPage"));
@@ -106,6 +108,8 @@ export default function App() {
               <Route path="features" element={<FeaturesPage />} />
               <Route path="integration" element={<IntegrationPage />} />
               <Route path="imports" element={<ImportPage />} />
+              <Route path="audit-log" element={<AuditLogPage />} />
+              <Route path="system-health" element={<SystemHealthPage />} />
               <Route path="dashboard" element={<DashboardPage />} />
               <Route path="reports/turnover" element={<TurnoverReportPage />} />
               <Route path="reports/picker-kpi" element={<PickerKpiPage />} />

@@ -67,7 +67,7 @@ export default function PickDetailPage() {
   return (
     <Space orientation="vertical" style={{ width: "100%" }}>
       <Card
-        title={<DocTitle label={"Pick list"} no={pick.doc_no} status={pick.status} />}
+        title={<DocTitle label={"Pick list"} no={pick.doc_no} status={pick.status} historyOf={pick.id} />}
         extra={
           open && (
             <Space>

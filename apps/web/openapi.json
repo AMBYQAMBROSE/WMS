@@ -7418,6 +7418,222 @@
           }
         }
       }
+    },
+    "/api/v1/audit-logs": {
+      "get": {
+        "tags": [
+          "audit"
+        ],
+        "summary": "List Audit Logs",
+        "operationId": "list_audit_logs_api_v1_audit_logs_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "entity_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A record; for a document, also its lines",
+              "title": "Entity Id"
+            },
+            "description": "A record; for a document, also its lines"
+          },
+          {
+            "name": "entity_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Entity Type"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "CREATE",
+                    "UPDATE",
+                    "DELETE"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Action"
+            }
+          },
+          {
+            "name": "keyword",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Part of the record's code or document number",
+              "title": "Keyword"
+            },
+            "description": "Part of the record's code or document number"
+          },
+          {
+            "name": "occurred_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Occurred From"
+            }
+          },
+          {
+            "name": "occurred_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Occurred To"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AuditLogRead"
+                  },
+                  "title": "Response List Audit Logs Api V1 Audit Logs Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/status": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Get System Status",
+        "operationId": "get_system_status_api_v1_system_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemStatus"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -7787,6 +8003,136 @@
           "is_active"
         ],
         "title": "AssetTypeRead"
+      },
+      "AuditChange": {
+        "properties": {
+          "field": {
+            "type": "string",
+            "title": "Field"
+          },
+          "old": {
+            "title": "Old"
+          },
+          "new": {
+            "title": "New"
+          }
+        },
+        "type": "object",
+        "required": [
+          "field"
+        ],
+        "title": "AuditChange"
+      },
+      "AuditLogRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Occurred At"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Id"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "CREATE",
+              "UPDATE",
+              "DELETE"
+            ],
+            "title": "Action"
+          },
+          "entity_type": {
+            "type": "string",
+            "title": "Entity Type"
+          },
+          "entity_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Entity Id"
+          },
+          "entity_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Label"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/AuditChange"
+            },
+            "type": "array",
+            "title": "Changes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "occurred_at",
+          "user_id",
+          "username",
+          "request_id",
+          "action",
+          "entity_type",
+          "entity_id",
+          "entity_label",
+          "parent_id",
+          "changes"
+        ],
+        "title": "AuditLogRead"
       },
       "Backlog": {
         "properties": {
@@ -8844,6 +9190,43 @@
         ],
         "title": "Dashboard"
       },
+      "DatabaseStatus": {
+        "properties": {
+          "latency_ms": {
+            "type": "integer",
+            "title": "Latency Ms"
+          },
+          "size_mb": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Mb"
+          },
+          "read_committed_snapshot": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Read Committed Snapshot"
+          }
+        },
+        "type": "object",
+        "required": [
+          "latency_ms",
+          "size_mb",
+          "read_committed_snapshot"
+        ],
+        "title": "DatabaseStatus"
+      },
       "DocumentBrief": {
         "properties": {
           "id": {
@@ -9662,6 +10045,42 @@
           "response_body"
         ],
         "title": "IntegrationLogRead"
+      },
+      "IntegrationQueueStatus": {
+        "properties": {
+          "pending": {
+            "type": "integer",
+            "title": "Pending"
+          },
+          "running": {
+            "type": "integer",
+            "title": "Running"
+          },
+          "failed": {
+            "type": "integer",
+            "title": "Failed"
+          },
+          "oldest_pending_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oldest Pending At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pending",
+          "running",
+          "failed",
+          "oldest_pending_at"
+        ],
+        "title": "IntegrationQueueStatus"
       },
       "IntegrationSummary": {
         "properties": {
@@ -12682,6 +13101,119 @@
         ],
         "title": "StockStats"
       },
+      "SystemStatus": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "code_revision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code Revision"
+          },
+          "db_revision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Db Revision"
+          },
+          "server_time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Server Time"
+          },
+          "database": {
+            "$ref": "#/components/schemas/DatabaseStatus"
+          },
+          "worker": {
+            "$ref": "#/components/schemas/WorkerStatus"
+          },
+          "integration": {
+            "$ref": "#/components/schemas/IntegrationQueueStatus"
+          },
+          "audit_entries_24h": {
+            "type": "integer",
+            "title": "Audit Entries 24H"
+          },
+          "tables": {
+            "items": {
+              "$ref": "#/components/schemas/TableSize"
+            },
+            "type": "array",
+            "title": "Tables"
+          },
+          "telemetry": {
+            "$ref": "#/components/schemas/TelemetryStatus"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "code_revision",
+          "db_revision",
+          "server_time",
+          "database",
+          "worker",
+          "integration",
+          "audit_entries_24h",
+          "tables",
+          "telemetry"
+        ],
+        "title": "SystemStatus"
+      },
+      "TableSize": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "rows": {
+            "type": "integer",
+            "title": "Rows"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "rows"
+        ],
+        "title": "TableSize"
+      },
+      "TelemetryStatus": {
+        "properties": {
+          "otel_enabled": {
+            "type": "boolean",
+            "title": "Otel Enabled"
+          },
+          "log_format": {
+            "type": "string",
+            "title": "Log Format"
+          },
+          "slow_request_ms": {
+            "type": "integer",
+            "title": "Slow Request Ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "otel_enabled",
+          "log_format",
+          "slow_request_ms"
+        ],
+        "title": "TelemetryStatus"
+      },
       "TodayStats": {
         "properties": {
           "received_qty": {
@@ -13163,6 +13695,32 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "WorkerStatus": {
+        "properties": {
+          "last_seen": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen"
+          },
+          "healthy": {
+            "type": "boolean",
+            "title": "Healthy"
+          }
+        },
+        "type": "object",
+        "required": [
+          "last_seen",
+          "healthy"
+        ],
+        "title": "WorkerStatus"
       }
     },
     "securitySchemes": {

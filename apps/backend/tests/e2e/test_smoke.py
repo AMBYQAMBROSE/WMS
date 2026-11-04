@@ -14,7 +14,7 @@ PAGES = [
     "/stock", "/moves", "/moves/new", "/adjustments", "/adjustments/new", "/cycle-counts", "/cycle-counts/new",
     "/repacks", "/returns-in", "/returns-out", "/returnable-assets",
     "/business-partners", "/items", "/locations", "/reason-codes",
-    "/users", "/roles", "/features", "/integration", "/imports",
+    "/users", "/roles", "/features", "/integration", "/imports", "/audit-log", "/system-health",
 ]
 
 # Expected noise: the browser logs every non-2xx response (e.g. a disabled feature answering 403)
@@ -63,4 +63,30 @@ def test_command_palette_jumps_to_a_page(page: Page, errors):
     page.get_by_placeholder("Jump to a page…").fill("Items")
     page.keyboard.press("Enter")
     expect(page).to_have_url(re.compile(r"/items$"))
+    assert not errors
+
+
+def test_document_history_and_audit_log(page: Page, errors, client, admin_headers, unique):
+    from tests.helpers import Api, make_item, make_warehouse
+
+    api = Api(client, admin_headers)
+    wh = make_warehouse(api, unique)
+    item = make_item(api, wh, f"E2E{unique}")
+    po = api.post("/purchase-orders", {"partner_id": wh.supplier, "lines": [{"item_id": item, "uom_id": wh.ea, "qty": 3}]})
+    api.post(f"/purchase-orders/{po['id']}/confirm")
+
+    sign_in(page)
+    page.goto(f"/purchase-orders/{po['id']}")
+    page.get_by_role("button", name="History").click()
+    drawer = page.locator(".ant-drawer")
+    expect(drawer.get_by_text(f"E2E{unique}").first).to_be_visible()  # the line's item, shown by SKU
+    expect(drawer.get_by_text("CONFIRMED").first).to_be_visible()  # the status change
+
+    page.goto("/audit-log")
+    page.get_by_placeholder("Code or document number").fill(f"E2E{unique}")
+    page.keyboard.press("Enter")
+    expect(page.get_by_role("cell", name=f"Item E2E{unique}")).to_be_visible()
+
+    page.goto("/system-health")
+    expect(page.get_by_text("Background worker")).to_be_visible()
     assert not errors

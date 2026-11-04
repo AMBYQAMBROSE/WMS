@@ -33,7 +33,7 @@
         "sales_order.allocate", "cycle_count.count", "cycle_count.view_expected",
         "pick.confirm", "returnable_asset.manage", "mobile.sync"
       ],
-      "exclude": ["user.*", "role.*", "system.*"]
+      "exclude": ["user.*", "role.*", "system.*", "audit.*"]
     },
     {
       "code": "CLERK",
@@ -51,7 +51,7 @@
       "code": "VIEWER",
       "name": "Read-only",
       "permissions": ["*.read"],
-      "exclude": ["user.read", "role.read", "integration.*"]
+      "exclude": ["user.read", "role.read", "integration.*", "audit.read"]
     }
   ]
 }

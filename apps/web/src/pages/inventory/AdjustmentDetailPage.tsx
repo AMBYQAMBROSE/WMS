@@ -21,7 +21,7 @@ export default function AdjustmentDetailPage() {
   return (
     <Space orientation="vertical" style={{ width: "100%" }}>
       <Card
-        title={<DocTitle label={"Stock adjustment"} no={doc.doc_no} status={doc.status} />}
+        title={<DocTitle label={"Stock adjustment"} no={doc.doc_no} status={doc.status} historyOf={doc.id} />}
         extra={
           doc.status === "DRAFT" && (
             <Space>

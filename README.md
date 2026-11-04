@@ -248,6 +248,12 @@ Pitfalls already hit during development; keep them in mind when writing new mode
 - For row locks, use `.with_hint(Model, "WITH (UPDLOCK, ROWLOCK)", "mssql")` with `populate_existing=True` so you get the latest values after locking (see `services/document_common.py`).
 - `SessionLocal` has autoflush off. To query after a change in the same transaction, call `db.flush()` first.
 
+## Audit log and request context notes
+
+- Changes are audited automatically by a flush hook (`app/models/audit.py`); services need no code for it. A new model is audited only once it is listed in `_AUDITED` there; add new secret columns to `_SECRETS`.
+- The hook cannot see bulk `update()`/`delete()` statements. A service that uses one on an audited table must call `record_change()` itself, like role permissions and user roles do.
+- `current_context()` (`app/core/request_context.py`) gives the request id and signed-in user anywhere in a request; outside a request (worker, scripts) it is empty and the audit log records "System".
+
 ## Frontend notes
 
 - Use `showError` (`src/api/errors.ts`) for React Query `onError`, not `(e) => message.error(...)`. React Query awaits the returned antd message until it closes, so after an error the button spins for about 3 more seconds and ignores clicks.

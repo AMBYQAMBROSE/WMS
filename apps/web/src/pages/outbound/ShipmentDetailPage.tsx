@@ -46,7 +46,7 @@ export default function ShipmentDetailPage() {
   return (
     <Space orientation="vertical" style={{ width: "100%" }}>
       <Card
-        title={<DocTitle label={"Shipment"} no={ship.doc_no} status={ship.status} />}
+        title={<DocTitle label={"Shipment"} no={ship.doc_no} status={ship.status} historyOf={ship.id} />}
         extra={
           draft && (
             <Space>

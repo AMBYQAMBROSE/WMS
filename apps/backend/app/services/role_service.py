@@ -4,6 +4,7 @@ from sqlalchemy import delete, false, func, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import DomainError, NotFoundError
+from app.models.audit import record_change
 from app.models.user import Permission, Role, RolePermission, UserRole
 from app.schemas.user import RoleIn, RoleRead, RoleUpdate
 
@@ -79,6 +80,12 @@ class RoleService:
         return codes
 
     def _set_permissions(self, role: Role, codes: list[str]) -> None:
+        old = self._permission_codes(role.id)
+        if old != sorted(codes):
+            record_change(
+                self.db, tenant_id=role.tenant_id, entity_type="role", entity_id=role.id, entity_label=role.code,
+                changes={"permissions": [old, sorted(codes)]},
+            )
         self.db.execute(delete(RolePermission).where(RolePermission.role_id == role.id))
         for code in codes:
             self.db.add(RolePermission(role_id=role.id, permission_code=code))

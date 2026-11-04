@@ -1766,6 +1766,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/audit-logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Audit Logs */
+        get: operations["list_audit_logs_api_v1_audit_logs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get System Status */
+        get: operations["get_system_status_api_v1_system_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1906,6 +1940,52 @@ export interface components {
             name: string;
             /** Is Active */
             is_active: boolean;
+        };
+        /** AuditChange */
+        AuditChange: {
+            /** Field */
+            field: string;
+            /** Old */
+            old?: unknown;
+            /** New */
+            new?: unknown;
+        };
+        /** AuditLogRead */
+        AuditLogRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** User Id */
+            user_id: string | null;
+            /** Username */
+            username: string | null;
+            /** Request Id */
+            request_id: string | null;
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "CREATE" | "UPDATE" | "DELETE";
+            /** Entity Type */
+            entity_type: string;
+            /**
+             * Entity Id
+             * Format: uuid
+             */
+            entity_id: string;
+            /** Entity Label */
+            entity_label: string | null;
+            /** Parent Id */
+            parent_id: string | null;
+            /** Changes */
+            changes: components["schemas"]["AuditChange"][];
         };
         /** Backlog */
         Backlog: {
@@ -2274,6 +2354,15 @@ export interface components {
             /** Trend */
             trend: components["schemas"]["DailyFlow"][];
         };
+        /** DatabaseStatus */
+        DatabaseStatus: {
+            /** Latency Ms */
+            latency_ms: number;
+            /** Size Mb */
+            size_mb: number | null;
+            /** Read Committed Snapshot */
+            read_committed_snapshot: boolean | null;
+        };
         /** DocumentBrief */
         DocumentBrief: {
             /**
@@ -2523,6 +2612,17 @@ export interface components {
             error: string | null;
             /** Response Body */
             response_body: string | null;
+        };
+        /** IntegrationQueueStatus */
+        IntegrationQueueStatus: {
+            /** Pending */
+            pending: number;
+            /** Running */
+            running: number;
+            /** Failed */
+            failed: number;
+            /** Oldest Pending At */
+            oldest_pending_at: string | null;
         };
         /** IntegrationSummary */
         IntegrationSummary: {
@@ -3556,6 +3656,44 @@ export interface components {
             /** Expiring 30D Qty */
             expiring_30d_qty: number;
         };
+        /** SystemStatus */
+        SystemStatus: {
+            /** Version */
+            version: string;
+            /** Code Revision */
+            code_revision: string | null;
+            /** Db Revision */
+            db_revision: string | null;
+            /**
+             * Server Time
+             * Format: date-time
+             */
+            server_time: string;
+            database: components["schemas"]["DatabaseStatus"];
+            worker: components["schemas"]["WorkerStatus"];
+            integration: components["schemas"]["IntegrationQueueStatus"];
+            /** Audit Entries 24H */
+            audit_entries_24h: number;
+            /** Tables */
+            tables: components["schemas"]["TableSize"][];
+            telemetry: components["schemas"]["TelemetryStatus"];
+        };
+        /** TableSize */
+        TableSize: {
+            /** Name */
+            name: string;
+            /** Rows */
+            rows: number;
+        };
+        /** TelemetryStatus */
+        TelemetryStatus: {
+            /** Otel Enabled */
+            otel_enabled: boolean;
+            /** Log Format */
+            log_format: string;
+            /** Slow Request Ms */
+            slow_request_ms: number;
+        };
         /** TodayStats */
         TodayStats: {
             /** Received Qty */
@@ -3737,6 +3875,13 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /** WorkerStatus */
+        WorkerStatus: {
+            /** Last Seen */
+            last_seen: string | null;
+            /** Healthy */
+            healthy: boolean;
         };
     };
     responses: never;
@@ -7848,6 +7993,67 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_audit_logs_api_v1_audit_logs_get: {
+        parameters: {
+            query?: {
+                /** @description A record; for a document, also its lines */
+                entity_id?: string | null;
+                entity_type?: string | null;
+                user_id?: string | null;
+                action?: ("CREATE" | "UPDATE" | "DELETE") | null;
+                /** @description Part of the record's code or document number */
+                keyword?: string | null;
+                occurred_from?: string | null;
+                occurred_to?: string | null;
+                skip?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditLogRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_system_status_api_v1_system_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SystemStatus"];
                 };
             };
         };

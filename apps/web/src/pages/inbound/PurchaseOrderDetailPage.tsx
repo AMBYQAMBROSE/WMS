@@ -33,7 +33,7 @@ export default function PurchaseOrderDetailPage() {
   return (
     <Space orientation="vertical" style={{ width: "100%" }}>
       <Card
-        title={<DocTitle label={"Purchase order"} no={po.doc_no} status={po.status} />}
+        title={<DocTitle label={"Purchase order"} no={po.doc_no} status={po.status} historyOf={po.id} />}
         extra={
           <Space>
             {po.status === "DRAFT" && (

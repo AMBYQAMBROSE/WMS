@@ -13,6 +13,7 @@ from datetime import timedelta
 
 from app.core.config import settings
 from app.core.db import SessionLocal
+from app.core.observability import configure_logging
 from app.models.integration import WorkerHeartbeat
 from app.services import integration_service as svc
 from app.services.document_common import utcnow
@@ -50,7 +51,7 @@ def check() -> int:
 
 
 def main() -> None:
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+    configure_logging()
     signal.signal(signal.SIGTERM, _stop)
     signal.signal(signal.SIGINT, _stop)
     info = f"{socket.gethostname()} v{settings.app_version}"

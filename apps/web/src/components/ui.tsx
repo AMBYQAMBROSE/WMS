@@ -4,6 +4,7 @@ import { ArrowRightOutlined, CheckCircleFilled, InboxOutlined, MinusOutlined } f
 import { Typography } from "antd";
 import { Link } from "react-router";
 
+import { HistoryButton } from "@/components/AuditTrail";
 import StatusTag from "@/components/StatusTag";
 import { ACCENTS, type Accent } from "@/theme";
 
@@ -117,8 +118,8 @@ export function EmptyState({ title = "Nothing here yet", hint }: { title?: strin
   );
 }
 
-/** Header of a document detail card: document type, number and status */
-export function DocTitle({ label, no, status }: { label: string; no: string; status?: string }) {
+/** Header of a document detail card: document type, number, status and (with historyOf) the change history */
+export function DocTitle({ label, no, status, historyOf }: { label: string; no: string; status?: string; historyOf?: string }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "6px 0", flexWrap: "wrap" }}>
       <div style={{ lineHeight: 1.25 }}>
@@ -130,6 +131,7 @@ export function DocTitle({ label, no, status }: { label: string; no: string; sta
         </div>
       </div>
       {status && <StatusTag status={status} />}
+      {historyOf && <HistoryButton entityId={historyOf} title={`${label} ${no}`} />}
     </div>
   );
 }

@@ -123,6 +123,8 @@ const MENU: MenuGroup[] = [
       { key: "/features", label: "Feature flags", description: "Turn optional modules on or off for this tenant", perm: "system.settings" },
       { key: "/integration", label: "Integrations", description: "Webhook connectors and delivery history", perm: "integration.read" },
       { key: "/imports", label: "Data import", description: "Bulk-load master data and opening stock from spreadsheets", perm: ["item.create", "location.create", "business_partner.create", "adjustment.post"] },
+      { key: "/audit-log", label: "Audit log", description: "Who changed what and when, with old and new values", perm: "audit.read" },
+      { key: "/system-health", label: "System health", description: "Database, background worker, integration queue and monitoring", perm: "system.settings" },
     ],
   },
 ];

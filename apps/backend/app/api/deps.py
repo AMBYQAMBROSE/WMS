@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.core.feature_catalog import FEATURE_NAMES
+from app.core.request_context import current_context
 from app.core.security import decode_access_token
 from app.models.user import User
 from app.services.auth_service import load_permissions
@@ -40,6 +41,8 @@ def get_current_user(
     if user is None or user.is_deleted or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Account is deactivated or does not exist")
 
+    context = current_context()
+    context.user_id, context.username, context.tenant_id = user.id, user.username, user.tenant_id
     return CurrentUser(
         id=user.id,
         tenant_id=user.tenant_id,

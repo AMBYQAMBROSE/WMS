@@ -223,6 +223,15 @@ Document numbers are taken in a separate transaction and are skipped when the bu
 - **Restarts**: containers restart automatically and come back with Docker after a server reboot (make sure `systemctl enable docker` is set).
 - **Logs**: rotated at 20MB × 5 files, so they never fill the disk.
 
+### Monitoring and the audit log
+
+- **System → System health** (needs `system.settings`) shows the database round-trip time and size, whether the background worker is running, the integration queue, schema version and the largest tables. It refreshes itself every 15 seconds and lists anything that needs attention at the top.
+- **Request ids**: every API response carries an `X-Request-ID` header, and an unexpected server error shows the id to the user ("Internal server error (request id …)"). Find everything about that request with `docker compose -p wms logs backend | grep <id>`.
+- **Log format**: `LOG_FORMAT=json` (the default for new installs) writes one JSON object per line with the request id, user, status and duration, for a log collector. Set `LOG_FORMAT=text` to read logs by eye. Requests slower than `SLOW_REQUEST_MS` are logged as warnings.
+- **OpenTelemetry** (optional): set `OTEL_EXPORTER_OTLP_ENDPOINT` to the customer's OTLP/HTTP collector, for example `http://otel-collector:4318`, then `docker compose -p wms up -d`. The backend then pushes traces (each request with its SQL statements) and request metrics. Any OTLP-compatible tool works (Grafana Alloy/Tempo, Jaeger, Elastic APM, Datadog Agent); nothing is bundled. System health shows whether export is on.
+- **Audit log** (System → Audit log; needs `audit.read`, which only the administrator role has by default): every change to master data, documents, users, roles, feature flags and integration settings, with each changed field's old and new value. Passwords and integration secrets are recorded as changed, never with their values. Document detail pages have a **History** button. Rows are written in the same transaction as the change, so they cannot be lost or left behind by a failed operation. The log is kept indefinitely; it grows by roughly one row per changed record.
+- Installs upgraded from an earlier version keep their `.env`; add the new `LOG_FORMAT`, `SLOW_REQUEST_MS` and `OTEL_*` lines from `env.template` by hand if wanted (without them: text logs, no export).
+
 ## 11. Troubleshooting
 
 | Symptom | What to check |

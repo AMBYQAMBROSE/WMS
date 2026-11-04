@@ -579,3 +579,38 @@ a.wms-stat:hover .wms-stat-arrow {
   color: var(--ant-color-text-tertiary);
   font-variant-numeric: tabular-nums;
 }
+
+/* ---- Audit log: field-by-field old -> new ---- */
+.wms-audit-changes {
+  display: grid;
+  gap: 2px;
+  font-size: 13px;
+}
+.wms-audit-change {
+  display: grid;
+  grid-template-columns: minmax(110px, 30%) 1fr;
+  gap: 12px;
+  padding: 3px 0;
+  border-bottom: 1px dashed var(--ant-color-border-secondary);
+}
+.wms-audit-change:last-child {
+  border-bottom: none;
+}
+.wms-audit-field {
+  color: var(--ant-color-text-secondary);
+}
+.wms-audit-old {
+  color: var(--ant-color-error);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--ant-color-error) 45%, transparent);
+  word-break: break-word;
+}
+.wms-audit-new {
+  color: var(--ant-color-success);
+  word-break: break-word;
+}
+.wms-audit-arrow {
+  margin: 0 8px;
+  font-size: 11px;
+  color: var(--ant-color-text-quaternary);
+}

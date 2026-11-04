@@ -8,7 +8,8 @@ from app.models.base import Base
 
 config = context.config
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # Keep loggers that already exist: when migrations run in-process (tests), the default would silence the app's loggers
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 # alembic configuration goes through ConfigParser, where % is the interpolation character; escape URL-encoded characters in passwords (e.g. %40)
 config.set_main_option("sqlalchemy.url", settings.database_url.replace("%", "%%"))

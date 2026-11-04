@@ -85,4 +85,5 @@ PERMISSIONS: list[tuple[str, str, str]] = [
     ("report.read", "report", "View dashboard and reports"),
     ("integration.read", "integration", "View integration settings and delivery log"),
     ("integration.manage", "integration", "Configure external system connectors, redeliver"),
+    ("audit.read", "system", "View the audit log (who changed what, with old and new values)"),
 ]

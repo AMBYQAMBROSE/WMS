@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.api.v1 import (
     adjustments,
+    audit,
     auth,
     business_partners,
     cycle_counts,
@@ -22,6 +23,7 @@ from app.api.v1 import (
     sales_orders,
     shipments,
     stock,
+    system,
     transfers,
     uoms,
     users,
@@ -56,3 +58,5 @@ api_router.include_router(reports.router)
 api_router.include_router(imports.router)
 api_router.include_router(stock.router)
 api_router.include_router(mobile.router)
+api_router.include_router(audit.router)
+api_router.include_router(system.router)

@@ -33,7 +33,7 @@ export default function GrnDetailPage() {
   return (
     <Space orientation="vertical" style={{ width: "100%" }}>
       <Card
-        title={<DocTitle label={"Goods receipt"} no={grn.doc_no} status={grn.status} />}
+        title={<DocTitle label={"Goods receipt"} no={grn.doc_no} status={grn.status} historyOf={grn.id} />}
         extra={
           <Space>
             {grn.status === "DRAFT" && (

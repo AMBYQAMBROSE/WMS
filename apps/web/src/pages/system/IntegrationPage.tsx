@@ -30,7 +30,7 @@ import { showError } from "@/api/errors";
 import { useCan } from "@/api/me";
 import type { Connector, ConnectorWithSecret, EventType, IntegrationJob, IntegrationJobDetail, IntegrationSummary } from "@/api/types";
 import { formatDateTime, preventEnterSubmit } from "@/components/documents";
-import { DOC_PATHS } from "@/constants/labels";
+import { DOC_PATHS, DOC_TYPE_LABELS } from "@/constants/labels";
 
 const KEY = "integration";
 
@@ -39,11 +39,6 @@ const JOB_STATUS: Record<string, { text: string; color: string }> = {
   RUNNING: { text: "Delivering", color: "processing" },
   SUCCEEDED: { text: "Succeeded", color: "green" },
   FAILED: { text: "Failed", color: "red" },
-};
-
-const DOC_TYPE_NAMES: Record<string, string> = {
-  PO: "Purchase order", GRN: "Goods receipt", PUTAWAY: "Putaway", MOVE: "Move", ADJUST: "Stock adjustment", COUNT: "Cycle count",
-  SO: "Sales order", PICK: "Pick list", SHIP: "Shipment", RETURN_IN: "Customer return", RETURN_OUT: "Return to supplier", REPACK: "Repack",
 };
 
 interface ConnectorForm {
@@ -170,7 +165,7 @@ function ConnectorModal({
               {groups.map(([docType, events]) => (
                 <div key={docType}>
                   <Typography.Text type="secondary" style={{ display: "inline-block", width: 80 }}>
-                    {DOC_TYPE_NAMES[docType] ?? docType}
+                    {DOC_TYPE_LABELS[docType] ?? docType}
                   </Typography.Text>
                   {events.map((e) => (
                     <Checkbox key={e.code} value={e.code}>

@@ -48,3 +48,6 @@ export type IntegrationJob = Schemas["JobRead"];
 export type IntegrationLog = Schemas["IntegrationLogRead"];
 export type IntegrationJobDetail = Schemas["JobDetail"];
 export type IntegrationSummary = Schemas["IntegrationSummary"];
+export type AuditLog = Schemas["AuditLogRead"];
+export type AuditChange = Schemas["AuditChange"];
+export type SystemStatus = Schemas["SystemStatus"];

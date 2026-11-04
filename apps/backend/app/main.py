@@ -6,9 +6,12 @@ from sqlalchemy.exc import IntegrityError
 
 from app.api.v1.router import api_router
 from app.core.config import settings
+from app.core.db import engine, numbering_engine
 from app.core.errors import DomainError
+from app.core.observability import RequestContextMiddleware, configure_logging, configure_telemetry
 
 settings.check_production()
+configure_logging()
 
 app = FastAPI(
     title="WMS API",
@@ -53,4 +56,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Added last so it is the outermost middleware: the request id covers everything, including CORS and gzip
+app.add_middleware(RequestContextMiddleware)
+
 app.include_router(api_router, prefix="/api/v1")
+app.state.otel_enabled = configure_telemetry(app, [engine, numbering_engine])

@@ -38,7 +38,7 @@ export default function SimpleDocDetail({
   return (
     <Space orientation="vertical" style={{ width: "100%" }}>
       <Card
-        title={<DocTitle label={docLabel} no={doc.doc_no} status={doc.status} />}
+        title={<DocTitle label={docLabel} no={doc.doc_no} status={doc.status} historyOf={doc.id} />}
         extra={
           doc.status === "DRAFT" && (
             <Space>

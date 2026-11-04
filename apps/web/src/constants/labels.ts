@@ -59,6 +59,12 @@ export const PERMISSION_MODULE_LABELS: Record<string, string> = {
   integration: "Integrations",
 };
 
+/** Document type -> display name */
+export const DOC_TYPE_LABELS: Record<string, string> = {
+  PO: "Purchase order", GRN: "Goods receipt", PUTAWAY: "Putaway", MOVE: "Move", ADJUST: "Stock adjustment", COUNT: "Cycle count",
+  SO: "Sales order", PICK: "Pick list", SHIP: "Shipment", RETURN_IN: "Customer return", RETURN_OUT: "Return to supplier", REPACK: "Repack",
+};
+
 /** Document type in the stock ledger -> frontend route, for linking document numbers to their detail page */
 export const DOC_PATHS: Record<string, string> = {
   PO: "purchase-orders",
@@ -73,4 +79,33 @@ export const DOC_PATHS: Record<string, string> = {
   RETURN_IN: "returns-in",
   RETURN_OUT: "returns-out",
   REPACK: "repacks",
+};
+
+/** Audit log entity types (app/models/audit.py) */
+export const AUDIT_ENTITY_LABELS: Record<string, string> = {
+  tenant: "Company",
+  feature_flag: "Feature flag",
+  user: "User",
+  role: "Role",
+  business_partner: "Business partner",
+  item: "Item",
+  item_barcode: "Item barcode",
+  item_uom_conversion: "Unit conversion",
+  uom: "Unit of measure",
+  location: "Location",
+  reason_code: "Reason code",
+  returnable_asset_type: "Returnable asset type",
+  returnable_asset_txn: "Returnable asset movement",
+  doc_number_rule: "Document numbering",
+  integration_connector: "Integration connector",
+  document: "Document",
+  document_line: "Document line",
+  shipment_info: "Loading details",
+  count_entry: "Count entry",
+};
+
+export const AUDIT_ACTION_LABELS: Record<string, { text: string; color: string }> = {
+  CREATE: { text: "Created", color: "green" },
+  UPDATE: { text: "Changed", color: "blue" },
+  DELETE: { text: "Deleted", color: "red" },
 };

@@ -12,7 +12,7 @@ from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_db_session, require_permission
-from app.schemas.report import Dashboard, ExpiryPage, PartnerLedgerPage, PickerKpiPage, TurnoverPage
+from app.schemas.report import Dashboard, ExpiryPage, OccupancyArea, PartnerLedgerPage, PickerKpiPage, TurnoverPage
 from app.services.report_service import ReportService, today_local
 
 router = APIRouter(prefix="/reports", tags=["reports"])
@@ -62,6 +62,14 @@ def dashboard(
     user: CurrentUser = Depends(require_permission("report.read")),
 ):
     return ReportService(db, user.tenant_id).dashboard()
+
+
+@router.get("/occupancy", response_model=list[OccupancyArea])
+def occupancy(
+    db: Session = Depends(get_db_session),
+    user: CurrentUser = Depends(require_permission("report.read")),
+):
+    return ReportService(db, user.tenant_id).occupancy()
 
 
 @router.get("/turnover", response_model=TurnoverPage)

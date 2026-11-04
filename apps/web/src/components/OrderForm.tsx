@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
@@ -40,8 +40,11 @@ export default function OrderForm({ kind }: { kind: keyof typeof KINDS }) {
   const [form] = Form.useForm<FormValues>();
   const { data: existing, isLoading } = useDocument(path, id);
 
+  // Fill the form once per source document, not on every refetch (live updates, window focus): that would wipe the user's edits
+  const filledFrom = useRef<string>(undefined);
   useEffect(() => {
-    if (existing) {
+    if (existing && filledFrom.current !== existing.id) {
+      filledFrom.current = existing.id;
       form.setFieldsValue({
         partner_id: existing.partner?.id,
         expected_date: existing.expected_date ? dayjs(existing.expected_date) : undefined,

@@ -52,8 +52,9 @@ def test_every_page_renders_without_errors(page: Page, errors):
     sign_in(page)
     for path in PAGES:
         page.goto(path)
-        page.wait_for_load_state("networkidle")
+        # Not "networkidle": the live-updates stream keeps a request open for as long as the page is
         expect(page.locator("main, .ant-layout-content").first).to_be_visible()
+        expect(page.locator(".ant-spin-spinning, .ant-skeleton-active")).to_have_count(0, timeout=15_000)
         assert not errors, f"{path}: {errors}"
 
 

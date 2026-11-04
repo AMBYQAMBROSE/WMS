@@ -1593,6 +1593,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports/occupancy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Occupancy */
+        get: operations["occupancy_api_v1_reports_occupancy_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/reports/turnover": {
         parameters: {
             query?: never;
@@ -1792,6 +1809,27 @@ export interface paths {
         };
         /** Get System Status */
         get: operations["get_system_status_api_v1_system_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/events/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stream Changes
+         * @description Server-sent events: batches of {type, id, parent_id, action, doc_type} as data is changed by anyone in the tenant.
+         *     The browser refetches what it shows; the events carry no values. See app/services/live_service.py.
+         */
+        get: operations["stream_changes_api_v1_events_stream_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2970,6 +3008,35 @@ export interface components {
             permissions: string[];
             /** Features */
             features: string[];
+        };
+        /**
+         * OccupancyArea
+         * @description Bins grouped by their zone (or by warehouse for bins not under a zone)
+         */
+        OccupancyArea: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Location Type */
+            location_type: string;
+            /** Warehouse Code */
+            warehouse_code: string;
+            /** Bins Total */
+            bins_total: number;
+            /** Bins Used */
+            bins_used: number;
+            /** Bins Locked */
+            bins_locked: number;
+            /** Qty On Hand */
+            qty_on_hand: number;
+            /** Capacity Qty */
+            capacity_qty: number | null;
         };
         /** PartnerBrief */
         PartnerBrief: {
@@ -7672,6 +7739,26 @@ export interface operations {
             };
         };
     };
+    occupancy_api_v1_reports_occupancy_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OccupancyArea"][];
+                };
+            };
+        };
+    };
     turnover_api_v1_reports_turnover_get: {
         parameters: {
             query?: {
@@ -8054,6 +8141,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SystemStatus"];
+                };
+            };
+        };
+    };
+    stream_changes_api_v1_events_stream_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };

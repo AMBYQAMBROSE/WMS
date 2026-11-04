@@ -31,6 +31,7 @@ class Api:
 class Warehouse:
     """One warehouse with a receiving dock, a pickable bin and an outbound staging dock"""
 
+    warehouse: str
     ea: str
     supplier: str
     customer: str
@@ -53,6 +54,7 @@ def make_warehouse(api: Api, suffix: str) -> Warehouse:
         return api.post("/locations", body)["id"]
 
     return Warehouse(
+        warehouse=wh["id"],
         ea=ea,
         supplier=supplier["id"],
         customer=customer["id"],

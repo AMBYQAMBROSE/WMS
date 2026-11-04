@@ -51,3 +51,4 @@ export type IntegrationSummary = Schemas["IntegrationSummary"];
 export type AuditLog = Schemas["AuditLogRead"];
 export type AuditChange = Schemas["AuditChange"];
 export type SystemStatus = Schemas["SystemStatus"];
+export type OccupancyArea = Schemas["OccupancyArea"];

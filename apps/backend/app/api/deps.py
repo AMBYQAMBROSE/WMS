@@ -28,6 +28,11 @@ class CurrentUser:
 def get_current_user(
     token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
 ) -> CurrentUser:
+    return load_current_user(db, token)
+
+
+def load_current_user(db: Session, token: str) -> CurrentUser:
+    """Shared by get_current_user and endpoints that must not hold a request-long session (the live event stream)"""
     try:
         payload = decode_access_token(token)
         user_id = uuid.UUID(payload["sub"])

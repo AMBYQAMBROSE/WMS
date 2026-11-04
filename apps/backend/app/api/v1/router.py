@@ -6,6 +6,7 @@ from app.api.v1 import (
     auth,
     business_partners,
     cycle_counts,
+    events,
     extensions,
     features,
     grns,
@@ -60,3 +61,4 @@ api_router.include_router(stock.router)
 api_router.include_router(mobile.router)
 api_router.include_router(audit.router)
 api_router.include_router(system.router)
+api_router.include_router(events.router)

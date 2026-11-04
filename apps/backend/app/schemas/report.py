@@ -121,3 +121,21 @@ class ExpiryPage(BaseModel):
 class PartnerLedgerPage(BaseModel):
     total: int
     rows: list[PartnerLedgerRow]
+
+
+class OccupancyArea(BaseModel):
+    """Bins grouped by their zone (or by warehouse for bins not under a zone)"""
+
+    id: uuid.UUID
+    code: str
+    name: str
+    location_type: str
+    warehouse_code: str
+    bins_total: int
+    # Bins holding any stock
+    bins_used: int
+    # Bins locked for use (location master data)
+    bins_locked: int
+    qty_on_hand: Qty
+    # Sum of capacity_qty over bins that have one; null when no bin in the area has a capacity
+    capacity_qty: Qty | None

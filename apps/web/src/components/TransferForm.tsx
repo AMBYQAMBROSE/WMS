@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Alert, Button, Card, DatePicker, Form, Input, InputNumber, Space, Table, message } from "antd";
@@ -45,8 +45,11 @@ export default function TransferForm({
   const queryClient = useQueryClient();
   const [form] = Form.useForm<FormValues>();
 
+  // Fill the form once per source document, not on every refetch (live updates, window focus): that would wipe the user's edits
+  const filledFrom = useRef<string>(undefined);
   useEffect(() => {
-    if (sourceGrn) {
+    if (sourceGrn && filledFrom.current !== sourceGrn.id) {
+      filledFrom.current = sourceGrn.id;
       form.setFieldValue(
         "lines",
         sourceGrn.lines.map((l) => ({

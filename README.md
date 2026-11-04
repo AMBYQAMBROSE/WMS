@@ -254,6 +254,13 @@ Pitfalls already hit during development; keep them in mind when writing new mode
 - The hook cannot see bulk `update()`/`delete()` statements. A service that uses one on an audited table must call `record_change()` itself, like role permissions and user roles do.
 - `current_context()` (`app/core/request_context.py`) gives the request id and signed-in user anywhere in a request; outside a request (worker, scripts) it is empty and the audit log records "System".
 
+## Live updates notes
+
+- Pages refresh by themselves when anyone changes data: the backend streams change events (`GET /api/v1/events/stream`, server-sent events) read from the audit log (`app/services/live_service.py`), and `src/api/live.ts` refetches the affected React Query keys. Events carry only record type, id and action, never values.
+- So a change shows up live only if it is audited (see above). New query keys: add them to the maps in `src/api/live.ts`.
+- A form that copies fetched data into its fields must do it once per source document (see the `filledFrom` ref in `OrderForm.tsx`), or a live refetch wipes what the user is typing.
+- One stream per browser: tabs elect a leader through a localStorage lease and share events over a `BroadcastChannel`.
+
 ## Frontend notes
 
 - Use `showError` (`src/api/errors.ts`) for React Query `onError`, not `(e) => message.error(...)`. React Query awaits the returned antd message until it closes, so after an error the button spins for about 3 more seconds and ignores clicks.

@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.errors import DomainError
+from app.models.audit import AuditLog
 from app.models.business_partner import BusinessPartner
 from app.models.document import DocumentHeader, DocumentLine
 from app.models.item import Item, Uom
@@ -121,13 +122,62 @@ class ReportService:
     # ------------------------------------------------------------ dashboard
 
     def dashboard(self) -> dict:
-        """Dashboard data is cached per tenant for 30 s (per process): every open dashboard refreshes once a minute, so dozens of viewers cost one computation"""
+        """Dashboard data is cached per tenant for 30 s (per process), so dozens of open dashboards cost one computation.
+        The cache is also keyed on the tenant's latest change (an index seek on the audit log): live updates refetch
+        the dashboard right after a change, and must get the new numbers, not a cached copy from before it."""
+        marker = self.db.scalar(select(func.max(AuditLog.occurred_at)).where(AuditLog.tenant_id == self.tenant_id))
         cached = _DASHBOARD_CACHE.get(self.tenant_id)
-        if cached and cached[0] > monotonic():
-            return cached[1]
+        if cached and cached[0] > monotonic() and cached[1] == marker:
+            return cached[2]
         data = self._dashboard()
-        _DASHBOARD_CACHE[self.tenant_id] = (monotonic() + DASHBOARD_TTL_SECONDS, data)
+        _DASHBOARD_CACHE[self.tenant_id] = (monotonic() + DASHBOARD_TTL_SECONDS, marker, data)
         return data
+
+    def occupancy(self) -> list[dict]:
+        """Bin occupancy per zone, for the dashboard heatmap. Bins are grouped under their nearest ZONE ancestor,
+        or under their warehouse when there is no zone in between (found from the materialized location path)."""
+        active = and_(Location.tenant_id == self.tenant_id, Location.is_active == true(), Location.is_deleted == false())
+        areas = {
+            row.path: row
+            for row in self.db.execute(
+                select(Location.id, Location.code, Location.name, Location.location_type, Location.path)
+                .where(active, Location.location_type.in_(["WAREHOUSE", "ZONE"]))
+            )
+        }
+        B = StockBalance
+        stock = dict(
+            self.db.execute(
+                select(B.location_id, func.sum(B.qty_on_hand))
+                .where(B.tenant_id == self.tenant_id, B.qty_on_hand > 0)
+                .group_by(B.location_id)
+            ).all()
+        )
+
+        result: dict[str, dict] = {}
+        for bin_ in self.db.execute(
+            select(Location.id, Location.path, Location.is_locked, Location.capacity_qty)
+            .where(active, Location.location_type == "BIN")
+        ):
+            segments = bin_.path.split("/")[1:]  # "/WH/Z1/A1/R1/B1" -> ["WH", "Z1", "A1", "R1", "B1"]
+            prefixes = ["/" + "/".join(segments[:i]) for i in range(len(segments) - 1, 0, -1)]
+            area_path = next((p for p in prefixes if p in areas and areas[p].location_type == "ZONE"), None) \
+                or next((p for p in prefixes if p in areas), None)
+            if area_path is None:
+                continue
+            area = areas[area_path]
+            row = result.setdefault(area_path, {
+                "id": area.id, "code": area.code, "name": area.name, "location_type": area.location_type,
+                "warehouse_code": segments[0], "bins_total": 0, "bins_used": 0, "bins_locked": 0,
+                "qty_on_hand": ZERO, "capacity_qty": None,
+            })
+            qty = stock.get(bin_.id) or ZERO
+            row["bins_total"] += 1
+            row["bins_used"] += qty > 0
+            row["bins_locked"] += bool(bin_.is_locked)
+            row["qty_on_hand"] += qty
+            if bin_.capacity_qty is not None:
+                row["capacity_qty"] = (row["capacity_qty"] or ZERO) + bin_.capacity_qty
+        return sorted(result.values(), key=lambda r: (r["warehouse_code"], r["location_type"] != "WAREHOUSE", r["code"]))
 
     def _dashboard(self) -> dict:
         today = today_local()

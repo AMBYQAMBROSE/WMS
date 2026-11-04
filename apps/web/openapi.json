@@ -6615,6 +6615,36 @@
         ]
       }
     },
+    "/api/v1/reports/occupancy": {
+      "get": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Occupancy",
+        "operationId": "occupancy_api_v1_reports_occupancy_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/OccupancyArea"
+                  },
+                  "type": "array",
+                  "title": "Response Occupancy Api V1 Reports Occupancy Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/reports/turnover": {
       "get": {
         "tags": [
@@ -7624,6 +7654,31 @@
                 "schema": {
                   "$ref": "#/components/schemas/SystemStatus"
                 }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/events/stream": {
+      "get": {
+        "tags": [
+          "events"
+        ],
+        "summary": "Stream Changes",
+        "description": "Server-sent events: batches of {type, id, parent_id, action, doc_type} as data is changed by anyone in the tenant.\nThe browser refetches what it shows; the events carry no values. See app/services/live_service.py.",
+        "operationId": "stream_changes_api_v1_events_stream_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
               }
             }
           }
@@ -10993,6 +11048,73 @@
           "features"
         ],
         "title": "MeResponse"
+      },
+      "OccupancyArea": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "location_type": {
+            "type": "string",
+            "title": "Location Type"
+          },
+          "warehouse_code": {
+            "type": "string",
+            "title": "Warehouse Code"
+          },
+          "bins_total": {
+            "type": "integer",
+            "title": "Bins Total"
+          },
+          "bins_used": {
+            "type": "integer",
+            "title": "Bins Used"
+          },
+          "bins_locked": {
+            "type": "integer",
+            "title": "Bins Locked"
+          },
+          "qty_on_hand": {
+            "type": "number",
+            "title": "Qty On Hand"
+          },
+          "capacity_qty": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capacity Qty"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "name",
+          "location_type",
+          "warehouse_code",
+          "bins_total",
+          "bins_used",
+          "bins_locked",
+          "qty_on_hand",
+          "capacity_qty"
+        ],
+        "title": "OccupancyArea",
+        "description": "Bins grouped by their zone (or by warehouse for bins not under a zone)"
       },
       "PartnerBrief": {
         "properties": {

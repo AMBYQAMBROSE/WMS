@@ -39,4 +39,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=3 \
     CMD curl -fsS http://localhost:8000/api/v1/health || exit 1
 # WEB_CONCURRENCY: number of processes, usually the CPU core count; endpoints are sync, each process also has a thread pool
-CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers ${WEB_CONCURRENCY:-2} --proxy-headers --forwarded-allow-ips '*'"]
+# --timeout-graceful-shutdown: live event streams never end on their own; without it a stop waits for every browser to leave
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers ${WEB_CONCURRENCY:-2} --proxy-headers --forwarded-allow-ips '*' --timeout-graceful-shutdown 5"]

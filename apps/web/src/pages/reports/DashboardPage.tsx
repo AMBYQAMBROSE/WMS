@@ -20,6 +20,7 @@ import { Link } from "react-router";
 
 import { apiClient } from "@/api/client";
 import type { Dashboard } from "@/api/types";
+import OccupancyHeatmap from "@/components/OccupancyHeatmap";
 import TrendChart from "@/components/TrendChart";
 import { IconTile, SectionTitle, StatCard, type Accent } from "@/components/ui";
 import { useMe } from "@/api/me";
@@ -64,7 +65,8 @@ export default function DashboardPage() {
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ["reports", "dashboard"],
     queryFn: async () => (await apiClient.get<Dashboard>("/reports/dashboard")).data,
-    refetchInterval: 60_000,
+    // Live updates refetch it after every change; this only catches the date rolling over and missed events
+    refetchInterval: 5 * 60_000,
   });
   if (isLoading || !data) return <Skeleton active paragraph={{ rows: 10 }} />;
   const { today, backlog, stock } = data;
@@ -72,8 +74,8 @@ export default function DashboardPage() {
   const firstName = me?.display_name?.split(/\s+/)[0];
 
   return (
-    // Keep the previous render at reduced opacity while auto-refreshing, no flashing
-    <div style={{ display: "grid", gap: 24, opacity: isFetching ? 0.75 : 1, transition: "opacity .2s" }}>
+    // No dimming while refreshing: with live updates that happens often, and flicker would be noise
+    <div style={{ display: "grid", gap: 24 }}>
       <section className="wms-hero">
         <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 24, alignItems: "flex-end" }}>
           <div>
@@ -84,7 +86,7 @@ export default function DashboardPage() {
               {greeting()}{firstName ? `, ${firstName}` : ""}
             </div>
             <div style={{ fontSize: 13, opacity: 0.7, display: "flex", alignItems: "center", gap: 6 }}>
-              <SyncOutlined spin={isFetching} /> Quantities in base units · refreshes every minute (data up to 30 s old)
+              <SyncOutlined spin={isFetching} /> Quantities in base units · updates live as work is done
             </div>
           </div>
           <div style={{ display: "flex", gap: 40, flexWrap: "wrap" }}>
@@ -165,6 +167,8 @@ export default function DashboardPage() {
           </Card>
         </Col>
       </Row>
+
+      <OccupancyHeatmap />
     </div>
   );
 }

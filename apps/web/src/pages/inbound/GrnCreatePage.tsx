@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Card, DatePicker, Empty, Form, Input, InputNumber, Select, Space, Table, message } from "antd";
@@ -45,8 +45,11 @@ export default function GrnCreatePage() {
     },
   });
 
+  // Fill the form once per source document, not on every refetch (live updates, window focus): that would wipe the user's edits
+  const filledFrom = useRef<string>(undefined);
   useEffect(() => {
-    if (po) {
+    if (po && filledFrom.current !== po.id) {
+      filledFrom.current = po.id;
       form.setFieldValue(
         "lines",
         po.lines.filter((l) => remaining(l) > 0).map((l) => ({ po_line_id: l.id, qty: remaining(l) })),

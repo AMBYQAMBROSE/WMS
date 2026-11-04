@@ -16,7 +16,8 @@ def main() -> None:
     schema = app.openapi()
     # The version is baked in at release time; keep it out so the file only changes when the API does
     schema["info"]["version"] = "dev"
-    TARGET.write_text(json.dumps(schema, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    # LF on every OS: CI regenerates this on Linux and diffs it against the committed file
+    TARGET.write_text(json.dumps(schema, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n")
     print(f"Wrote {TARGET}")
 
 

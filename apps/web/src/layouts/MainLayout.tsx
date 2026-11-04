@@ -23,6 +23,7 @@ import { Link, Navigate, Outlet, useLocation, useNavigate } from "react-router";
 
 import { useCan, useFeature, useMe } from "@/api/me";
 import { BrandMark, EmptyState, PageHeader } from "@/components/ui";
+import { useLiveStore, useLiveUpdates, type LiveStatus } from "@/api/live";
 import { useAuthStore } from "@/stores/authStore";
 import { useUiStore } from "@/stores/uiStore";
 
@@ -268,6 +269,26 @@ function QuickJump({ open, onClose, menu }: { open: boolean; onClose: () => void
   );
 }
 
+const LIVE_TEXT: Record<LiveStatus, { label: string; tip: string }> = {
+  live: { label: "Live", tip: "Pages update by themselves as others change data" },
+  connecting: { label: "Connecting", tip: "Connecting to live updates…" },
+  offline: { label: "Offline", tip: "Live updates are paused; pages refresh when you reload or act. Reconnecting automatically." },
+};
+
+/** Live updates state: a dot plus a word, so it never depends on color alone */
+function LiveIndicator() {
+  const status = useLiveStore((s) => s.status);
+  const text = LIVE_TEXT[status];
+  return (
+    <Tooltip title={text.tip}>
+      <span className={`wms-live wms-live-${status}`} role="status" aria-label={`Live updates: ${text.label}`}>
+        <span className="wms-live-dot" />
+        {text.label}
+      </span>
+    </Tooltip>
+  );
+}
+
 export default function MainLayout() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -279,6 +300,7 @@ export default function MainLayout() {
   const meta = useRouteMeta(pathname);
   const [openKeys, setOpenKeys] = useState<string[]>(meta ? [meta.group.key] : []);
   const [jumpOpen, setJumpOpen] = useState(false);
+  useLiveUpdates();
 
   // Keep the current route's group expanded when navigating from elsewhere (quick jump, links in tables)
   useEffect(() => {
@@ -382,6 +404,7 @@ export default function MainLayout() {
               {isMac ? "⌘" : "Ctrl"} K
             </kbd>
           </Button>
+          <LiveIndicator />
           <Tooltip title={mode === "dark" ? "Light mode" : "Dark mode"}>
             <Button shape="circle" type="text" icon={mode === "dark" ? <SunOutlined /> : <MoonOutlined />} onClick={toggleMode} aria-label="Toggle color mode" />
           </Tooltip>

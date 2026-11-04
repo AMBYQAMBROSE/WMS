@@ -130,7 +130,8 @@ class RequestContextMiddleware:
         finally:
             duration_ms = round((time.perf_counter() - started) * 1000)
             if not scope["path"].startswith("/api/v1/health"):
-                slow = duration_ms >= settings.slow_request_ms
+                # The live event stream is long by design: not a slow request
+                slow = duration_ms >= settings.slow_request_ms and not scope["path"].startswith("/api/v1/events")
                 level = logging.ERROR if status >= 500 else logging.WARNING if slow else logging.INFO
                 logger.log(
                     level,

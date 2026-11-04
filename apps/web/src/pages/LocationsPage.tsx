@@ -8,6 +8,7 @@ import { apiClient } from "@/api/client";
 import { useCan } from "@/api/me";
 import type { Location } from "@/api/types";
 import MasterSearch, { MASTER_LIST_LIMIT } from "@/components/MasterSearch";
+import { useColumnPrefs } from "@/components/ListTools";
 import { YesNo } from "@/components/ui";
 import CreateModal from "@/components/CreateModal";
 import { LocationSelect } from "@/components/selects";
@@ -24,30 +25,35 @@ export default function LocationsPage() {
     queryFn: async () => (await apiClient.get<Location[]>("/locations", { params: { limit: MASTER_LIST_LIMIT, keyword: keyword || undefined } })).data,
   });
 
+  const { columns, settings: columnSettings } = useColumnPrefs<Location>("locations", [
+    { title: "Code", dataIndex: "code" },
+    { title: "Name", dataIndex: "name" },
+    { title: "Type", dataIndex: "location_type", render: (v: string) => LOCATION_TYPE_LABELS[v] ?? v },
+    { title: "Path", dataIndex: "path" },
+    { title: "Pickable", dataIndex: "is_pickable", render: yesNo },
+    { title: "Locked", dataIndex: "is_locked", render: yesNo },
+  ]);
+
   return (
     <Space orientation="vertical" style={{ width: "100%" }}>
       <MasterSearch
         placeholder="Location code / name" onSearch={setKeyword} shown={data?.length}
         actions={
-          can("location.create") && (
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>
-              New location
-            </Button>
-          )
+          <>
+            {columnSettings}
+            {can("location.create") && (
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>
+                New location
+              </Button>
+            )}
+          </>
         }
       />
       <Table<Location>
         rowKey="id"
         loading={isLoading}
         dataSource={data}
-        columns={[
-          { title: "Code", dataIndex: "code" },
-          { title: "Name", dataIndex: "name" },
-          { title: "Type", dataIndex: "location_type", render: (v: string) => LOCATION_TYPE_LABELS[v] ?? v },
-          { title: "Path", dataIndex: "path" },
-          { title: "Pickable", dataIndex: "is_pickable", render: yesNo },
-          { title: "Locked", dataIndex: "is_locked", render: yesNo },
-        ]}
+        columns={columns}
       />
       <CreateModal
         open={creating}

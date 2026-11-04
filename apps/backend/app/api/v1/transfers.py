@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_db_session, require_permission
+from app.api.filters import document_filters
 from app.schemas.document import DocumentRead, DocumentSummary, TransferIn
 from app.services.transfer_service import MoveService, PutawayService, TransferService
 
@@ -21,16 +22,14 @@ def make_transfer_router(
 
     @router.get("", response_model=list[DocumentSummary])
     def list_documents(
-        status_filter: str | None = Query(default=None, alias="status"),
+        filters: dict = Depends(document_filters),
         ref_document_id: uuid.UUID | None = None,
         grn_id: uuid.UUID | None = Query(default=None, description="Legacy parameter, same as ref_document_id"),
-        skip: int = 0,
-        limit: int = Query(default=50, le=500),
         db: Session = Depends(get_db_session),
         user: CurrentUser = Depends(require_permission(f"{permission}.read")),
     ):
         return service(db, user).list(
-            status=status_filter, ref_document_id=ref_document_id or grn_id, skip=skip, limit=limit
+            **filters, ref_document_id=ref_document_id or grn_id
         )
 
     @router.post("", response_model=DocumentRead, status_code=status.HTTP_201_CREATED)

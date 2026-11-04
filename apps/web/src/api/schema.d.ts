@@ -1838,6 +1838,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/preferences/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Preference */
+        get: operations["get_preference_api_v1_me_preferences__key__get"];
+        /** Put Preference */
+        put: operations["put_preference_api_v1_me_preferences__key__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3190,6 +3208,18 @@ export interface components {
              * Format: date-time
              */
             last_at: string;
+        };
+        /** PreferenceIn */
+        PreferenceIn: {
+            /** Value */
+            value: unknown;
+        };
+        /** PreferenceRead */
+        PreferenceRead: {
+            /** Key */
+            key: string;
+            /** Value */
+            value?: unknown;
         };
         /** PurchaseOrderIn */
         PurchaseOrderIn: {
@@ -4951,9 +4981,15 @@ export interface operations {
     list_purchase_orders_api_v1_purchase_orders_get: {
         parameters: {
             query?: {
-                status?: string | null;
                 partner_id?: string | null;
                 doc_no?: string | null;
+                status?: string | null;
+                /** @description Part of the document or source document number, partner code/name or remark */
+                keyword?: string | null;
+                /** @description First day (business time zone), inclusive */
+                created_from?: string | null;
+                /** @description Last day (business time zone), inclusive */
+                created_to?: string | null;
                 skip?: number;
                 limit?: number;
             };
@@ -5178,8 +5214,14 @@ export interface operations {
     list_grns_api_v1_grns_get: {
         parameters: {
             query?: {
-                status?: string | null;
                 po_id?: string | null;
+                status?: string | null;
+                /** @description Part of the document or source document number, partner code/name or remark */
+                keyword?: string | null;
+                /** @description First day (business time zone), inclusive */
+                created_from?: string | null;
+                /** @description Last day (business time zone), inclusive */
+                created_to?: string | null;
                 skip?: number;
                 limit?: number;
             };
@@ -5338,10 +5380,16 @@ export interface operations {
     list_documents_api_v1_putaways_get: {
         parameters: {
             query?: {
-                status?: string | null;
                 ref_document_id?: string | null;
                 /** @description Legacy parameter, same as ref_document_id */
                 grn_id?: string | null;
+                status?: string | null;
+                /** @description Part of the document or source document number, partner code/name or remark */
+                keyword?: string | null;
+                /** @description First day (business time zone), inclusive */
+                created_from?: string | null;
+                /** @description Last day (business time zone), inclusive */
+                created_to?: string | null;
                 skip?: number;
                 limit?: number;
             };
@@ -5500,10 +5548,16 @@ export interface operations {
     list_documents_api_v1_moves_get: {
         parameters: {
             query?: {
-                status?: string | null;
                 ref_document_id?: string | null;
                 /** @description Legacy parameter, same as ref_document_id */
                 grn_id?: string | null;
+                status?: string | null;
+                /** @description Part of the document or source document number, partner code/name or remark */
+                keyword?: string | null;
+                /** @description First day (business time zone), inclusive */
+                created_from?: string | null;
+                /** @description Last day (business time zone), inclusive */
+                created_to?: string | null;
                 skip?: number;
                 limit?: number;
             };
@@ -5663,6 +5717,12 @@ export interface operations {
         parameters: {
             query?: {
                 status?: string | null;
+                /** @description Part of the document or source document number, partner code/name or remark */
+                keyword?: string | null;
+                /** @description First day (business time zone), inclusive */
+                created_from?: string | null;
+                /** @description Last day (business time zone), inclusive */
+                created_to?: string | null;
                 skip?: number;
                 limit?: number;
             };
@@ -5822,6 +5882,12 @@ export interface operations {
         parameters: {
             query?: {
                 status?: string | null;
+                /** @description Part of the document or source document number, partner code/name or remark */
+                keyword?: string | null;
+                /** @description First day (business time zone), inclusive */
+                created_from?: string | null;
+                /** @description Last day (business time zone), inclusive */
+                created_to?: string | null;
                 skip?: number;
                 limit?: number;
             };
@@ -6050,9 +6116,15 @@ export interface operations {
     list_sales_orders_api_v1_sales_orders_get: {
         parameters: {
             query?: {
-                status?: string | null;
                 partner_id?: string | null;
                 doc_no?: string | null;
+                status?: string | null;
+                /** @description Part of the document or source document number, partner code/name or remark */
+                keyword?: string | null;
+                /** @description First day (business time zone), inclusive */
+                created_from?: string | null;
+                /** @description Last day (business time zone), inclusive */
+                created_to?: string | null;
                 skip?: number;
                 limit?: number;
             };
@@ -6332,8 +6404,14 @@ export interface operations {
     list_picks_api_v1_picks_get: {
         parameters: {
             query?: {
-                status?: string | null;
                 so_id?: string | null;
+                status?: string | null;
+                /** @description Part of the document or source document number, partner code/name or remark */
+                keyword?: string | null;
+                /** @description First day (business time zone), inclusive */
+                created_from?: string | null;
+                /** @description Last day (business time zone), inclusive */
+                created_to?: string | null;
                 skip?: number;
                 limit?: number;
             };
@@ -6526,8 +6604,14 @@ export interface operations {
     list_shipments_api_v1_shipments_get: {
         parameters: {
             query?: {
-                status?: string | null;
                 so_id?: string | null;
+                status?: string | null;
+                /** @description Part of the document or source document number, partner code/name or remark */
+                keyword?: string | null;
+                /** @description First day (business time zone), inclusive */
+                created_from?: string | null;
+                /** @description Last day (business time zone), inclusive */
+                created_to?: string | null;
                 skip?: number;
                 limit?: number;
             };
@@ -6721,8 +6805,14 @@ export interface operations {
     list_documents_api_v1_returns_in_get: {
         parameters: {
             query?: {
-                status?: string | null;
                 ref_document_id?: string | null;
+                status?: string | null;
+                /** @description Part of the document or source document number, partner code/name or remark */
+                keyword?: string | null;
+                /** @description First day (business time zone), inclusive */
+                created_from?: string | null;
+                /** @description Last day (business time zone), inclusive */
+                created_to?: string | null;
                 skip?: number;
                 limit?: number;
             };
@@ -6881,8 +6971,14 @@ export interface operations {
     list_documents_api_v1_returns_out_get: {
         parameters: {
             query?: {
-                status?: string | null;
                 ref_document_id?: string | null;
+                status?: string | null;
+                /** @description Part of the document or source document number, partner code/name or remark */
+                keyword?: string | null;
+                /** @description First day (business time zone), inclusive */
+                created_from?: string | null;
+                /** @description Last day (business time zone), inclusive */
+                created_to?: string | null;
                 skip?: number;
                 limit?: number;
             };
@@ -7041,8 +7137,14 @@ export interface operations {
     list_documents_api_v1_repacks_get: {
         parameters: {
             query?: {
-                status?: string | null;
                 ref_document_id?: string | null;
+                status?: string | null;
+                /** @description Part of the document or source document number, partner code/name or remark */
+                keyword?: string | null;
+                /** @description First day (business time zone), inclusive */
+                created_from?: string | null;
+                /** @description Last day (business time zone), inclusive */
+                created_to?: string | null;
                 skip?: number;
                 limit?: number;
             };
@@ -8161,6 +8263,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    get_preference_api_v1_me_preferences__key__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description e.g. list:grns */
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreferenceRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_preference_api_v1_me_preferences__key__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description e.g. list:grns */
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreferenceIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreferenceRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

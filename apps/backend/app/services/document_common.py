@@ -3,7 +3,7 @@ import uuid
 from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import false, select
+from sqlalchemy import false, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.db import numbering_engine
@@ -157,6 +157,9 @@ def list_documents(
     partner_id: uuid.UUID | None = None,
     ref_document_id: uuid.UUID | None = None,
     doc_no: str | None = None,
+    keyword: str | None = None,
+    created_from: datetime | None = None,
+    created_to: datetime | None = None,
     skip: int = 0,
     limit: int = 50,
 ) -> list[DocumentHeader]:
@@ -173,6 +176,27 @@ def list_documents(
         stmt = stmt.where(DocumentHeader.partner_id == partner_id)
     if ref_document_id:
         stmt = stmt.where(DocumentHeader.ref_document_id == ref_document_id)
+    if created_from:
+        stmt = stmt.where(DocumentHeader.created_at >= created_from)
+    if created_to:
+        stmt = stmt.where(DocumentHeader.created_at < created_to)
+    if keyword and keyword.strip():
+        # Document number, source document number, partner code/name or remark; a contains-search, bounded by the
+        # (tenant, doc type) index
+        needle = keyword.strip()
+        sources = select(DocumentHeader.id).where(
+            DocumentHeader.tenant_id == tenant_id, DocumentHeader.doc_no.contains(needle, autoescape=True)
+        )
+        partners = select(BusinessPartner.id).where(
+            BusinessPartner.tenant_id == tenant_id,
+            or_(BusinessPartner.code.contains(needle, autoescape=True), BusinessPartner.name.contains(needle, autoescape=True)),
+        )
+        stmt = stmt.where(or_(
+            DocumentHeader.doc_no.contains(needle, autoescape=True),
+            DocumentHeader.remark.contains(needle, autoescape=True),
+            DocumentHeader.partner_id.in_(partners),
+            DocumentHeader.ref_document_id.in_(sources),
+        ))
     # Both columns descending so the index (tenant_id, doc_type, created_at[, id]) can be read backwards without sorting the whole document type
     stmt = stmt.order_by(DocumentHeader.created_at.desc(), DocumentHeader.id.desc()).offset(skip).limit(limit)
     return list(db.scalars(stmt).unique())

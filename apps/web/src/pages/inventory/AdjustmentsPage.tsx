@@ -1,4 +1,5 @@
 import { DocumentListPage, formatDateTime } from "@/components/documents";
+import { postAndCancel } from "@/components/ListTools";
 
 export default function AdjustmentsPage() {
   return (
@@ -7,6 +8,7 @@ export default function AdjustmentsPage() {
       createLabel="New adjustment"
       createPerm="adjustment.create"
       statuses={["DRAFT", "POSTED", "CANCELLED"]}
+      batchActions={postAndCancel("adjustment")}
       columns={[
         { title: "Reason", render: (_, r) => r.reason_code && `${r.reason_code.code} ${r.reason_code.name}` },
         { title: "Posted", dataIndex: "posted_at", render: formatDateTime },

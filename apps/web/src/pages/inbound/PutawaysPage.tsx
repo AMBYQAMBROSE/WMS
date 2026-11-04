@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 
 import { DocumentListPage, formatDateTime } from "@/components/documents";
+import { postAndCancel } from "@/components/ListTools";
 
 export default function PutawaysPage() {
   return (
@@ -9,6 +10,7 @@ export default function PutawaysPage() {
       createLabel="New putaway"
       createPerm="putaway.create"
       statuses={["DRAFT", "POSTED", "CANCELLED"]}
+      batchActions={postAndCancel("putaway")}
       columns={[
         {
           title: "Source goods receipt",

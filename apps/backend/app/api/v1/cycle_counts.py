@@ -1,9 +1,10 @@
 import uuid
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_db_session, require_permission
+from app.api.filters import document_filters
 from app.models.document import DocumentHeader
 from app.schemas.document import CountEntryIn, CountRead, CycleCountCreate, DocumentSummary, RecountIn
 from app.services.cycle_count_service import CycleCountService
@@ -28,13 +29,11 @@ def _read(document: DocumentHeader, user: CurrentUser) -> CountRead:
 
 @router.get("", response_model=list[DocumentSummary])
 def list_cycle_counts(
-    status_filter: str | None = Query(default=None, alias="status"),
-    skip: int = 0,
-    limit: int = Query(default=50, le=500),
+    filters: dict = Depends(document_filters),
     db: Session = Depends(get_db_session),
     user: CurrentUser = Depends(require_permission("cycle_count.read")),
 ):
-    return _service(db, user).list(status=status_filter, skip=skip, limit=limit)
+    return _service(db, user).list(**filters)
 
 
 @router.post("", response_model=CountRead, status_code=status.HTTP_201_CREATED)

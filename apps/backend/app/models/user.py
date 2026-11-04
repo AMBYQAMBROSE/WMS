@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Unicode, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, ForeignKey, Unicode, UnicodeText, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TenantScopedMixin
@@ -57,3 +57,16 @@ class UserRole(Base):
 
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("user.id"), primary_key=True)
     role_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("role.id"), primary_key=True)
+
+
+class UserPreference(Base):
+    """Per-user UI settings (saved list views, visible columns, ...), stored on the server because warehouse PCs are
+    often shared: browser storage would mix users and not follow them to another PC. The value is JSON owned by the
+    web app; the backend only stores it. Not audited: personal display settings, not business data."""
+
+    __tablename__ = "user_preference"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("user.id"), primary_key=True)
+    key: Mapped[str] = mapped_column(Unicode(100), primary_key=True)
+    value: Mapped[str] = mapped_column(UnicodeText, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)

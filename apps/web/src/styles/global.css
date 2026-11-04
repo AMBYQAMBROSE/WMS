@@ -627,6 +627,8 @@ a.wms-stat:hover .wms-stat-arrow {
   border-radius: 999px;
   border: 1px solid var(--ant-color-border-secondary);
   white-space: nowrap;
+  /* The layout header sets line-height: 64px, which would make the pill a tall circle */
+  line-height: 20px;
 }
 .wms-live-dot {
   width: 7px;
@@ -710,4 +712,35 @@ a.wms-stat:hover .wms-stat-arrow {
   width: 14px;
   height: 10px;
   border-radius: 2px;
+}
+
+/* ---- List tools: period filter, saved views, columns (components/ListTools.tsx) ---- */
+.wms-list-tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.wms-batch-bar {
+  position: sticky;
+  top: 8px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: var(--ant-color-primary-bg);
+  border: 1px solid var(--ant-color-primary-border);
+}
+.wms-view-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 240px;
+}
+.wms-view-check {
+  width: 16px;
+  color: var(--ant-color-primary);
 }

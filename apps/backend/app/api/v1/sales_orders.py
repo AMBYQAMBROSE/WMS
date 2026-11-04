@@ -1,9 +1,10 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_db_session, require_permission
+from app.api.filters import document_filters
 from app.core.feature_catalog import FEATURE_CROSS_DOCK
 from app.schemas.document import DocumentSummary
 from app.schemas.outbound import (
@@ -26,16 +27,14 @@ def _service(db: Session, user: CurrentUser) -> SalesOrderService:
 
 @router.get("", response_model=list[DocumentSummary])
 def list_sales_orders(
-    status_filter: str | None = Query(default=None, alias="status"),
+    filters: dict = Depends(document_filters),
     partner_id: uuid.UUID | None = None,
     doc_no: str | None = None,
-    skip: int = 0,
-    limit: int = Query(default=50, le=500),
     db: Session = Depends(get_db_session),
     user: CurrentUser = Depends(require_permission("sales_order.read")),
 ):
     return _service(db, user).list(
-        status=status_filter, partner_id=partner_id, doc_no=doc_no, skip=skip, limit=limit
+        **filters, partner_id=partner_id, doc_no=doc_no
     )
 
 

@@ -5,6 +5,7 @@ from decimal import Decimal
 from sqlalchemy.orm import Session
 
 from app.core.errors import DomainError
+from app.core.formatting import qty_text
 from app.models.document import DocumentHeader, DocumentLine
 from app.models.reason_code import REASON_CATEGORY_RETURN
 from app.schemas.extension import ReturnInIn, ReturnOutIn
@@ -214,8 +215,8 @@ class ReturnInService(_ReturnBase):
             p = progress[so_line_id]
             if p.returned + qty > p.shipped:
                 raise DomainError(
-                    f"{items[so_line_id].sku_code} exceeds the returnable quantity: shipped {p.shipped.normalize()}, "
-                    f"already returned {p.returned.normalize()}, this return {qty.normalize()}"
+                    f"{items[so_line_id].sku_code} exceeds the returnable quantity: shipped {qty_text(p.shipped)}, "
+                    f"already returned {qty_text(p.returned)}, this return {qty_text(qty)}"
                 )
 
 

@@ -1,9 +1,10 @@
 import uuid
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_db_session, require_permission
+from app.api.filters import document_filters
 from app.schemas.document import DocumentRead, DocumentSummary, GrnIn
 from app.services.grn_service import GrnService
 
@@ -16,15 +17,13 @@ def _service(db: Session, user: CurrentUser) -> GrnService:
 
 @router.get("", response_model=list[DocumentSummary])
 def list_grns(
-    status_filter: str | None = Query(default=None, alias="status"),
+    filters: dict = Depends(document_filters),
     po_id: uuid.UUID | None = None,
-    skip: int = 0,
-    limit: int = Query(default=50, le=500),
     db: Session = Depends(get_db_session),
     user: CurrentUser = Depends(require_permission("grn.read")),
 ):
     return _service(db, user).list(
-        status=status_filter, ref_document_id=po_id, skip=skip, limit=limit
+        **filters, ref_document_id=po_id
     )
 
 

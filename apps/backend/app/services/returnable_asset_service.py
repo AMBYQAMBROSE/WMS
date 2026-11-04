@@ -5,6 +5,7 @@ from sqlalchemy import false, func, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import DomainError, NotFoundError
+from app.core.formatting import qty_text
 from app.models.business_partner import BusinessPartner
 from app.models.returnable_asset import ReturnableAssetTxn, ReturnableAssetType
 from app.schemas.document import PartnerBrief
@@ -71,7 +72,7 @@ class ReturnableAssetService:
             outstanding = self._outstanding(partner.id, asset_type.id)
             if data.qty > outstanding:
                 raise DomainError(
-                    f"{partner.name} has {outstanding.normalize()} {asset_type.name} outstanding; cannot return {data.qty.normalize()}"
+                    f"{partner.name} has {qty_text(outstanding)} {asset_type.name} outstanding; cannot return {qty_text(data.qty)}"
                 )
         txn = ReturnableAssetTxn(
             tenant_id=self.tenant_id,

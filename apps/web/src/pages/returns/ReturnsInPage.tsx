@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 
 import { DocumentListPage, formatDateTime } from "@/components/documents";
+import { postAndCancel } from "@/components/ListTools";
 
 export default function ReturnsInPage() {
   return (
@@ -9,6 +10,7 @@ export default function ReturnsInPage() {
       createLabel="New customer return"
       createPerm="return_in.create"
       statuses={["DRAFT", "POSTED", "CANCELLED"]}
+      batchActions={postAndCancel("return_in")}
       columns={[
         { title: "Customer", render: (_, r) => r.partner?.name },
         {

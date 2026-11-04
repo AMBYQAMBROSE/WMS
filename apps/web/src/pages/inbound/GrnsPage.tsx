@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 
 import { DocumentListPage, formatDateTime } from "@/components/documents";
+import { postAndCancel } from "@/components/ListTools";
 
 export default function GrnsPage() {
   return (
@@ -9,6 +10,7 @@ export default function GrnsPage() {
       createLabel="New goods receipt"
       createPerm="grn.create"
       statuses={["DRAFT", "POSTED", "CANCELLED"]}
+      batchActions={postAndCancel("grn")}
       columns={[
         {
           title: "Purchase order",

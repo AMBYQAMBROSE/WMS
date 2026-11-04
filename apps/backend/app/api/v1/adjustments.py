@@ -1,9 +1,10 @@
 import uuid
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_db_session, require_permission
+from app.api.filters import document_filters
 from app.schemas.document import AdjustmentIn, DocumentRead, DocumentSummary
 from app.services.adjustment_service import AdjustmentService
 
@@ -16,13 +17,11 @@ def _service(db: Session, user: CurrentUser) -> AdjustmentService:
 
 @router.get("", response_model=list[DocumentSummary])
 def list_adjustments(
-    status_filter: str | None = Query(default=None, alias="status"),
-    skip: int = 0,
-    limit: int = Query(default=50, le=500),
+    filters: dict = Depends(document_filters),
     db: Session = Depends(get_db_session),
     user: CurrentUser = Depends(require_permission("adjustment.read")),
 ):
-    return _service(db, user).list(status=status_filter, skip=skip, limit=limit)
+    return _service(db, user).list(**filters)
 
 
 @router.post("", response_model=DocumentRead, status_code=status.HTTP_201_CREATED)

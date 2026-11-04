@@ -1,9 +1,10 @@
 import uuid
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_db_session, require_permission
+from app.api.filters import document_filters
 from app.schemas.document import DocumentSummary
 from app.schemas.outbound import PickConfirmIn, PickRead
 from app.services.pick_service import PickService
@@ -17,14 +18,12 @@ def _service(db: Session, user: CurrentUser) -> PickService:
 
 @router.get("", response_model=list[DocumentSummary])
 def list_picks(
-    status_filter: str | None = Query(default=None, alias="status"),
+    filters: dict = Depends(document_filters),
     so_id: uuid.UUID | None = None,
-    skip: int = 0,
-    limit: int = Query(default=50, le=500),
     db: Session = Depends(get_db_session),
     user: CurrentUser = Depends(require_permission("pick.read")),
 ):
-    return _service(db, user).list(status=status_filter, ref_document_id=so_id, skip=skip, limit=limit)
+    return _service(db, user).list(**filters, ref_document_id=so_id)
 
 
 @router.get("/{pick_id}", response_model=PickRead)

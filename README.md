@@ -261,6 +261,12 @@ Pitfalls already hit during development; keep them in mind when writing new mode
 - A form that copies fetched data into its fields must do it once per source document (see the `filledFrom` ref in `OrderForm.tsx`), or a live refetch wipes what the user is typing.
 - One stream per browser: tabs elect a leader through a localStorage lease and share events over a `BroadcastChannel`.
 
+## List page notes
+
+- Document lists take the shared filters of `app/api/filters.py` (status, keyword, created-date range in the business time zone, paging); a new document list endpoint should use `Depends(document_filters)` too.
+- Saved views and visible columns are per-user preferences on the server (`/me/preferences/{key}`, `src/api/preferences.ts`), keyed `list:<path>`. Never save one before it has loaded (`loaded`): a save built from the defaults would overwrite the user's stored settings.
+- Batch actions (`batchActions` on `DocumentListPage`) call the normal per-document endpoints one at a time; give each action exactly the statuses its endpoint accepts (see the services' `require_status`).
+
 ## Frontend notes
 
 - Use `showError` (`src/api/errors.ts`) for React Query `onError`, not `(e) => message.error(...)`. React Query awaits the returned antd message until it closes, so after an error the button spins for about 3 more seconds and ignores clicks.

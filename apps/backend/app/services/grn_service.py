@@ -5,6 +5,7 @@ from decimal import Decimal
 from sqlalchemy.orm import Session
 
 from app.core.errors import DomainError
+from app.core.formatting import qty_text
 from app.models.document import DocumentHeader, DocumentLine
 from app.schemas.document import GrnIn
 from app.services.document_common import (
@@ -167,6 +168,6 @@ class GrnService:
             po_line = po_lines[po_line_id]
             if po_line.qty_actual + qty > po_line.qty_planned:
                 raise DomainError(
-                    f"Item {po_line.item.sku_code} over-received: ordered {po_line.qty_planned.normalize()}, "
-                    f"received {po_line.qty_actual.normalize()}, this receipt {qty.normalize()}"
+                    f"Item {po_line.item.sku_code} over-received: ordered {qty_text(po_line.qty_planned)}, "
+                    f"received {qty_text(po_line.qty_actual)}, this receipt {qty_text(qty)}"
                 )

@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_db_session, require_feature, require_permission
+from app.api.filters import document_filters
 from app.core.feature_catalog import FEATURE_REPACK, FEATURE_RETURNABLE_ASSET, FEATURE_RETURNS
 from app.schemas.document import DocumentRead, DocumentSummary
 from app.schemas.extension import (
@@ -32,14 +33,12 @@ def _document_router(prefix: str, tag: str, feature: str, permission: str, servi
 
     @router.get("", response_model=list[DocumentSummary])
     def list_documents(
-        status_filter: str | None = Query(default=None, alias="status"),
+        filters: dict = Depends(document_filters),
         ref_document_id: uuid.UUID | None = None,
-        skip: int = 0,
-        limit: int = Query(default=50, le=500),
         db: Session = Depends(get_db_session),
         user: CurrentUser = Depends(require_permission(f"{permission}.read")),
     ):
-        return service(db, user).list(status=status_filter, ref_document_id=ref_document_id, skip=skip, limit=limit)
+        return service(db, user).list(**filters, ref_document_id=ref_document_id)
 
     @router.post("", response_model=DocumentRead, status_code=status.HTTP_201_CREATED)
     def create_document(

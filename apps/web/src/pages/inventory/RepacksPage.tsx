@@ -1,4 +1,5 @@
 import { DocumentListPage, formatDateTime } from "@/components/documents";
+import { postAndCancel } from "@/components/ListTools";
 
 export default function RepacksPage() {
   return (
@@ -7,6 +8,7 @@ export default function RepacksPage() {
       createLabel="New repack"
       createPerm="repack.create"
       statuses={["DRAFT", "POSTED", "CANCELLED"]}
+      batchActions={postAndCancel("repack")}
       columns={[
         { title: "Remark", dataIndex: "remark" },
         { title: "Posted", dataIndex: "posted_at", render: formatDateTime },

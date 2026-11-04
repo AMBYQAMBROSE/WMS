@@ -67,3 +67,16 @@ def test_cancelled_po_cannot_be_received(client, admin_headers, unique):
         "lines": [{"po_line_id": po["lines"][0]["id"], "qty": 5}],
     })
     assert response.status_code in (400, 409), response.text
+
+
+def test_stock_error_shows_plain_quantities(client, admin_headers, unique):
+    """10, not 1E+1"""
+    api = Api(client, admin_headers)
+    wh = make_warehouse(api, unique)
+    item = make_item(api, wh, f"QT{unique}")
+    receive(api, wh, item, 10)
+    putaway = api.post("/putaways", {"lines": [{
+        "item_id": item, "uom_id": wh.ea, "qty": 50, "from_location_id": wh.dock_in, "to_location_id": wh.bin,
+    }]})
+    detail = client.post(f"/api/v1/putaways/{putaway['id']}/post", headers=admin_headers).json()["detail"]
+    assert "has 10, needs 50" in detail, detail

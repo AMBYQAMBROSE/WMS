@@ -8,6 +8,7 @@ import { apiClient } from "@/api/client";
 import { useCan } from "@/api/me";
 import type { BusinessPartner } from "@/api/types";
 import MasterSearch, { MASTER_LIST_LIMIT } from "@/components/MasterSearch";
+import { useColumnPrefs } from "@/components/ListTools";
 import { YesNo } from "@/components/ui";
 import CreateModal from "@/components/CreateModal";
 import { PARTNER_TYPE_LABELS } from "@/constants/labels";
@@ -22,30 +23,35 @@ export default function BusinessPartnersPage() {
       (await apiClient.get<BusinessPartner[]>("/business-partners", { params: { limit: MASTER_LIST_LIMIT, keyword: keyword || undefined } })).data,
   });
 
+  const { columns, settings: columnSettings } = useColumnPrefs<BusinessPartner>("business-partners", [
+    { title: "Code", dataIndex: "code" },
+    { title: "Name", dataIndex: "name" },
+    { title: "Type", dataIndex: "partner_type", render: (v: string) => PARTNER_TYPE_LABELS[v] ?? v },
+    { title: "Contact", dataIndex: "contact_name" },
+    { title: "Phone", dataIndex: "contact_phone" },
+    { title: "Active", dataIndex: "is_active", render: (v: boolean) => <YesNo value={v} /> },
+  ]);
+
   return (
     <Space orientation="vertical" style={{ width: "100%" }}>
       <MasterSearch
         placeholder="Code / name" onSearch={setKeyword} shown={data?.length}
         actions={
-          can("business_partner.create") && (
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>
-              New business partner
-            </Button>
-          )
+          <>
+            {columnSettings}
+            {can("business_partner.create") && (
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>
+                New business partner
+              </Button>
+            )}
+          </>
         }
       />
       <Table<BusinessPartner>
         rowKey="id"
         loading={isLoading}
         dataSource={data}
-        columns={[
-          { title: "Code", dataIndex: "code" },
-          { title: "Name", dataIndex: "name" },
-          { title: "Type", dataIndex: "partner_type", render: (v: string) => PARTNER_TYPE_LABELS[v] ?? v },
-          { title: "Contact", dataIndex: "contact_name" },
-          { title: "Phone", dataIndex: "contact_phone" },
-          { title: "Active", dataIndex: "is_active", render: (v: boolean) => <YesNo value={v} /> },
-        ]}
+        columns={columns}
       />
       <CreateModal
         open={creating}

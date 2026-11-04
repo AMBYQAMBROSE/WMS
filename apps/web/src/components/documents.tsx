@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PlusOutlined, SearchOutlined } from "@ant-design/icons";
@@ -10,10 +10,25 @@ import { Link, useNavigate } from "react-router";
 import { apiClient } from "@/api/client";
 import { showError } from "@/api/errors";
 import { useCan } from "@/api/me";
+import { usePreference } from "@/api/preferences";
 import type { Document, DocumentLine, DocumentSummary } from "@/api/types";
+import {
+  ColumnSettings,
+  EMPTY_PREFS,
+  PeriodFilter,
+  SavedViews,
+  periodParams,
+  useBatchRunner,
+  type BatchAction,
+  type ListFilters,
+  type ListPrefs,
+} from "@/components/ListTools";
 import StatusTag from "@/components/StatusTag";
 import { Toolbar } from "@/components/ui";
 import { STATUS_LABELS } from "@/constants/labels";
+
+// Lists load the newest documents matching the filters, up to this many
+const LIST_LIMIT = 200;
 
 export const formatDateTime = (v: string | null) => (v ? dayjs(v + "Z").format("YYYY-MM-DD HH:mm") : "");
 
@@ -84,6 +99,7 @@ export function DocumentListPage({
   createLabel,
   createPerm,
   extraParams,
+  batchActions = [],
 }: {
   path: string;
   statuses: string[];
@@ -91,43 +107,90 @@ export function DocumentListPage({
   createLabel?: string;
   createPerm?: string;
   extraParams?: Record<string, string>;
+  /** Actions that can run on several selected documents at once */
+  batchActions?: BatchAction[];
 }) {
   const navigate = useNavigate();
   const can = useCan();
-  const [status, setStatus] = useState<string | undefined>();
+  const queryClient = useQueryClient();
+  const prefs = usePreference<ListPrefs>(`list:${path}`, EMPTY_PREFS);
+  const [filters, setFilters] = useState<ListFilters>({});
+  const [keywordInput, setKeywordInput] = useState("");
+  const [selected, setSelected] = useState<DocumentSummary[]>([]);
+
+  // Set once the user changes any filter: from then on the default view must not override them
+  const touched = useRef(false);
+  const applyFilters = (next: ListFilters) => {
+    touched.current = true;
+    setFilters(next);
+    setKeywordInput(next.keyword ?? "");
+    setSelected([]);
+  };
+  const patchFilters = (patch: Partial<ListFilters>) => applyFilters({ ...filters, ...patch });
+
+  // Open with the user's default view, once their settings have loaded, unless they already started filtering
+  const appliedDefault = useRef(false);
+  useEffect(() => {
+    if (!prefs.loaded || appliedDefault.current) return;
+    appliedDefault.current = true;
+    if (touched.current || keywordInput) return;
+    const view = prefs.value.views.find((v) => v.name === prefs.value.defaultView);
+    if (view) applyFilters(view.filters);
+  }, [prefs.loaded, prefs.value]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Search on the server as the user types, after a short pause
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if ((filters.keyword ?? "") !== keywordInput.trim()) patchFilters({ keyword: keywordInput.trim() || undefined });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [keywordInput]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const { data, isLoading } = useQuery({
-    queryKey: [path, "list", status, extraParams],
+    queryKey: [path, "list", filters, extraParams],
     queryFn: async () =>
       (
         await apiClient.get<DocumentSummary[]>(`/${path}`, {
-          params: { status, limit: 200, ...extraParams },
+          params: { status: filters.status, keyword: filters.keyword, ...periodParams(filters), limit: LIST_LIMIT, ...extraParams },
         })
       ).data,
+    placeholderData: (previous) => previous,
   });
 
-  const [keyword, setKeyword] = useState("");
-  const needle = keyword.trim().toLowerCase();
-  const rows = needle
-    ? data?.filter((r) =>
-        [r.doc_no, r.partner?.name, r.partner?.code, r.ref_document?.doc_no, r.remark]
-          .some((v) => v?.toLowerCase().includes(needle)),
-      )
-    : data;
+  const allowedActions = batchActions.filter((a) => can(a.perm));
+  const batch = useBatchRunner(path, () => {
+    setSelected([]);
+    ["stock", "reports", "purchase-orders", "sales-orders", path].forEach((key) => queryClient.invalidateQueries({ queryKey: [key] }));
+  });
+
+  const allColumns: ColumnsType<DocumentSummary> = [
+    {
+      title: "Document no.",
+      dataIndex: "doc_no",
+      render: (v: string, r) => <Link className="wms-mono" to={`/${path}/${r.id}`}>{v}</Link>,
+    },
+    { title: "Status", dataIndex: "status", render: (v: string) => <StatusTag status={v} /> },
+    ...columns,
+    { title: "Created", dataIndex: "created_at", render: (v: string | null) => <Typography.Text type="secondary">{formatDateTime(v)}</Typography.Text> },
+  ];
+  // The document number always shows: it is how a row is recognised and opened
+  const configurable = allColumns.slice(1).map((c) => String(c.title));
+  const visibleColumns = allColumns.filter((c, i) => i === 0 || !prefs.value.hidden.includes(String(c.title)));
 
   return (
     <Space orientation="vertical" style={{ width: "100%" }}>
       <Toolbar
         left={
           <>
-            <button type="button" className={`wms-chip${status ? "" : " wms-chip-active"}`} onClick={() => setStatus(undefined)}>
+            <button type="button" className={`wms-chip${filters.status ? "" : " wms-chip-active"}`} onClick={() => patchFilters({ status: undefined })}>
               All
             </button>
             {statuses.map((s) => (
               <button
                 type="button"
                 key={s}
-                className={`wms-chip${status === s ? " wms-chip-active" : ""}`}
-                onClick={() => setStatus(status === s ? undefined : s)}
+                className={`wms-chip${filters.status === s ? " wms-chip-active" : ""}`}
+                onClick={() => patchFilters({ status: filters.status === s ? undefined : s })}
               >
                 {STATUS_LABELS[s]?.text ?? s}
               </button>
@@ -139,10 +202,10 @@ export function DocumentListPage({
             <Input
               allowClear
               prefix={<SearchOutlined style={{ color: "var(--ant-color-text-quaternary)" }} />}
-              placeholder="Search number, partner…"
+              placeholder="Search number, partner, remark…"
               style={{ width: 240 }}
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
+              value={keywordInput}
+              onChange={(e) => setKeywordInput(e.target.value)}
             />
             {createLabel && can(createPerm) && (
               <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate(`/${path}/new`)}>
@@ -152,29 +215,71 @@ export function DocumentListPage({
           </>
         }
       />
+      <div className="wms-list-tools">
+        <PeriodFilter value={filters} onChange={patchFilters} />
+        <span style={{ flex: 1 }} />
+        <SavedViews prefs={prefs.value} current={filters} onApply={applyFilters} onChange={prefs.save} disabled={!prefs.loaded} />
+        <ColumnSettings
+          columns={configurable}
+          hidden={prefs.value.hidden}
+          onChange={(hidden) => prefs.save({ ...prefs.value, hidden })}
+          disabled={!prefs.loaded}
+        />
+      </div>
+      {selected.length > 0 && allowedActions.length > 0 && (
+        <div className="wms-batch-bar" role="region" aria-label="Batch actions">
+          <Typography.Text strong>{selected.length} selected</Typography.Text>
+          {allowedActions.map((action) => {
+            const eligible = selected.filter((d) => action.statuses.includes(d.status)).length;
+            const skipped = selected.length - eligible;
+            return (
+              <Popconfirm
+                key={action.key}
+                title={`${action.label} ${eligible} document${eligible === 1 ? "" : "s"}?`}
+                description={skipped ? `${skipped} selected ${skipped === 1 ? "is" : "are"} in another status and will be skipped.` : undefined}
+                onConfirm={() => void batch.run(action, selected)}
+                disabled={!eligible}
+              >
+                <Button danger={action.danger} disabled={!eligible || batch.running}>
+                  {action.label} ({eligible})
+                </Button>
+              </Popconfirm>
+            );
+          })}
+          <Button type="link" onClick={() => setSelected([])}>
+            Clear selection
+          </Button>
+        </div>
+      )}
       <Table<DocumentSummary>
         rowKey="id"
         loading={isLoading}
-        dataSource={rows}
-        pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (total) => `${total.toLocaleString()} documents` }}
+        dataSource={data}
+        rowSelection={
+          allowedActions.length
+            ? {
+                selectedRowKeys: selected.map((d) => d.id),
+                onChange: (_, rows) => setSelected(rows),
+                preserveSelectedRowKeys: true,
+              }
+            : undefined
+        }
+        pagination={{
+          pageSize: 20,
+          showSizeChanger: true,
+          showTotal: (total) =>
+            `${total.toLocaleString()} document${total === 1 ? "" : "s"}${total === LIST_LIMIT ? ` (latest ${LIST_LIMIT}; narrow the filters to see older ones)` : ""}`,
+        }}
         onRow={(r) => ({
           onClick: (e) => {
-            // Clicking anywhere on the row opens the document, except on links/buttons inside it
-            if (!(e.target as HTMLElement).closest("a,button")) navigate(`/${path}/${r.id}`);
+            // Clicking anywhere on the row opens the document, except on links, buttons and the selection checkbox
+            if (!(e.target as HTMLElement).closest("a,button,.ant-table-selection-column")) navigate(`/${path}/${r.id}`);
           },
           style: { cursor: "pointer" },
         })}
-        columns={[
-          {
-            title: "Document no.",
-            dataIndex: "doc_no",
-            render: (v: string, r) => <Link className="wms-mono" to={`/${path}/${r.id}`}>{v}</Link>,
-          },
-          { title: "Status", dataIndex: "status", render: (v: string) => <StatusTag status={v} /> },
-          ...columns,
-          { title: "Created", dataIndex: "created_at", render: (v: string | null) => <Typography.Text type="secondary">{formatDateTime(v)}</Typography.Text> },
-        ]}
+        columns={visibleColumns}
       />
+      {batch.modal}
     </Space>
   );
 }

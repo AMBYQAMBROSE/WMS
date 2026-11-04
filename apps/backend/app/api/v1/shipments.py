@@ -1,9 +1,10 @@
 import uuid
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_db_session, require_permission
+from app.api.filters import document_filters
 from app.schemas.document import DocumentSummary
 from app.schemas.outbound import ShipmentCreate, ShipmentInfoIn, ShipmentRead
 from app.services.shipment_service import ShipmentService
@@ -17,14 +18,12 @@ def _service(db: Session, user: CurrentUser) -> ShipmentService:
 
 @router.get("", response_model=list[DocumentSummary])
 def list_shipments(
-    status_filter: str | None = Query(default=None, alias="status"),
+    filters: dict = Depends(document_filters),
     so_id: uuid.UUID | None = None,
-    skip: int = 0,
-    limit: int = Query(default=50, le=500),
     db: Session = Depends(get_db_session),
     user: CurrentUser = Depends(require_permission("shipment.read")),
 ):
-    return _service(db, user).list(status=status_filter, ref_document_id=so_id, skip=skip, limit=limit)
+    return _service(db, user).list(**filters, ref_document_id=so_id)
 
 
 @router.post("", response_model=ShipmentRead, status_code=status.HTTP_201_CREATED)

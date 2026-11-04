@@ -4,6 +4,7 @@ from decimal import Decimal
 from sqlalchemy.orm import Session
 
 from app.core.errors import DomainError
+from app.core.formatting import qty_text
 from app.models.document import DocumentHeader
 from app.services.document_common import (
     DOC_PICK,
@@ -45,7 +46,7 @@ class PickService:
         if qty > line.qty_planned:
             # Extra picked goods have no reservation and may belong to another order, so over-picking is not allowed
             raise DomainError(
-                f"{line.item.sku_code} can pick at most {line.qty_planned.normalize()} (allocated), got {qty.normalize()}"
+                f"{line.item.sku_code} can pick at most {qty_text(line.qty_planned)} (allocated), got {qty_text(qty)}"
             )
         line.qty_actual = qty
         line.confirmed_at = utcnow()

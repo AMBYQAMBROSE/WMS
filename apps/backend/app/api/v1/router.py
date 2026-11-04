@@ -17,6 +17,7 @@ from app.api.v1 import (
     locations,
     mobile,
     picks,
+    preferences,
     purchase_orders,
     reason_codes,
     reports,
@@ -62,3 +63,4 @@ api_router.include_router(mobile.router)
 api_router.include_router(audit.router)
 api_router.include_router(system.router)
 api_router.include_router(events.router)
+api_router.include_router(preferences.router)

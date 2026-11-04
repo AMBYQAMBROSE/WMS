@@ -7,6 +7,7 @@ from sqlalchemy import case, false, or_, select, true
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.errors import DomainError
+from app.core.formatting import qty_text
 from app.models.document import DocumentHeader, DocumentLine, DocumentLocation
 from app.models.item import Item, ItemUomConversion
 from app.models.location import Location
@@ -198,10 +199,10 @@ def apply_movements(
             item = db.get(Item, m.item_id)
             location = db.get(Location, m.location_id)
             batch = f" batch {m.batch_no}" if m.batch_no else ""
-            reserved = f" (of which {allocated.normalize()} is allocated to orders)" if allocated > 0 else ""
+            reserved = f" (of which {qty_text(allocated)} is allocated to orders)" if allocated > 0 else ""
             raise DomainError(
                 f"Insufficient stock: item {item.sku_code}{batch} at location {location.code} "
-                f"has {current.normalize()}{reserved}, needs {(-m.qty_change).normalize()}"
+                f"has {qty_text(current)}{reserved}, needs {qty_text(-m.qty_change)}"
             )
 
         if balance is None:

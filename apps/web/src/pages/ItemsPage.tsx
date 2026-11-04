@@ -8,6 +8,7 @@ import { apiClient } from "@/api/client";
 import { useCan } from "@/api/me";
 import type { Item } from "@/api/types";
 import MasterSearch, { MASTER_LIST_LIMIT } from "@/components/MasterSearch";
+import { useColumnPrefs } from "@/components/ListTools";
 import { YesNo } from "@/components/ui";
 import CreateModal from "@/components/CreateModal";
 import { UomSelect, useUoms } from "@/components/selects";
@@ -25,32 +26,37 @@ export default function ItemsPage() {
   });
   const uomCode = (id: string) => uoms?.find((u) => u.id === id)?.code ?? "";
 
+  const { columns, settings: columnSettings } = useColumnPrefs<Item>("items", [
+    { title: "SKU", dataIndex: "sku_code" },
+    { title: "Name", dataIndex: "name" },
+    { title: "Barcode", dataIndex: "barcode" },
+    { title: "Category", dataIndex: "category" },
+    { title: "Base unit", dataIndex: "base_uom_id", render: uomCode },
+    { title: "Batch managed", dataIndex: "is_batch_managed", render: yesNo },
+    { title: "Expiry managed", dataIndex: "is_expiry_managed", render: yesNo },
+    { title: "Active", dataIndex: "is_active", render: yesNo },
+  ]);
+
   return (
     <Space orientation="vertical" style={{ width: "100%" }}>
       <MasterSearch
         placeholder="SKU / name / barcode" onSearch={setKeyword} shown={data?.length}
         actions={
-          can("item.create") && (
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>
-              New item
-            </Button>
-          )
+          <>
+            {columnSettings}
+            {can("item.create") && (
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>
+                New item
+              </Button>
+            )}
+          </>
         }
       />
       <Table<Item>
         rowKey="id"
         loading={isLoading}
         dataSource={data}
-        columns={[
-          { title: "SKU", dataIndex: "sku_code" },
-          { title: "Name", dataIndex: "name" },
-          { title: "Barcode", dataIndex: "barcode" },
-          { title: "Category", dataIndex: "category" },
-          { title: "Base unit", dataIndex: "base_uom_id", render: uomCode },
-          { title: "Batch managed", dataIndex: "is_batch_managed", render: yesNo },
-          { title: "Expiry managed", dataIndex: "is_expiry_managed", render: yesNo },
-          { title: "Active", dataIndex: "is_active", render: yesNo },
-        ]}
+        columns={columns}
       />
       <CreateModal
         open={creating}

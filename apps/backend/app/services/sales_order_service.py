@@ -6,6 +6,7 @@ from sqlalchemy import false, func, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import ConflictError, DomainError
+from app.core.formatting import qty_text
 from app.models.document import DocumentHeader, DocumentLine
 from app.models.location import Location
 from app.models.stock import StockBalance
@@ -231,7 +232,7 @@ class SalesOrderService:
         if not pick_lines:
             if not shortages:
                 raise ConflictError(f"Order {so.doc_no} has nothing left to allocate")
-            listed = ", ".join(f"{s.sku_code} short {s.qty.normalize()}" for s in shortages[:5])
+            listed = ", ".join(f"{s.sku_code} short {qty_text(s.qty)}" for s in shortages[:5])
             raise DomainError(f"Insufficient stock, nothing could be allocated: {listed}")
 
         # Sorted by bin code so the picker can walk the route in order

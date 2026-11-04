@@ -9,6 +9,12 @@ For warehouse operators, warehouse supervisors and system administrators. Everyo
 - **Document status**: Draft → Posted (stock changes only when a document is posted). Drafts can be cancelled; posted documents cannot be changed, so correct mistakes with an adjustment.
 - **Units**: orders use the order unit (e.g. carton); stock and reports always show the base unit (e.g. each).
 - **Error messages**: the red message at the top of the page explains the cause (e.g. "insufficient stock", "allocated"). Act on it; if it is unclear, send a screenshot to your key user.
+- **Pages update by themselves**: when a colleague or a PDA changes something, the list or dashboard you are looking at refreshes on its own. **Live** at the top right means this is working; **Offline** means it is reconnecting (pages still work, they just refresh when you reload).
+- **Document lists**:
+  - Filter by status, search by document number, source document, partner or remark, and pick a period (today, last 7 or 30 days, or custom dates).
+  - **Views**: save the current filters under a name (e.g. "My drafts this week") and open them again with one click. The star opens a view automatically every time you open that list.
+  - **Columns**: hide columns you do not need. Views and columns are personal and follow your account to any PC.
+  - **Several documents at once**: tick documents and use the bar that appears (e.g. Post, Confirm, Cancel). Each document is checked exactly as if you did it on its own page; the summary lists any that failed, with the reason, and the rest are still done. Documents in the wrong status are skipped.
 
 ## 2. PDA basics
 

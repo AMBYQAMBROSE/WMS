@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 import { CameraOutlined, DeleteOutlined, UploadOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Drawer, Empty, Image, Popconfirm, Spin, Typography, Upload, message } from "antd";
+import { Button, Drawer, Empty, Image, Popconfirm, Skeleton, Typography, Upload, message } from "antd";
 import dayjs from "dayjs";
 
 import { apiClient } from "@/api/client";
@@ -34,7 +34,7 @@ function Photo({ photo, onDelete }: { photo: Attachment; onDelete: () => void })
   const url = useImageUrl(photo.id);
   return (
     <div className="wms-photo">
-      {url ? <Image src={url} alt={photo.caption ?? photo.file_name} width={150} height={150} style={{ objectFit: "cover" }} /> : <Spin />}
+      {url ? <Image src={url} alt={photo.caption ?? photo.file_name} width={150} height={150} style={{ objectFit: "cover" }} /> : <Skeleton.Image active style={{ width: 150, height: 150 }} />}
       <div className="wms-photo-meta">
         {photo.caption && <Typography.Text strong>{photo.caption}</Typography.Text>}
         <Typography.Text type="secondary" style={{ fontSize: 12 }}>

@@ -6,3 +6,6 @@ deploy/env.template text eol=lf
 # Generated from the backend API (npm run gen:api); CI regenerates them on Linux and diffs
 apps/web/openapi.json text eol=lf linguist-generated
 apps/web/src/api/schema.d.ts text eol=lf linguist-generated
+
+# cmd.exe misparses batch files with LF line endings
+*.bat text eol=crlf

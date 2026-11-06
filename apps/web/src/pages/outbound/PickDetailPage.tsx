@@ -1,14 +1,14 @@
 import { useState } from "react";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Card, Descriptions, InputNumber, Space, Spin, Table, Tag, Typography, message } from "antd";
+import { Button, Card, Descriptions, InputNumber, Space, Table, Typography, message } from "antd";
 import { Link, useParams } from "react-router";
 
 import { apiClient } from "@/api/client";
 import { showError } from "@/api/errors";
 import { useCan } from "@/api/me";
 import type { Pick, PickLine } from "@/api/types";
-import { DocTitle } from "@/components/ui";
+import { DESC_COLUMNS, DetailSkeleton, DocTitle, ErrorState, Pill, QtyProgress, formatQty } from "@/components/ui";
 import { ActionButton, formatDateTime } from "@/components/documents";
 
 export default function PickDetailPage() {
@@ -18,7 +18,7 @@ export default function PickDetailPage() {
   const [drafts, setDrafts] = useState<Record<string, number | null>>({});
   const queryKey = ["picks", id];
 
-  const { data: pick, isLoading } = useQuery({
+  const { data: pick, isLoading, error, refetch } = useQuery({
     queryKey,
     queryFn: async () => (await apiClient.get<Pick>(`/picks/${id}`)).data,
   });
@@ -53,7 +53,8 @@ export default function PickDetailPage() {
     onError: showError,
   });
 
-  if (isLoading || !pick) return <Spin />;
+  if (isLoading) return <DetailSkeleton />;
+  if (!pick) return <ErrorState title="Could not load this pick list" error={error} onRetry={() => refetch()} back={{ to: "/picks", label: "Back to pick lists" }} />;
   const open = pick.status === "OPEN";
   const canConfirm = open && can("pick.confirm");
   const pending = pick.lines.filter((l) => !l.confirmed_at).length;
@@ -70,7 +71,7 @@ export default function PickDetailPage() {
         title={<DocTitle label={"Pick list"} no={pick.doc_no} status={pick.status} historyOf={pick.id} />}
         extra={
           open && (
-            <Space>
+            <Space wrap>
               {canConfirm && pending > 0 && (
                 <Button loading={action.isPending} onClick={() => action.mutate("confirm-all")}>
                   Confirm all unconfirmed lines at the allocated quantity ({pending})
@@ -96,40 +97,46 @@ export default function PickDetailPage() {
           )
         }
       >
-        <Descriptions column={3}>
+        <Descriptions column={DESC_COLUMNS}>
           <Descriptions.Item label="Sales order">
-            {pick.ref_document && <Link to={`/sales-orders/${pick.ref_document.id}`}>{pick.ref_document.doc_no}</Link>}
+            {pick.ref_document && <Link className="wms-mono" to={`/sales-orders/${pick.ref_document.id}`}>{pick.ref_document.doc_no}</Link>}
           </Descriptions.Item>
           <Descriptions.Item label="Customer">{pick.partner?.name}</Descriptions.Item>
-          <Descriptions.Item label="Staging">{pick.location?.code}</Descriptions.Item>
-          <Descriptions.Item label="To confirm">{pending} lines</Descriptions.Item>
-          <Descriptions.Item label="Posted">{formatDateTime(pick.posted_at)}</Descriptions.Item>
+          <Descriptions.Item label="Staging"><span className="wms-mono">{pick.location?.code}</span></Descriptions.Item>
+          <Descriptions.Item label="Progress">
+            <div style={{ maxWidth: 220, width: "100%" }}>
+              <QtyProgress done={pick.lines.length - pending} total={pick.lines.length} label="Lines confirmed" />
+            </div>
+          </Descriptions.Item>
+          <Descriptions.Item label="Posted">{formatDateTime(pick.posted_at) || <span className="wms-empty-value">Not yet</span>}</Descriptions.Item>
         </Descriptions>
       </Card>
 
-      <Card title="Pick lines (in bin order)">
+      <Card title="Pick lines" extra={<Typography.Text type="secondary">In bin order · {pending} of {pick.lines.length} to confirm</Typography.Text>}>
         <Table<PickLine>
           rowKey="id"
           size="small"
           pagination={false}
           dataSource={pick.lines}
+          scroll={{ x: "max-content" }}
           columns={[
-            { title: "Bin", render: (_, l) => l.from_location?.code },
-            { title: "SKU", render: (_, l) => l.item.sku_code },
+            { title: "Bin", render: (_, l) => <span className="wms-mono">{l.from_location?.code}</span> },
+            { title: "SKU", render: (_, l) => <span className="wms-mono">{l.item.sku_code}</span> },
             { title: "Item", render: (_, l) => l.item.name },
             { title: "Batch", dataIndex: "batch_no" },
             { title: "Expiry date", dataIndex: "expiry_date" },
-            { title: "Allocated", render: (_, l) => `${l.qty_planned} ${l.uom.code}` },
+            { title: "Allocated", align: "right", render: (_, l) => `${formatQty(l.qty_planned)} ${l.uom.code}` },
             {
               title: "Picked",
               render: (_, l) => {
-                if (!canConfirm) return l.confirmed_at ? l.qty_actual : "";
+                if (!canConfirm) return l.confirmed_at ? <span className="wms-num">{formatQty(l.qty_actual)}</span> : "";
                 const draft = drafts[l.id];
                 return (
-                  <Space>
+                  <Space size={6}>
                     <InputNumber
                       min={0}
                       max={l.qty_planned}
+                      aria-label={`Picked quantity for ${l.item.sku_code} at ${l.from_location?.code ?? ""}`}
                       style={{ width: 100 }}
                       placeholder={l.confirmed_at ? String(l.qty_actual) : String(l.qty_planned)}
                       value={draft ?? undefined}
@@ -146,12 +153,14 @@ export default function PickDetailPage() {
             {
               title: "Status",
               render: (_, l) => {
-                if (!l.confirmed_at) return <Tag color="orange">To pick</Tag>;
+                if (!l.confirmed_at) return <Pill tone="amber" dot>To pick</Pill>;
                 const short = l.qty_actual < l.qty_planned;
                 return (
-                  <Space>
-                    <Tag color={short ? "red" : "green"}>{short ? `Short ${l.qty_planned - l.qty_actual}` : "Picked"}</Tag>
-                    <Typography.Text type="secondary">{l.confirmer?.display_name}</Typography.Text>
+                  <Space size={6}>
+                    <Pill tone={short ? "red" : "green"} dot>
+                      {short ? `Short ${formatQty(l.qty_planned - l.qty_actual)}` : "Picked"}
+                    </Pill>
+                    <Typography.Text type="secondary" style={{ fontSize: 12.5 }}>{l.confirmer?.display_name}</Typography.Text>
                   </Space>
                 );
               },

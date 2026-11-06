@@ -1,12 +1,12 @@
 import { useState } from "react";
 
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Input, Space, Table, Tag, Typography } from "antd";
+import { Alert, Input, Space, Table } from "antd";
 import { Link } from "react-router";
 
 import { apiClient } from "@/api/client";
 import type { ShortageRow } from "@/api/types";
-import { Toolbar } from "@/components/ui";
+import { Pill, STICKY_HEADER, Toolbar, formatQty } from "@/components/ui";
 
 /** Ninso OrderShortage: quantity not yet allocated across orders in progress */
 export default function ShortagesPage() {
@@ -34,27 +34,36 @@ export default function ShortagesPage() {
           <Input.Search
             allowClear
             placeholder="Search by order no./customer/SKU/item"
+            aria-label="Search shortages"
             style={{ width: 340 }}
             onChange={(e) => setKeyword(e.target.value)}
           />
         }
-        right={rows && <Typography.Text type="secondary">{rows.length} lines</Typography.Text>}
+        right={rows && <span className="wms-toolbar-meta">{rows.length.toLocaleString()} lines</span>}
       />
       <Table<ShortageRow>
         rowKey="line_id"
         loading={isLoading}
         dataSource={rows}
+        sticky={STICKY_HEADER}
+        scroll={{ x: "max-content" }}
+        pagination={{ pageSize: 50, showSizeChanger: true }}
         columns={[
-          { title: "Order", render: (_, r) => <Link to={`/sales-orders/${r.so_id}`}>{r.so_doc_no}</Link> },
+          { title: "Order", render: (_, r) => <Link className="wms-mono" to={`/sales-orders/${r.so_id}`}>{r.so_doc_no}</Link> },
           { title: "Customer", dataIndex: "customer" },
           { title: "Requested ship date", dataIndex: "expected_date" },
-          { title: "SKU", render: (_, r) => r.item.sku_code },
+          { title: "SKU", render: (_, r) => <span className="wms-mono">{r.item.sku_code}</span> },
           { title: "Item", render: (_, r) => r.item.name },
-          { title: "Ordered", render: (_, r) => `${r.ordered} ${r.item.base_uom.code}` },
-          { title: "Unallocated", dataIndex: "unallocated" },
+          { title: "Ordered", align: "right", render: (_, r) => `${formatQty(r.ordered)} ${r.item.base_uom.code}` },
+          { title: "Unallocated", dataIndex: "unallocated", align: "right", render: (v: number) => <strong>{formatQty(v)}</strong> },
           {
             title: "Available warehouse-wide",
-            render: (_, r) => (r.available > 0 ? <Tag color="green">{r.available} can re-allocate</Tag> : <Tag color="red">0</Tag>),
+            render: (_, r) =>
+              r.available > 0 ? (
+                <Pill tone="green" dot>{formatQty(r.available)} · can re-allocate</Pill>
+              ) : (
+                <Pill tone="red" dot>None · purchase or transfer</Pill>
+              ),
           },
         ]}
       />

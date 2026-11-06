@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
-import { Alert, Button, Card, Col, DatePicker, Form, Input, InputNumber, Row, Spin, Tooltip, Typography, message } from "antd";
+import { Alert, Button, Card, Col, DatePicker, Form, Input, InputNumber, Row, Tooltip, message } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
 import { useNavigate, useParams } from "react-router";
 
@@ -11,7 +11,7 @@ import { showError } from "@/api/errors";
 import type { Document } from "@/api/types";
 import { preventEnterSubmit, useDocument } from "@/components/documents";
 import { CustomerSelect, ItemSelect, SupplierSelect, UomSelect } from "@/components/selects";
-import { DocTitle, FormFooter } from "@/components/ui";
+import { DetailSkeleton, DocTitle, FormFooter, FormSection, useUnsavedChanges } from "@/components/ui";
 
 interface LineValues {
   item_id: string;
@@ -39,6 +39,7 @@ export default function OrderForm({ kind }: { kind: keyof typeof KINDS }) {
   const queryClient = useQueryClient();
   const [form] = Form.useForm<FormValues>();
   const { data: existing, isLoading } = useDocument(path, id);
+  const unsaved = useUnsavedChanges();
 
   // Fill the form once per source document, not on every refetch (live updates, window focus): that would wipe the user's edits
   const filledFrom = useRef<string>(undefined);
@@ -67,6 +68,7 @@ export default function OrderForm({ kind }: { kind: keyof typeof KINDS }) {
       return response.data;
     },
     onSuccess: (doc) => {
+      unsaved.reset();
       message.success("Saved");
       queryClient.invalidateQueries({ queryKey: [path] });
       navigate(`/${path}/${doc.id}`);
@@ -74,7 +76,7 @@ export default function OrderForm({ kind }: { kind: keyof typeof KINDS }) {
     onError: showError,
   });
 
-  if (id && isLoading) return <Spin />;
+  if (id && isLoading) return <DetailSkeleton />;
   if (existing && existing.status !== "DRAFT") {
     return <Alert type="warning" title={`${docLabel} ${existing.doc_no} is no longer a draft and cannot be edited`} />;
   }
@@ -87,8 +89,10 @@ export default function OrderForm({ kind }: { kind: keyof typeof KINDS }) {
         initialValues={{ lines: [{}] }}
         onKeyDown={preventEnterSubmit}
         onFinish={(values) => save.mutate(values)}
+        {...unsaved.formProps}
       >
-        <Row gutter={20}>
+        <FormSection title="Order details" description={`Who the order is ${kind === "purchase" ? "from" : "for"} and when it is due.`}>
+        <Row gutter={16}>
           <Col xs={24} md={10}>
             <Form.Item name="partner_id" label={partnerLabel} rules={[{ required: true }]}>
               <Partner style={{ width: "100%" }} />
@@ -105,10 +109,9 @@ export default function OrderForm({ kind }: { kind: keyof typeof KINDS }) {
             </Form.Item>
           </Col>
         </Row>
+        </FormSection>
 
-        <Typography.Title level={5} style={{ margin: "4px 0 12px" }}>
-          Lines
-        </Typography.Title>
+        <FormSection title="Lines" description="Quantities are in the unit chosen on each line; the item's base unit is filled in for you.">
         <Form.List
           name="lines"
           rules={[
@@ -143,10 +146,10 @@ export default function OrderForm({ kind }: { kind: keyof typeof KINDS }) {
                       <UomSelect placeholder="Unit" style={{ width: "100%" }} />
                     </Form.Item>
                     <Form.Item name={[name, "qty"]} rules={[{ required: true, message: "Enter a quantity" }]}>
-                      <InputNumber placeholder="0" min={0.0001} style={{ width: "100%" }} />
+                      <InputNumber placeholder="0" min={0.0001} style={{ width: "100%" }} aria-label={`Quantity, line ${index + 1}`} />
                     </Form.Item>
                     <Tooltip title="Remove line">
-                      <Button type="text" danger icon={<DeleteOutlined />} onClick={() => remove(name)} disabled={fields.length === 1} aria-label="Delete" />
+                      <Button type="text" danger icon={<DeleteOutlined />} onClick={() => remove(name)} disabled={fields.length === 1} aria-label={`Remove line ${index + 1}`} />
                     </Tooltip>
                   </div>
                 ))}
@@ -158,8 +161,9 @@ export default function OrderForm({ kind }: { kind: keyof typeof KINDS }) {
             </>
           )}
         </Form.List>
+        </FormSection>
 
-        <FormFooter>
+        <FormFooter note={id ? undefined : "Saved as a draft; confirm it from the order page"}>
           <Button type="primary" htmlType="submit" loading={save.isPending}>
             Save
           </Button>

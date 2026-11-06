@@ -15,10 +15,10 @@ export default function GrnsPage() {
         {
           title: "Purchase order",
           render: (_, r) =>
-            r.ref_document && <Link to={`/purchase-orders/${r.ref_document.id}`}>{r.ref_document.doc_no}</Link>,
+            r.ref_document && <Link className="wms-mono" to={`/purchase-orders/${r.ref_document.id}`}>{r.ref_document.doc_no}</Link>,
         },
         { title: "Supplier", render: (_, r) => r.partner?.name },
-        { title: "Receiving location", render: (_, r) => r.location?.code },
+        { title: "Receiving location", render: (_, r) => <span className="wms-mono">{r.location?.code}</span> },
         { title: "Posted", dataIndex: "posted_at", render: formatDateTime },
       ]}
     />

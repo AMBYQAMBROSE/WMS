@@ -11,10 +11,7 @@ import {
   InputNumber,
   Select,
   Space,
-  Spin,
-  Statistic,
   Table,
-  Tag,
   Tooltip,
   Typography,
   message,
@@ -26,7 +23,7 @@ import { apiClient } from "@/api/client";
 import { showError } from "@/api/errors";
 import { useCan } from "@/api/me";
 import type { CountLine, CycleCount } from "@/api/types";
-import { DocTitle } from "@/components/ui";
+import { DESC_COLUMNS, DetailSkeleton, DocTitle, ErrorState, Pill, QtyProgress, formatQty } from "@/components/ui";
 import { ActionButton, formatDateTime, preventEnterSubmit } from "@/components/documents";
 import { ItemSelect, useItemRecords } from "@/components/selects";
 
@@ -60,7 +57,7 @@ export default function CycleCountDetailPage() {
   const [extraItem] = useItemRecords([extraItemId]);
 
   const queryKey = ["cycle-counts", id];
-  const { data: doc, isLoading } = useQuery({
+  const { data: doc, isLoading, error, refetch } = useQuery({
     queryKey,
     queryFn: async () => (await apiClient.get<CycleCount>(`/cycle-counts/${id}`)).data,
   });
@@ -96,7 +93,8 @@ export default function CycleCountDetailPage() {
     onError: showError,
   });
 
-  if (isLoading || !doc) return <Spin />;
+  if (isLoading) return <DetailSkeleton />;
+  if (!doc) return <ErrorState title="Could not load this cycle count" error={error} onRetry={() => refetch()} back={{ to: "/cycle-counts", label: "Back to cycle counts" }} />;
 
   const counting = doc.status === "COUNTING";
   // Only people who can enter counts see the inputs and the add-line form; read-only users see the results
@@ -137,7 +135,7 @@ export default function CycleCountDetailPage() {
         title={<DocTitle label={"Cycle count"} no={doc.doc_no} status={doc.status} historyOf={doc.id} />}
         extra={
           counting && (
-            <Space>
+            <Space wrap>
               {canApprove && (
                 <Button
                   disabled={!selected.length}
@@ -167,19 +165,34 @@ export default function CycleCountDetailPage() {
           )
         }
       >
-        <Descriptions column={3}>
+        <Descriptions column={DESC_COLUMNS}>
           <Descriptions.Item label="Started">{formatDateTime(doc.created_at)}</Descriptions.Item>
-          <Descriptions.Item label="Posted">{formatDateTime(doc.posted_at)}</Descriptions.Item>
-          <Descriptions.Item label="Locations" span={3}>
-            {doc.count_locations.map((cl) => (
-              <Tag key={cl.location.id}>{cl.location.code}</Tag>
-            ))}
+          <Descriptions.Item label="Posted">{formatDateTime(doc.posted_at) || <span className="wms-empty-value">Not yet</span>}</Descriptions.Item>
+          <Descriptions.Item label="Counted">
+            <div style={{ maxWidth: 220, width: "100%" }}>
+              <QtyProgress done={doc.lines.length - pending} total={doc.lines.length} label="Lines counted" />
+            </div>
+          </Descriptions.Item>
+          <Descriptions.Item label="Locations" span="filled">
+            <span className="wms-pill-list">
+              {doc.count_locations.map((cl) => (
+                <Pill key={cl.location.id}>
+                  <span className="wms-mono">{cl.location.code}</span>
+                </Pill>
+              ))}
+            </span>
           </Descriptions.Item>
         </Descriptions>
-        <Space size="large">
-          <Statistic title="Lines" value={doc.lines.length} />
-          <Statistic title="To count" value={pending} styles={{ content: pending ? { color: "#d48806" } : undefined }} />
-          {!blind && <Statistic title="With difference" value={differing} styles={{ content: differing ? { color: "#cf1322" } : undefined }} />}
+        <Space size={8} wrap>
+          <Pill tone="slate">{doc.lines.length} {doc.lines.length === 1 ? "line" : "lines"}</Pill>
+          <Pill tone={pending ? "amber" : "green"} dot>
+            {pending ? `${pending} to count` : "All counted"}
+          </Pill>
+          {!blind && (
+            <Pill tone={differing ? "red" : "green"} dot>
+              {differing ? `${differing} with a difference` : "No differences"}
+            </Pill>
+          )}
         </Space>
         {blind && (
           <Typography.Paragraph type="secondary" style={{ marginTop: 8 }}>
@@ -194,6 +207,7 @@ export default function CycleCountDetailPage() {
           size="small"
           pagination={false}
           dataSource={doc.lines}
+          scroll={{ x: "max-content" }}
           rowSelection={
             canApprove && !blind
               ? {
@@ -204,23 +218,24 @@ export default function CycleCountDetailPage() {
               : undefined
           }
           columns={[
-            { title: "Location", render: (_, l) => l.to_location?.code },
-            { title: "SKU", render: (_, l) => l.item.sku_code },
+            { title: "Location", render: (_, l) => <span className="wms-mono">{l.to_location?.code}</span> },
+            { title: "SKU", render: (_, l) => <span className="wms-mono">{l.item.sku_code}</span> },
             { title: "Item", render: (_, l) => l.item.name },
             { title: "Batch", dataIndex: "batch_no" },
             { title: "Expiry date", dataIndex: "expiry_date" },
-            ...(blind ? [] : [{ title: "Book qty", dataIndex: "qty_planned" }]),
+            ...(blind ? [] : [{ title: "Book qty", dataIndex: "qty_planned", align: "right" as const, render: formatQty }]),
             {
               title: "Counted qty",
               render: (_, l) => {
-                if (!canCount) return l.counted_at ? l.qty_actual : "";
+                if (!canCount) return l.counted_at ? <span className="wms-num">{formatQty(l.qty_actual)}</span> : "";
                 const key = lineKey(l);
                 const draft = drafts[key];
                 return (
-                  <Space>
+                  <Space size={6}>
                     <InputNumber
                       min={0}
                       style={{ width: 100 }}
+                      aria-label={`Counted quantity for ${l.item.sku_code} at ${l.to_location?.code ?? ""}`}
                       placeholder={l.counted_at ? String(l.qty_actual) : "To count"}
                       value={draft ?? undefined}
                       onChange={(v) => setDrafts((d) => ({ ...d, [key]: v }))}
@@ -238,10 +253,15 @@ export default function CycleCountDetailPage() {
               : [
                   {
                     title: "Difference",
+                    align: "right" as const,
                     render: (_: unknown, l: CountLine) => {
                       const v = variance(l);
                       if (v === null) return "";
-                      return <Typography.Text type={v === 0 ? "success" : "danger"}>{v > 0 ? `+${v}` : v}</Typography.Text>;
+                      return (
+                        <Typography.Text type={v === 0 ? "success" : "danger"} strong className="wms-num">
+                          {v > 0 ? `+${formatQty(v)}` : formatQty(v)}
+                        </Typography.Text>
+                      );
                     },
                   },
                 ]),
@@ -253,13 +273,15 @@ export default function CycleCountDetailPage() {
                   .map((e) => `Round ${e.round}: ${e.qty} (${e.counter.display_name} ${formatDateTime(e.counted_at)})`)
                   .join("\n");
                 if (!l.counted_at) {
-                  return <Tag color="orange">{l.count_entries.length ? `Recount (round ${l.count_entries.length + 1})` : "To count"}</Tag>;
+                  return <Pill tone="amber" dot>{l.count_entries.length ? `Recount (round ${l.count_entries.length + 1})` : "To count"}</Pill>;
                 }
                 return (
                   <Tooltip title={<span style={{ whiteSpace: "pre-line" }}>{history}</span>}>
-                    <Tag color="green">
-                      Counted, round {last.round} · {last.counter.display_name}
-                    </Tag>
+                    <span tabIndex={0}>
+                      <Pill tone="green" dot>
+                        Counted, round {last.round} · {last.counter.display_name}
+                      </Pill>
+                    </span>
                   </Tooltip>
                 );
               },
@@ -269,8 +291,8 @@ export default function CycleCountDetailPage() {
       </Card>
 
       {canCount && (
-        <Card title="Add: items found that are not on the books">
-          <Form form={extraForm} layout="inline" onKeyDown={preventEnterSubmit} onFinish={addExtra}>
+        <Card title="Items found that are not on the books" extra={<span style={{ color: "var(--ant-color-text-tertiary)", fontSize: 13 }}>Adds a count line</span>}>
+          <Form form={extraForm} layout="inline" onKeyDown={preventEnterSubmit} onFinish={addExtra} style={{ rowGap: 8 }}>
             <Form.Item name="location_id" rules={[{ required: true, message: "Choose a location" }]}>
               <Select
                 showSearch

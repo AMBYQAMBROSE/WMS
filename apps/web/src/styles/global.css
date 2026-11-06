@@ -1,16 +1,113 @@
-/* Global look & feel. Component colors come from the antd theme (src/theme); this file covers layout, rhythm and small polish. */
+/*
+ * Global look & feel.
+ * - Component colors come from the antd theme (src/theme); this file holds the semantic CSS tokens both modes share,
+ *   the app shell, layout rhythm and the small custom components (status pills, stat cards, toolbars, ...).
+ * - Rule of thumb: components use var(--wms-*) or var(--ant-*), never raw hex values, so light and dark both work.
+ */
+
+/* ============================================================ tokens */
 
 :root {
-  --wms-sider-bg: #0f1222;
-  --wms-surface-border: #e3e7ef;
-  --wms-muted: #6b7280;
-  --wms-grad: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #06b6d4 100%);
+  /* Spacing scale (4px base) */
+  --wms-space-1: 4px;
+  --wms-space-2: 8px;
+  --wms-space-3: 12px;
+  --wms-space-4: 16px;
+  --wms-space-5: 20px;
+  --wms-space-6: 24px;
+  --wms-space-8: 32px;
+
+  /* Radius */
+  --wms-radius-sm: 6px;
+  --wms-radius: 8px;
+  --wms-radius-lg: 10px;
+  --wms-radius-xl: 12px;
+
+  /* Motion */
+  --wms-ease: cubic-bezier(0.2, 0, 0, 1);
+  --wms-fast: 120ms;
+  --wms-mid: 180ms;
+
+  /* Shell */
+  --wms-header-h: 56px;
+
+  /* Surfaces (light) */
+  --wms-bg: #f7f8fa;
+  --wms-sider-bg: #fbfbfc;
+  --wms-surface: #ffffff;
+  --wms-surface-subtle: #f9fafb;
+  --wms-surface-hover: #f3f4f6;
+  --wms-surface-border: #e4e6eb;
+  --wms-border-subtle: #eef0f3;
+  --wms-header-bg: rgba(247, 248, 250, 0.82);
+  --wms-muted: #7d8390;
+  --wms-shadow-sm: 0 1px 2px rgba(15, 17, 21, 0.04);
+  --wms-shadow-md: 0 1px 2px rgba(15, 17, 21, 0.04), 0 6px 16px -6px rgba(15, 17, 21, 0.1);
+  --wms-focus: 0 0 0 2px var(--wms-surface), 0 0 0 4px rgba(79, 70, 229, 0.55);
+  /* Kept for old references; solid brand color, no gradient */
+  --wms-grad: #4f46e5;
+
+  /* Status / accent tones: fg is the text and icon color, bg a soft tint behind it (both pass 4.5:1 together) */
+  --wms-tone-indigo-fg: #4338ca;
+  --wms-tone-indigo-bg: rgba(79, 70, 229, 0.08);
+  --wms-tone-blue-fg: #1d4ed8;
+  --wms-tone-blue-bg: rgba(37, 99, 235, 0.08);
+  --wms-tone-cyan-fg: #0e7490;
+  --wms-tone-cyan-bg: rgba(8, 145, 178, 0.09);
+  --wms-tone-green-fg: #15803d;
+  --wms-tone-green-bg: rgba(22, 163, 74, 0.09);
+  --wms-tone-amber-fg: #b45309;
+  --wms-tone-amber-bg: rgba(217, 119, 6, 0.1);
+  --wms-tone-red-fg: #b91c1c;
+  --wms-tone-red-bg: rgba(220, 38, 38, 0.08);
+  --wms-tone-violet-fg: #6d28d9;
+  --wms-tone-violet-bg: rgba(124, 58, 237, 0.08);
+  --wms-tone-slate-fg: #4b5563;
+  --wms-tone-slate-bg: rgba(100, 116, 139, 0.1);
+
+  /* Chart series (reference palette slots 1 and 2, checked for color vision deficiency) */
+  --wms-series-1: #2a78d6;
+  --wms-series-2: #eb6834;
 }
 
 [data-theme="dark"] {
-  --wms-surface-border: #232840;
-  --wms-muted: #7c829c;
+  --wms-bg: #0e0f12;
+  --wms-sider-bg: #111215;
+  --wms-surface: #16171b;
+  --wms-surface-subtle: #191a1f;
+  --wms-surface-hover: #202127;
+  --wms-surface-border: #2a2c33;
+  --wms-border-subtle: #222329;
+  --wms-header-bg: rgba(14, 15, 18, 0.8);
+  --wms-muted: #7b808a;
+  --wms-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --wms-shadow-md: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 20px -6px rgba(0, 0, 0, 0.55);
+  --wms-focus: 0 0 0 2px var(--wms-surface), 0 0 0 4px rgba(129, 131, 255, 0.7);
+  --wms-grad: #6d6ff5;
+
+  /* Dark tones: lighter text, slightly stronger tint, so pills stay readable on charcoal */
+  --wms-tone-indigo-fg: #a9abff;
+  --wms-tone-indigo-bg: rgba(109, 111, 245, 0.16);
+  --wms-tone-blue-fg: #86b4fa;
+  --wms-tone-blue-bg: rgba(79, 143, 247, 0.15);
+  --wms-tone-cyan-fg: #67d4e9;
+  --wms-tone-cyan-bg: rgba(34, 211, 238, 0.12);
+  --wms-tone-green-fg: #5ee08f;
+  --wms-tone-green-bg: rgba(34, 197, 94, 0.13);
+  --wms-tone-amber-fg: #fbbf3c;
+  --wms-tone-amber-bg: rgba(245, 158, 11, 0.14);
+  --wms-tone-red-fg: #fb8484;
+  --wms-tone-red-bg: rgba(240, 82, 82, 0.15);
+  --wms-tone-violet-fg: #c8adfd;
+  --wms-tone-violet-bg: rgba(167, 139, 250, 0.15);
+  --wms-tone-slate-fg: #a4a8b1;
+  --wms-tone-slate-bg: rgba(164, 168, 177, 0.12);
+
+  --wms-series-1: #4b93ea;
+  --wms-series-2: #f07f50;
 }
+
+/* ============================================================ base */
 
 * {
   box-sizing: border-box;
@@ -24,94 +121,209 @@ body,
 }
 
 body {
+  background: var(--wms-bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  /* Inter: alternate 1/l shapes for readable codes; tabular figures so quantities line up in columns */
   font-feature-settings: "cv11", "ss01", "tnum";
+}
+
+::selection {
+  background: rgba(79, 70, 229, 0.18);
 }
 
 /* Scrollbars: thin and quiet */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(120, 128, 160, 0.35) transparent;
+  scrollbar-color: rgba(125, 131, 144, 0.35) transparent;
 }
 *::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 *::-webkit-scrollbar-thumb {
-  background: rgba(120, 128, 160, 0.35);
+  background: rgba(125, 131, 144, 0.35);
   border-radius: 8px;
 }
 
-/* ---------- App shell ---------- */
+/* Keyboard focus: one consistent ring on our own controls (antd inputs keep their own focus style) */
+a:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:not([tabindex="-1"]):focus-visible,
+.ant-btn:focus-visible,
+.ant-menu-item:focus-visible,
+.ant-menu-submenu-title:focus-visible {
+  outline: none !important;
+  box-shadow: var(--wms-focus) !important;
+  border-radius: var(--wms-radius-sm);
+}
+
+/* Theme switch: cross-fade colors briefly (class set by main.tsx for ~300 ms) */
+.wms-theme-switching,
+.wms-theme-switching *,
+.wms-theme-switching *::before,
+.wms-theme-switching *::after {
+  transition: background-color 0.25s var(--wms-ease), border-color 0.25s var(--wms-ease), color 0.2s var(--wms-ease),
+    fill 0.2s var(--wms-ease) !important;
+}
+
+/* Respect "reduce motion": no entrance animations, transitions or pulsing */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ============================================================ app shell */
 
 .wms-sider {
   position: sticky !important;
   top: 0;
   height: 100vh;
   overflow: hidden;
-  border-right: 1px solid rgba(255, 255, 255, 0.04);
+  border-right: 1px solid var(--wms-surface-border);
+  z-index: 30;
 }
 .wms-sider .ant-layout-sider-children {
   display: flex;
   flex-direction: column;
 }
-.wms-sider-menu {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding-bottom: 12px;
-  border-inline-end: none !important;
-}
-.wms-sider-menu .ant-menu-sub.ant-menu-inline {
-  background: transparent !important;
-}
-.wms-sider-menu.ant-menu-dark .ant-menu-item-selected {
-  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.45);
-}
-.wms-sider-menu .ant-menu-submenu-title {
-  font-weight: 500;
-}
 
 .wms-brand {
-  height: 64px;
+  height: var(--wms-header-h);
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 0 20px;
-  color: #fff;
+  gap: 10px;
+  padding: 0 16px;
+  color: var(--ant-color-text) !important;
   flex-shrink: 0;
   white-space: nowrap;
   overflow: hidden;
 }
+.wms-sider-collapsed .wms-brand {
+  padding: 0;
+  justify-content: center;
+}
 .wms-brand-mark {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  background: var(--wms-grad);
+  border-radius: 8px;
+  background: var(--ant-color-primary);
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  box-shadow: 0 6px 18px rgba(79, 70, 229, 0.45);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12), 0 1px 2px rgba(15, 17, 21, 0.2);
 }
 .wms-brand-name {
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: 0.2px;
-  line-height: 1.1;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.1px;
+  line-height: 1.15;
 }
 .wms-brand-sub {
-  font-size: 11px;
-  color: rgba(226, 229, 240, 0.45);
+  font-size: 11.5px;
+  color: var(--ant-color-text-tertiary);
+  font-weight: 450;
+}
+
+.wms-sider-search {
+  padding: 4px 8px 8px;
+  flex-shrink: 0;
+}
+
+.wms-sider-menu {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 0 12px;
+  border-inline-end: none !important;
+  background: transparent !important;
+}
+.wms-sider-menu .ant-menu-sub.ant-menu-inline {
+  background: transparent !important;
+}
+/* Group titles: medium weight; their icons a touch quieter than the label */
+.wms-sider-menu .ant-menu-submenu-title {
   font-weight: 500;
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
+  color: var(--ant-color-text) !important;
+}
+.wms-sider-menu .ant-menu-submenu-title .ant-menu-item-icon {
+  color: var(--ant-color-text-tertiary);
+}
+/* Child entries: an indent guide instead of extra padding, like a tree */
+.wms-sider-menu .ant-menu-sub .ant-menu-item {
+  position: relative;
+  padding-inline-start: 40px !important;
+}
+.wms-sider-menu .ant-menu-sub .ant-menu-item::before {
+  content: "";
+  position: absolute;
+  left: 23px;
+  top: -1px;
+  bottom: -1px;
+  width: 1px;
+  background: var(--wms-surface-border);
+}
+.wms-sider-menu .ant-menu-sub .ant-menu-item-selected::before {
+  background: var(--ant-color-primary);
+  width: 2px;
+  left: 22.5px;
+  top: 6px;
+  bottom: 6px;
+  border-radius: 2px;
+}
+.wms-sider-menu .ant-menu-item-selected {
+  font-weight: 550;
+}
+.wms-sider-menu .ant-menu-item,
+.wms-sider-menu .ant-menu-submenu-title {
+  transition: background-color var(--wms-fast) var(--wms-ease), color var(--wms-fast) var(--wms-ease) !important;
 }
 
 .wms-sider-footer {
   flex-shrink: 0;
-  padding: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 8px;
+  border-top: 1px solid var(--wms-surface-border);
+}
+.wms-sider-footer .ant-btn {
+  color: var(--ant-color-text-tertiary);
+  font-weight: 450;
+}
+.wms-sider-footer .ant-btn:hover {
+  color: var(--ant-color-text) !important;
+}
+
+.wms-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 4px;
+  border: 1px solid var(--wms-surface-border);
+  background: var(--wms-surface-subtle);
+  color: var(--ant-color-text-tertiary);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+/* Mobile navigation drawer reuses the sider styles */
+.wms-nav-drawer .ant-drawer-body {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--wms-sider-bg);
+}
+.wms-nav-drawer .ant-drawer-content {
+  background: var(--wms-sider-bg);
 }
 
 .wms-header {
@@ -120,28 +332,78 @@ body {
   z-index: 20;
   display: flex;
   align-items: center;
-  gap: 16px;
-  backdrop-filter: saturate(180%) blur(12px);
-  -webkit-backdrop-filter: saturate(180%) blur(12px);
-  background: rgba(244, 246, 251, 0.78) !important;
+  gap: 8px;
+  line-height: normal !important;
+  backdrop-filter: saturate(180%) blur(10px);
+  -webkit-backdrop-filter: saturate(180%) blur(10px);
+  background: var(--wms-header-bg) !important;
   border-bottom: 1px solid var(--wms-surface-border);
 }
-[data-theme="dark"] .wms-header {
-  background: rgba(11, 13, 23, 0.78) !important;
+.wms-header .ant-breadcrumb {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.wms-header .ant-breadcrumb ol {
+  flex-wrap: nowrap;
+}
+.wms-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.wms-search-trigger {
+  width: 220px;
+  justify-content: flex-start !important;
+  color: var(--ant-color-text-tertiary) !important;
+  background: var(--wms-surface) !important;
+  margin-right: 4px;
+}
+.wms-search-trigger:hover {
+  border-color: var(--ant-color-border) !important;
+  color: var(--ant-color-text-secondary) !important;
+}
+.wms-user-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px 4px 4px;
+  margin-left: 4px;
+  border-radius: var(--wms-radius);
+  color: inherit;
+  font: inherit;
+  transition: background-color var(--wms-fast) var(--wms-ease);
+}
+.wms-user-trigger:hover {
+  background: var(--wms-surface-hover);
+}
+.wms-avatar {
+  background: var(--wms-tone-indigo-bg) !important;
+  color: var(--wms-tone-indigo-fg) !important;
+  font-weight: 600 !important;
+  font-size: 12px !important;
 }
 
 .wms-content {
-  padding: 24px 28px 40px;
+  padding: 24px 32px 48px;
   width: 100%;
-  max-width: 1680px;
+  max-width: 1600px;
   margin: 0 auto;
-  animation: wms-fade-in 0.25s ease-out;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .wms-content {
+    animation: wms-fade-in 0.22s var(--wms-ease);
+  }
 }
 
 @keyframes wms-fade-in {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(3px);
   }
   to {
     opacity: 1;
@@ -149,7 +411,7 @@ body {
   }
 }
 
-/* ---------- Page header ---------- */
+/* ============================================================ page header */
 
 .wms-page-header {
   display: flex;
@@ -161,13 +423,43 @@ body {
 }
 .wms-page-title {
   margin: 0 !important;
-  font-size: 24px !important;
-  font-weight: 700 !important;
+  font-size: 22px !important;
+  font-weight: 650 !important;
   letter-spacing: -0.4px;
+  line-height: 1.25 !important;
 }
 .wms-page-desc {
   margin-top: 4px;
-  font-size: 14px;
+  font-size: 13.5px;
+  color: var(--ant-color-text-tertiary) !important;
+}
+.wms-page-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ant-color-text-tertiary);
+}
+
+/* Sub-pages (new / edit / details): link back to the list */
+.wms-backlink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 14px;
+  padding: 3px 8px 3px 6px;
+  margin-left: -6px;
+  border-radius: var(--wms-radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ant-color-text-tertiary) !important;
+  transition: background-color var(--wms-fast) var(--wms-ease), color var(--wms-fast) var(--wms-ease);
+}
+.wms-backlink:hover {
+  color: var(--ant-color-text) !important;
+  background: var(--wms-surface-hover);
 }
 
 /* Every page body is a vertical stack of surfaces */
@@ -176,49 +468,116 @@ body {
   gap: 16px !important;
 }
 
-/* Cards: hairline border, no heavy shadow; hoverable cards lift a little */
+/* ============================================================ surfaces */
+
+/* Cards: hairline border, almost no shadow */
 .ant-card {
   border: 1px solid var(--wms-surface-border) !important;
-  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.03);
+  box-shadow: var(--wms-shadow-sm);
+  /* clip, not hidden: rounded corners for edge-to-edge tables while sticky form footers keep working */
+  overflow: clip;
 }
 .ant-card .ant-card-head {
-  border-bottom-color: var(--wms-surface-border);
+  border-bottom-color: var(--wms-border-subtle);
 }
 .ant-card .ant-card-head-title {
   font-weight: 600;
 }
 .ant-card-hoverable {
-  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  transition: box-shadow var(--wms-mid) var(--wms-ease), border-color var(--wms-mid) var(--wms-ease);
 }
 .ant-card-hoverable:hover {
-  transform: translateY(-2px);
-  border-color: rgba(79, 70, 229, 0.35) !important;
+  border-color: var(--ant-color-border) !important;
+  box-shadow: var(--wms-shadow-md);
+}
+/* Cards holding only a table: the table runs edge to edge */
+.ant-card-body > .ant-table-wrapper:only-child {
+  margin: -20px;
+  width: calc(100% + 40px);
+}
+.ant-card-small .ant-card-body > .ant-table-wrapper:only-child {
+  margin: -12px;
+  width: calc(100% + 24px);
 }
 
-/* Tables sitting directly on the page get a card-like surface */
+/* Tables sitting directly on the page get a card-like surface.
+   overflow: clip (not hidden) keeps rounded corners without breaking sticky table headers. */
 .wms-content .ant-space-vertical > .ant-space-item > .ant-table-wrapper,
 .wms-content > .ant-table-wrapper,
 .wms-surface {
   background: var(--ant-color-bg-container);
   border: 1px solid var(--wms-surface-border);
-  border-radius: 12px;
-  overflow: hidden;
+  border-radius: var(--wms-radius-lg);
+  overflow: clip;
+  box-shadow: var(--wms-shadow-sm);
 }
 .ant-card .ant-table-wrapper,
-.ant-tabs .ant-table-wrapper {
+.ant-tabs .ant-table-wrapper,
+.ant-modal .ant-table-wrapper {
   border: none !important;
+  box-shadow: none !important;
 }
+
+/* ============================================================ tables */
+
 .ant-table-wrapper .ant-table-thead > tr > th {
-  font-weight: 600;
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
+  font-weight: 500;
+  font-size: 12.5px;
+  letter-spacing: 0.1px;
+  white-space: nowrap;
+}
+.ant-table-wrapper .ant-table-tbody > tr > td {
+  transition: background-color var(--wms-fast) var(--wms-ease);
+}
+.ant-table-wrapper .ant-table-tbody > tr:last-child > td {
+  border-bottom: none;
 }
 .ant-table-wrapper .ant-table-pagination.ant-pagination {
-  margin: 12px 16px !important;
+  margin: 0 !important;
+  padding: 10px 16px;
+  border-top: 1px solid var(--wms-border-subtle);
+}
+.ant-table-wrapper .ant-pagination-total-text {
+  color: var(--ant-color-text-tertiary);
+  font-size: 13px;
+  margin-inline-end: auto;
 }
 .ant-table-wrapper a {
   font-weight: 500;
+}
+/* Numbers line up on the decimal: right-aligned cells use tabular figures */
+.ant-table-cell[style*="text-align: right"],
+.ant-table-cell-align-right,
+.wms-num {
+  font-variant-numeric: tabular-nums;
+}
+.ant-table-wrapper .ant-table-sticky-holder {
+  z-index: 4;
+}
+.wms-table-empty {
+  padding: 14px 0;
+  color: var(--ant-color-text-tertiary);
+  font-size: 13px;
+}
+/* Button-style radio groups inside table cells (line editors) stay on one line */
+.ant-table .ant-radio-group {
+  display: inline-flex;
+  white-space: nowrap;
+}
+/* Rows that open a document on click */
+.wms-row-link {
+  cursor: pointer;
+}
+/* Loading a new page of rows: keep the old rows, dim them slightly, no spinner */
+.wms-refreshing .ant-table-tbody {
+  opacity: 0.6;
+  transition: opacity var(--wms-mid) var(--wms-ease);
+}
+/* Compact density: also tighten line entry rows and small tables */
+[data-density="compact"] .wms-lines-head,
+[data-density="compact"] .wms-lines-row {
+  padding-top: 6px;
+  padding-bottom: 6px;
 }
 
 /* Tabs that hold tables: render as one surface */
@@ -226,116 +585,163 @@ body {
 .wms-content .ant-space-vertical > .ant-space-item > .ant-tabs {
   background: var(--ant-color-bg-container);
   border: 1px solid var(--wms-surface-border);
-  border-radius: 12px;
-  padding: 0 16px 8px;
+  border-radius: var(--wms-radius-lg);
+  box-shadow: var(--wms-shadow-sm);
+  overflow: clip;
+}
+.wms-content .ant-space-vertical > .ant-space-item > .ant-tabs > .ant-tabs-nav {
+  margin: 0;
+  padding: 0 16px;
+}
+.wms-content .ant-space-vertical > .ant-space-item > .ant-tabs > .ant-tabs-nav::before {
+  border-bottom-color: var(--wms-border-subtle);
 }
 
-/* Descriptions: label tone */
+/* Descriptions: quiet labels, readable values */
 .ant-descriptions .ant-descriptions-item-label {
   color: var(--ant-color-text-tertiary) !important;
+  font-size: 13px;
+}
+.ant-descriptions .ant-descriptions-item-label::after {
+  content: "" !important;
+  margin-inline-end: 12px !important;
 }
 .ant-descriptions .ant-descriptions-item-content {
   font-weight: 500;
 }
+.wms-empty-value {
+  color: var(--ant-color-text-quaternary);
+  font-weight: 400;
+}
 
-/* Toolbar above lists */
+/* ============================================================ toolbars and filters */
+
 .wms-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 12px;
-  padding: 12px 16px;
+  gap: 10px;
+  padding: 10px 12px;
   background: var(--ant-color-bg-container);
   border: 1px solid var(--wms-surface-border);
-  border-radius: 12px;
+  border-radius: var(--wms-radius-lg);
+  box-shadow: var(--wms-shadow-sm);
 }
 .wms-toolbar-group {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
+  min-width: 0;
+}
+.wms-toolbar-meta {
+  color: var(--ant-color-text-tertiary);
+  font-size: 13px;
 }
 
-/* Status chips */
+/* Status chips (status filter on document lists): a segmented row of quiet pills */
+.wms-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ant-color-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--wms-fast) var(--wms-ease), color var(--wms-fast) var(--wms-ease),
+    border-color var(--wms-fast) var(--wms-ease);
+  font-family: inherit;
+  white-space: nowrap;
+}
+.wms-chip:hover {
+  color: var(--ant-color-text);
+  background: var(--wms-surface-hover);
+}
+.wms-chip-active,
+.wms-chip-active:hover {
+  color: var(--wms-tone-indigo-fg);
+  background: var(--wms-tone-indigo-bg);
+  border-color: color-mix(in srgb, var(--ant-color-primary) 28%, transparent);
+}
+
+/* Status pills */
 .wms-status {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 2px 10px 2px 8px;
+  padding: 0 8px 0 7px;
+  height: 22px;
   border-radius: 999px;
   font-size: 12px;
-  font-weight: 600;
-  line-height: 20px;
+  font-weight: 550;
+  line-height: 22px;
   white-space: nowrap;
+  vertical-align: middle;
 }
 .wms-status-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: currentColor;
+  flex-shrink: 0;
 }
-.wms-status-pulse .wms-status-dot {
-  animation: wms-pulse 1.6s ease-in-out infinite;
+@media (prefers-reduced-motion: no-preference) {
+  .wms-status-pulse .wms-status-dot {
+    animation: wms-pulse 1.8s ease-in-out infinite;
+  }
 }
 @keyframes wms-pulse {
   0%,
   100% {
-    box-shadow: 0 0 0 0 currentColor;
     opacity: 1;
   }
   50% {
-    box-shadow: 0 0 0 3px transparent;
-    opacity: 0.55;
+    opacity: 0.35;
   }
 }
-
-/* Filter chips (status filter on document lists) */
-.wms-chip {
+/* Pill without a dot (neutral labels like "System", roles, locations) */
+.wms-pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 30px;
-  padding: 0 12px;
-  border-radius: 999px;
-  border: 1px solid var(--wms-surface-border);
-  background: transparent;
-  color: var(--ant-color-text-secondary);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  font-family: inherit;
+  gap: 5px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--wms-radius-sm);
+  font-size: 12px;
+  font-weight: 550;
+  white-space: nowrap;
+  vertical-align: middle;
 }
-.wms-chip:hover {
-  color: var(--ant-color-primary);
-  border-color: var(--ant-color-primary-border);
-}
-.wms-chip-active,
-.wms-chip-active:hover {
-  color: #fff;
-  background: var(--ant-color-primary);
-  border-color: var(--ant-color-primary);
-  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+.wms-pill-list {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
-/* Stat cards */
+/* ============================================================ stat cards and KPIs */
+
 .wms-stat {
   position: relative;
   display: block;
   height: 100%;
-  padding: 18px 20px;
-  border-radius: 14px;
+  padding: 16px 18px;
+  border-radius: var(--wms-radius-lg);
   background: var(--ant-color-bg-container);
   border: 1px solid var(--wms-surface-border);
+  box-shadow: var(--wms-shadow-sm);
   color: inherit !important;
   overflow: hidden;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  transition: box-shadow var(--wms-mid) var(--wms-ease), border-color var(--wms-mid) var(--wms-ease);
 }
 a.wms-stat:hover {
-  transform: translateY(-2px);
-  border-color: var(--wms-stat-accent, var(--ant-color-primary));
-  box-shadow: 0 10px 24px -12px var(--wms-stat-accent, rgba(79, 70, 229, 0.5));
+  border-color: var(--ant-color-border);
+  box-shadow: var(--wms-shadow-md);
 }
 .wms-stat-top {
   display: flex;
@@ -349,133 +755,472 @@ a.wms-stat:hover {
   color: var(--ant-color-text-secondary);
 }
 .wms-stat-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
   display: grid;
   place-items: center;
-  font-size: 17px;
+  font-size: 15px;
   flex-shrink: 0;
 }
 .wms-stat-value {
-  margin-top: 10px;
-  font-size: 28px;
-  font-weight: 700;
+  margin-top: 8px;
+  font-size: 26px;
+  font-weight: 600;
   letter-spacing: -0.6px;
   line-height: 1.15;
   color: var(--ant-color-text);
+  font-variant-numeric: tabular-nums;
 }
 .wms-stat-hint {
   margin-top: 4px;
-  font-size: 12px;
+  font-size: 12.5px;
   color: var(--ant-color-text-tertiary);
   display: flex;
   align-items: center;
   gap: 4px;
 }
 .wms-stat-arrow {
+  margin-left: auto;
   opacity: 0;
   transform: translateX(-4px);
-  transition: all 0.18s ease;
-  color: var(--wms-stat-accent);
+  transition: opacity var(--wms-mid) var(--wms-ease), transform var(--wms-mid) var(--wms-ease);
+  color: var(--ant-color-text-tertiary);
 }
-a.wms-stat:hover .wms-stat-arrow {
+a.wms-stat:hover .wms-stat-arrow,
+a.wms-stat:focus-visible .wms-stat-arrow {
   opacity: 1;
   transform: none;
+}
+/* Attention state: a 2px accent line on the left (with the label text saying why, never color alone) */
+.wms-stat-alert::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--wms-stat-accent);
+}
+
+/* KPI strip: several headline numbers in one surface, separated by hairlines */
+.wms-kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  background: var(--ant-color-bg-container);
+  border: 1px solid var(--wms-surface-border);
+  border-radius: var(--wms-radius-lg);
+  box-shadow: var(--wms-shadow-sm);
+  overflow: hidden;
+}
+.wms-kpi {
+  display: block;
+  padding: 16px 20px;
+  color: inherit !important;
+  border-right: 1px solid var(--wms-border-subtle);
+  margin-right: -1px;
+  transition: background-color var(--wms-fast) var(--wms-ease);
+}
+a.wms-kpi:hover {
+  background: var(--wms-surface-subtle);
+}
+.wms-kpi-label {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ant-color-text-tertiary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.wms-kpi-value {
+  margin-top: 6px;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.8px;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ant-color-text);
+}
+.wms-kpi-hint {
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: var(--ant-color-text-tertiary);
 }
 
 .wms-section-title {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  margin: 8px 2px 12px;
+  gap: 12px;
+  margin: 4px 2px 12px;
 }
 .wms-section-title h3 {
   margin: 0;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
+  color: var(--ant-color-text);
 }
 
-/* Dashboard hero */
+/* Dashboard greeting row */
 .wms-hero {
-  position: relative;
-  overflow: hidden;
-  border-radius: 16px;
-  padding: 24px 28px;
-  color: #fff;
-  background: radial-gradient(1200px 300px at 100% 0%, rgba(6, 182, 212, 0.35), transparent 60%),
-    linear-gradient(120deg, #312e81 0%, #4f46e5 55%, #7c3aed 100%);
-  box-shadow: 0 20px 40px -24px rgba(79, 70, 229, 0.8);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
 }
-.wms-hero::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image: linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
-  background-size: 28px 28px;
-  mask-image: linear-gradient(90deg, transparent 30%, #000 100%);
-  pointer-events: none;
+.wms-hero-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 650;
+  letter-spacing: -0.4px;
+  line-height: 1.25;
 }
-.wms-hero > * {
-  position: relative;
-  z-index: 1;
+.wms-hero-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ant-color-text-tertiary);
 }
 
-/* Empty state */
+/* Meter: a labelled bar for shares (bin utilization, fulfilment) */
+.wms-meter {
+  padding: 14px;
+  border-radius: var(--wms-radius);
+  background: var(--wms-surface-subtle);
+  border: 1px solid var(--wms-border-subtle);
+}
+.wms-meter-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+.wms-list-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 8px;
+  margin: 0 -8px;
+  border-radius: var(--wms-radius);
+  color: inherit !important;
+  transition: background-color var(--wms-fast) var(--wms-ease);
+}
+a.wms-list-row:hover {
+  background: var(--wms-surface-hover);
+}
+.wms-list-row + .wms-list-row {
+  border-top: 1px solid var(--wms-border-subtle);
+}
+
+/* ============================================================ empty, loading and error states */
+
 .wms-empty {
   padding: 32px 16px;
   text-align: center;
   color: var(--ant-color-text-tertiary);
 }
 .wms-empty-icon {
-  width: 52px;
-  height: 52px;
+  width: 40px;
+  height: 40px;
   margin: 0 auto 10px;
-  border-radius: 14px;
+  border-radius: 10px;
   display: grid;
   place-items: center;
-  font-size: 22px;
-  color: var(--ant-color-primary);
-  background: var(--ant-color-primary-bg);
+  font-size: 18px;
+  color: var(--ant-color-text-tertiary);
+  background: var(--wms-surface-hover);
+  border: 1px solid var(--wms-surface-border);
+}
+.wms-empty-title {
+  font-weight: 600;
+  color: var(--ant-color-text-secondary);
+}
+.wms-empty-hint {
+  font-size: 12.5px;
+  margin-top: 4px;
+}
+.wms-empty-action {
+  margin-top: 12px;
+}
+.wms-error .wms-empty-icon {
+  color: var(--wms-tone-red-fg);
+  background: var(--wms-tone-red-bg);
+  border-color: transparent;
+}
+.wms-state-card {
+  background: var(--ant-color-bg-container);
+  border: 1px solid var(--wms-surface-border);
+  border-radius: var(--wms-radius-lg);
+  padding: 32px 16px;
 }
 
-/* Forms on create/edit pages */
+/* ============================================================ forms */
+
 .ant-form-vertical .ant-form-item-label > label {
   font-weight: 500;
+  font-size: 13px;
+  color: var(--ant-color-text-secondary);
+}
+.ant-form-item .ant-form-item-extra {
+  font-size: 12.5px;
+}
+/* A titled block inside a form */
+.wms-form-section + .wms-form-section {
+  margin-top: 8px;
+  padding-top: 20px;
+  border-top: 1px solid var(--wms-border-subtle);
+}
+.wms-form-section-title {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ant-color-text);
+}
+.wms-form-section-desc {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--ant-color-text-tertiary);
 }
 
-/* Login */
+/* Sticky form action bar (inside a card body with 20px padding) */
+.wms-form-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  margin: 24px -20px -20px;
+  padding: 12px 20px;
+  background: color-mix(in srgb, var(--ant-color-bg-container) 92%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-top: 1px solid var(--wms-surface-border);
+  border-radius: 0 0 var(--wms-radius-lg) var(--wms-radius-lg);
+}
+.wms-form-footer-note {
+  margin-right: auto;
+  font-size: 12.5px;
+  color: var(--ant-color-text-tertiary);
+}
+
+/* Line-entry rows in order forms */
+.wms-lines {
+  border: 1px solid var(--wms-surface-border);
+  border-radius: var(--wms-radius-lg);
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.wms-lines-head,
+.wms-lines-row {
+  display: grid;
+  grid-template-columns: 36px minmax(220px, 1fr) 140px 160px 36px;
+  gap: 12px;
+  align-items: start;
+  padding: 10px 14px;
+}
+.wms-lines-head {
+  background: var(--wms-surface-subtle);
+  border-bottom: 1px solid var(--wms-border-subtle);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ant-color-text-tertiary);
+}
+.wms-lines-row + .wms-lines-row {
+  border-top: 1px solid var(--wms-border-subtle);
+}
+.wms-lines-row .ant-form-item {
+  margin-bottom: 0;
+}
+.wms-lines-no {
+  line-height: 34px;
+  color: var(--ant-color-text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 767px) {
+  .wms-lines-head {
+    display: none;
+  }
+  .wms-lines-row {
+    grid-template-columns: 28px 1fr 1fr 32px;
+  }
+  .wms-lines-row > :nth-child(2) {
+    grid-column: 2 / 4;
+  }
+  .wms-lines-row > :nth-child(5) {
+    grid-row: 1;
+    grid-column: 4;
+  }
+  .wms-lines-row > :nth-child(3) {
+    grid-column: 2;
+  }
+  .wms-lines-row > :nth-child(4) {
+    grid-column: 3;
+  }
+}
+
+/* ============================================================ document detail */
+
+.wms-doc-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+  flex-wrap: wrap;
+  font-weight: 400;
+}
+.wms-doc-kind {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ant-color-text-tertiary);
+}
+.wms-doc-no {
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.3px;
+  line-height: 1.25;
+  color: var(--ant-color-text);
+}
+
+/* Workflow steps (purchase / sales order lifecycle) */
+.wms-steps {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin: 4px 0 18px;
+  padding: 12px 14px;
+  border-radius: var(--wms-radius);
+  background: var(--wms-surface-subtle);
+  border: 1px solid var(--wms-border-subtle);
+  overflow-x: auto;
+}
+.wms-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ant-color-text-tertiary);
+}
+.wms-step-marker {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1.5px solid var(--wms-surface-border);
+  background: var(--ant-color-bg-container);
+  color: var(--ant-color-text-tertiary);
+  flex-shrink: 0;
+}
+.wms-step-done {
+  color: var(--ant-color-text-secondary);
+}
+.wms-step-done .wms-step-marker {
+  border-color: transparent;
+  background: var(--wms-tone-green-bg);
+  color: var(--wms-tone-green-fg);
+}
+.wms-step-current {
+  color: var(--ant-color-text);
+  font-weight: 600;
+}
+.wms-step-current .wms-step-marker {
+  border-color: var(--ant-color-primary);
+  background: var(--ant-color-primary);
+  color: #fff;
+  box-shadow: 0 0 0 3px var(--wms-tone-indigo-bg);
+}
+.wms-step-stopped .wms-step-marker {
+  border-color: transparent;
+  background: var(--wms-tone-red-bg);
+  color: var(--wms-tone-red-fg);
+}
+.wms-step-stopped {
+  color: var(--wms-tone-red-fg);
+}
+.wms-step-line {
+  flex: 1 1 24px;
+  min-width: 24px;
+  height: 1.5px;
+  margin: 0 10px;
+  background: var(--wms-surface-border);
+}
+.wms-step-line-done {
+  background: color-mix(in srgb, var(--wms-tone-green-fg) 45%, transparent);
+}
+
+/* Quantity progress inside a table cell: number on top, thin bar under it */
+.wms-qty-progress {
+  min-width: 120px;
+}
+.wms-qty-progress .ant-progress {
+  margin: 2px 0 0;
+  line-height: 1;
+}
+.wms-qty-progress-text {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================ login */
+
 .wms-login {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(420px, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(420px, 1fr);
   background: var(--ant-color-bg-container);
 }
 .wms-login-art {
   position: relative;
   overflow: hidden;
-  padding: 48px 56px;
+  padding: 40px 56px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  color: #fff;
-  background: radial-gradient(900px 500px at 0% 100%, rgba(6, 182, 212, 0.35), transparent 60%),
-    radial-gradient(700px 400px at 100% 0%, rgba(124, 58, 237, 0.55), transparent 60%), #111433;
+  color: #ecedef;
+  background: #0e0f12;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
 }
+/* A faint warehouse floor grid, fading out towards the edges */
 .wms-login-art::before {
   content: "";
   position: absolute;
   inset: 0;
-  background-image: linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-  background-size: 40px 40px;
-  mask-image: radial-gradient(ellipse at center, #000 30%, transparent 75%);
+  background-image: linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(ellipse 80% 70% at 30% 60%, #000 20%, transparent 75%);
+}
+.wms-login-art::after {
+  content: "";
+  position: absolute;
+  width: 520px;
+  height: 520px;
+  left: -160px;
+  bottom: -220px;
+  background: radial-gradient(closest-side, rgba(109, 111, 245, 0.22), transparent);
+  pointer-events: none;
 }
 .wms-login-art > * {
   position: relative;
+  z-index: 1;
 }
 .wms-login-form {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -487,15 +1232,16 @@ a.wms-stat:hover .wms-stat-arrow {
   align-items: flex-start;
 }
 .wms-login-feature-icon {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
   display: grid;
   place-items: center;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #c7c8ff;
   flex-shrink: 0;
-  font-size: 17px;
+  font-size: 15px;
 }
 @media (max-width: 900px) {
   .wms-login {
@@ -506,81 +1252,53 @@ a.wms-stat:hover .wms-stat-arrow {
   }
 }
 
-/* Mono for document numbers and codes */
+/* Codes and document numbers */
 .wms-mono {
   font-variant-numeric: tabular-nums slashed-zero;
-  font-weight: 600;
+  font-weight: 550;
   letter-spacing: 0.1px;
+}
+.wms-code {
+  font-family: var(--ant-font-family-code);
+  font-size: 12.5px;
 }
 
 /* Ad-hoc filter rows (a horizontal Space as the first row of a page) get the toolbar surface too */
 .wms-content > .ant-space-vertical > .ant-space-item:first-child > .ant-space-horizontal {
   display: flex;
   width: 100%;
-  padding: 12px 16px;
+  padding: 10px 12px;
   background: var(--ant-color-bg-container);
   border: 1px solid var(--wms-surface-border);
-  border-radius: 12px;
+  border-radius: var(--wms-radius-lg);
 }
 
-/* Alerts: softer, rounded */
+/* Alerts: hairline, rounded, a little more compact */
 .ant-alert {
-  border-radius: 12px !important;
+  border-radius: var(--wms-radius-lg) !important;
+}
+.ant-alert-info {
+  background: var(--wms-tone-blue-bg) !important;
+  border-color: color-mix(in srgb, var(--wms-tone-blue-fg) 22%, transparent) !important;
+}
+.ant-alert-info .ant-alert-icon {
+  color: var(--wms-tone-blue-fg) !important;
 }
 
-/* Sticky form action bar (inside a card body with 20px padding) */
-.wms-form-footer {
-  position: sticky;
-  bottom: 0;
-  z-index: 5;
-  display: flex;
-  flex-direction: row-reverse;
-  justify-content: flex-start;
-  gap: 10px;
-  margin: 24px -20px -20px;
-  padding: 14px 20px;
-  background: var(--ant-color-bg-container);
-  border-top: 1px solid var(--wms-surface-border);
-  border-radius: 0 0 12px 12px;
-  box-shadow: 0 -8px 16px -12px rgba(16, 24, 40, 0.12);
+/* Modals: soft entrance is antd's own; we add a calmer backdrop */
+.ant-modal-mask {
+  background: rgba(15, 17, 21, 0.4) !important;
+  backdrop-filter: blur(2px);
 }
-
-/* Line-entry rows in order forms */
-.wms-lines {
+[data-theme="dark"] .ant-modal-mask {
+  background: rgba(0, 0, 0, 0.6) !important;
+}
+.ant-modal .ant-modal-container {
   border: 1px solid var(--wms-surface-border);
-  border-radius: 12px;
-  overflow: hidden;
-  margin-bottom: 12px;
-}
-.wms-lines-head,
-.wms-lines-row {
-  display: grid;
-  grid-template-columns: 44px minmax(240px, 1fr) 140px 160px 44px;
-  gap: 12px;
-  align-items: start;
-  padding: 10px 14px;
-}
-.wms-lines-head {
-  background: var(--ant-color-fill-quaternary);
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  color: var(--ant-color-text-secondary);
-}
-.wms-lines-row + .wms-lines-row {
-  border-top: 1px solid var(--wms-surface-border);
-}
-.wms-lines-row .ant-form-item {
-  margin-bottom: 0;
-}
-.wms-lines-no {
-  line-height: 36px;
-  color: var(--ant-color-text-tertiary);
-  font-variant-numeric: tabular-nums;
 }
 
-/* ---- Audit log: field-by-field old -> new ---- */
+/* ============================================================ audit log */
+
 .wms-audit-changes {
   display: grid;
   gap: 2px;
@@ -600,13 +1318,13 @@ a.wms-stat:hover .wms-stat-arrow {
   color: var(--ant-color-text-secondary);
 }
 .wms-audit-old {
-  color: var(--ant-color-error);
+  color: var(--wms-tone-red-fg);
   text-decoration: line-through;
-  text-decoration-color: color-mix(in srgb, var(--ant-color-error) 45%, transparent);
+  text-decoration-color: color-mix(in srgb, var(--wms-tone-red-fg) 45%, transparent);
   word-break: break-word;
 }
 .wms-audit-new {
-  color: var(--ant-color-success);
+  color: var(--wms-tone-green-fg);
   word-break: break-word;
 }
 .wms-audit-arrow {
@@ -615,24 +1333,27 @@ a.wms-stat:hover .wms-stat-arrow {
   color: var(--ant-color-text-quaternary);
 }
 
-/* ---- Live updates indicator (header) ---- */
+/* ============================================================ live updates indicator (header) */
+
 .wms-live {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  height: 26px;
+  padding: 0 9px;
+  margin-right: 4px;
   font-size: 12px;
   font-weight: 500;
-  color: var(--ant-color-text-secondary);
-  padding: 2px 10px;
+  color: var(--ant-color-text-tertiary);
   border-radius: 999px;
-  border: 1px solid var(--ant-color-border-secondary);
+  border: 1px solid var(--wms-surface-border);
+  background: var(--wms-surface);
   white-space: nowrap;
-  /* The layout header sets line-height: 64px, which would make the pill a tall circle */
   line-height: 20px;
 }
 .wms-live-dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--ant-color-text-quaternary);
 }
@@ -654,7 +1375,43 @@ a.wms-stat:hover .wms-stat-arrow {
   }
 }
 
-/* ---- Zone occupancy heatmap (components/OccupancyHeatmap.tsx) ---- */
+/* ============================================================ charts */
+
+@media (prefers-reduced-motion: no-preference) {
+  .wms-chart-line {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: wms-draw 0.9s var(--wms-ease) forwards;
+  }
+  .wms-chart-area {
+    opacity: 0;
+    animation: wms-fade 0.6s 0.3s var(--wms-ease) forwards;
+  }
+}
+@keyframes wms-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes wms-fade {
+  to {
+    opacity: 1;
+  }
+}
+.wms-chart-tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: var(--ant-color-bg-elevated);
+  border: 1px solid var(--wms-surface-border);
+  border-radius: var(--wms-radius);
+  padding: 8px 10px;
+  box-shadow: var(--ant-box-shadow-secondary);
+  min-width: 150px;
+  transition: left 80ms linear;
+}
+
+/* ============================================================ zone occupancy heatmap */
+
 .wms-heat-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
@@ -686,9 +1443,10 @@ a.wms-stat:hover .wms-stat-arrow {
 }
 .wms-heat-value {
   font-size: 22px;
-  font-weight: 700;
+  font-weight: 650;
   letter-spacing: -0.5px;
   line-height: 1.1;
+  font-variant-numeric: tabular-nums;
 }
 .wms-heat-meta {
   font-size: 12px;
@@ -714,7 +1472,8 @@ a.wms-stat:hover .wms-stat-arrow {
   border-radius: 2px;
 }
 
-/* ---- List tools: period filter, saved views, columns (components/ListTools.tsx) ---- */
+/* ============================================================ list tools: period, saved views, columns, batch bar */
+
 .wms-list-tools {
   display: flex;
   align-items: center;
@@ -723,16 +1482,34 @@ a.wms-stat:hover .wms-stat-arrow {
 }
 .wms-batch-bar {
   position: sticky;
-  top: 8px;
-  z-index: 3;
+  top: calc(var(--wms-header-h) + 8px);
+  z-index: 6;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 10px;
-  padding: 10px 16px;
-  border-radius: 12px;
-  background: var(--ant-color-primary-bg);
-  border: 1px solid var(--ant-color-primary-border);
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--wms-radius-lg);
+  background: var(--ant-color-bg-elevated);
+  border: 1px solid color-mix(in srgb, var(--ant-color-primary) 35%, var(--wms-surface-border));
+  box-shadow: var(--wms-shadow-md);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .wms-batch-bar {
+    animation: wms-fade-in 0.18s var(--wms-ease);
+  }
+}
+.wms-batch-count {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 9px;
+  margin-right: 4px;
+  border-radius: 999px;
+  background: var(--wms-tone-indigo-bg);
+  color: var(--wms-tone-indigo-fg);
+  font-size: 12.5px;
+  font-weight: 600;
 }
 .wms-view-item {
   display: flex;
@@ -745,7 +1522,8 @@ a.wms-stat:hover .wms-stat-arrow {
   color: var(--ant-color-primary);
 }
 
-/* ---- Document photos (components/DocumentPhotos.tsx) ---- */
+/* ============================================================ document photos */
+
 .wms-photo-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -758,7 +1536,7 @@ a.wms-stat:hover .wms-stat-arrow {
   gap: 4px;
 }
 .wms-photo .ant-image-img {
-  border-radius: 8px;
+  border-radius: var(--wms-radius);
 }
 .wms-photo-meta {
   display: grid;
@@ -768,4 +1546,119 @@ a.wms-stat:hover .wms-stat-arrow {
   top: 4px;
   right: 4px;
   background: var(--ant-color-bg-container);
+}
+
+/* ============================================================ responsive */
+
+/* Tablets and phones: tighter page padding, card headers wrap their actions under the title */
+@media (max-width: 991px) {
+  .wms-content {
+    padding: 20px 20px 40px;
+  }
+}
+@media (max-width: 767px) {
+  .wms-content {
+    padding: 16px 12px 32px;
+  }
+  .wms-page-title {
+    font-size: 20px !important;
+  }
+  .wms-page-header {
+    margin-bottom: 16px;
+  }
+  .ant-card .ant-card-head {
+    padding-inline: 14px;
+  }
+  .ant-card .ant-card-body {
+    padding: 14px;
+  }
+  .ant-card-body > .ant-table-wrapper:only-child {
+    margin: -14px;
+    width: calc(100% + 28px);
+  }
+  .wms-form-footer {
+    margin: 20px -14px -14px;
+    padding: 10px 14px;
+  }
+  .ant-card .ant-card-head-wrapper {
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    padding-bottom: 8px;
+  }
+  .ant-card .ant-card-extra {
+    margin-inline-start: 0;
+  }
+  /* Document numbers in card titles must never be cut off on phones */
+  .ant-card .ant-card-head-title {
+    white-space: normal;
+    overflow: visible;
+  }
+  .ant-card .ant-card-extra .ant-space {
+    flex-wrap: wrap;
+  }
+  .wms-toolbar,
+  .wms-toolbar-group {
+    width: 100%;
+  }
+  .wms-toolbar .ant-input-affix-wrapper,
+  .wms-toolbar .ant-input-search,
+  .wms-toolbar .ant-select {
+    flex: 1 1 200px;
+    width: auto !important;
+    min-width: 0;
+  }
+  .wms-hide-sm {
+    display: none !important;
+  }
+  .wms-kpi {
+    border-bottom: 1px solid var(--wms-border-subtle);
+  }
+}
+/* Touch devices: comfortable hit targets */
+@media (pointer: coarse) {
+  .wms-chip {
+    height: 34px;
+  }
+  .ant-btn-sm {
+    min-height: 30px;
+  }
+}
+
+/* Visually hidden, still read by screen readers */
+.wms-sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+/* A form section placed right before a form continues the same rhythm */
+.wms-form-section + .ant-form > .wms-form-section:first-child,
+.wms-form-section + .wms-empty {
+  margin-top: 8px;
+  padding-top: 20px;
+  border-top: 1px solid var(--wms-border-subtle);
+}
+/* The dashboard stacks sections with a grid gap: its header needs no extra margin */
+.wms-dashboard > .wms-page-header {
+  margin-bottom: -4px;
+}
+/* Inside a tab surface a toolbar is a flat strip, not a second card */
+.ant-tabs .wms-toolbar {
+  border: none;
+  border-bottom: 1px solid var(--wms-border-subtle);
+  border-radius: 0;
+  box-shadow: none;
+  padding: 10px 16px;
+}
+/* Non-table content placed directly in a tab panel (a filter, a button) gets the panel padding */
+.wms-content .ant-tabs-tabpane > .ant-space-vertical > .ant-space-item:has(> :not(.ant-table-wrapper):not(.wms-toolbar)) {
+  padding: 12px 16px 0;
+}
+.wms-content .ant-tabs-tabpane > .ant-space-vertical {
+  gap: 8px !important;
 }

@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button, Card, DatePicker, Form, Input, InputNumber, Radio, Space, Table, message } from "antd";
+import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
+import { Button, Card, Col, DatePicker, Form, Input, InputNumber, Radio, Row, Table, Tooltip, message } from "antd";
 import type { Dayjs } from "dayjs";
 import { useNavigate } from "react-router";
 
@@ -8,7 +9,7 @@ import { showError } from "@/api/errors";
 import type { Document } from "@/api/types";
 import { preventEnterSubmit } from "@/components/documents";
 import { ItemSelect, LocationSelect, ReasonSelect, UomSelect, useItemRecords } from "@/components/selects";
-import { FormFooter } from "@/components/ui";
+import { FormFooter, FormSection, useUnsavedChanges } from "@/components/ui";
 
 interface LineValues {
   location_id?: string;
@@ -35,6 +36,7 @@ export default function AdjustmentCreatePage() {
   const watchedLines = Form.useWatch("lines", form);
   const items = useItemRecords(watchedLines?.map((l) => l?.item_id) ?? []);
   const itemOf = (index: number) => items?.find((i) => i.id === watchedLines?.[index]?.item_id);
+  const unsaved = useUnsavedChanges();
 
   const save = useMutation({
     mutationFn: async (values: FormValues) => {
@@ -48,6 +50,7 @@ export default function AdjustmentCreatePage() {
       return (await apiClient.post<Document>("/adjustments", { ...values, lines })).data;
     },
     onSuccess: (doc) => {
+      unsaved.reset();
       message.success(`Created adjustment ${doc.doc_no}; it takes effect once someone with approval rights posts it`);
       queryClient.invalidateQueries({ queryKey: ["adjustments"] });
       navigate(`/adjustments/${doc.id}`);
@@ -63,15 +66,23 @@ export default function AdjustmentCreatePage() {
         initialValues={{ lines: [NEW_LINE] }}
         onKeyDown={preventEnterSubmit}
         onFinish={(v) => save.mutate(v)}
+        {...unsaved.formProps}
       >
-        <Space size="large" wrap>
-          <Form.Item name="reason_code_id" label="Adjustment reason" rules={[{ required: true }]}>
-            <ReasonSelect style={{ width: 240 }} />
-          </Form.Item>
-          <Form.Item name="remark" label="Remark">
-            <Input style={{ width: 360 }} maxLength={400} />
-          </Form.Item>
-        </Space>
+        <FormSection title="Reason" description="Every adjustment needs a reason; it is posted only after approval.">
+          <Row gutter={16}>
+            <Col xs={24} md={8}>
+              <Form.Item name="reason_code_id" label="Adjustment reason" rules={[{ required: true }]}>
+                <ReasonSelect style={{ width: "100%" }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={16}>
+              <Form.Item name="remark" label="Remark">
+                <Input maxLength={400} placeholder="Optional" />
+              </Form.Item>
+            </Col>
+          </Row>
+        </FormSection>
+        <FormSection title="Lines" description="Choose Increase or Decrease per line, then the quantity (always positive).">
         <Form.List name="lines">
           {(fields, { add, remove }) => (
             <>
@@ -151,22 +162,24 @@ export default function AdjustmentCreatePage() {
                       ),
                   },
                   {
-                    title: "Actions",
+                    title: "",
+                    width: 48,
                     render: (_, f) => (
-                      <Button size="small" onClick={() => remove(f.name)} disabled={fields.length === 1}>
-                        Remove
-                      </Button>
+                      <Tooltip title="Remove line">
+                        <Button type="text" size="small" danger icon={<DeleteOutlined />} aria-label={`Remove line ${f.name + 1}`} onClick={() => remove(f.name)} disabled={fields.length === 1} />
+                      </Tooltip>
                     ),
                   },
                 ]}
               />
-              <Button type="dashed" style={{ marginTop: 8 }} onClick={() => add(NEW_LINE)}>
+              <Button type="dashed" block icon={<PlusOutlined />} style={{ marginTop: 12 }} onClick={() => add(NEW_LINE)}>
                 Add line
               </Button>
             </>
           )}
         </Form.List>
-        <FormFooter>
+        </FormSection>
+        <FormFooter note="Takes effect once someone with approval rights posts it">
           <Button type="primary" htmlType="submit" loading={save.isPending}>
             Create adjustment
           </Button>

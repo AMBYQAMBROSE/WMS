@@ -15,7 +15,7 @@ export default function ReturnsInPage() {
         { title: "Customer", render: (_, r) => r.partner?.name },
         {
           title: "Original order",
-          render: (_, r) => r.ref_document && <Link to={`/sales-orders/${r.ref_document.id}`}>{r.ref_document.doc_no}</Link>,
+          render: (_, r) => r.ref_document && <Link className="wms-mono" to={`/sales-orders/${r.ref_document.id}`}>{r.ref_document.doc_no}</Link>,
         },
         { title: "Reason", render: (_, r) => r.reason_code?.name },
         { title: "Posted", dataIndex: "posted_at", render: formatDateTime },

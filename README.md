@@ -51,6 +51,8 @@ WMS/
 
 ## First start
 
+Shortcut on Windows: double-click `start-dev.bat` in the repository root. It starts Docker Desktop and the database container, creates the venv and `.env` on first run, installs dependencies when they change, runs migrations and seed, opens the backend and web dev server in their own windows and then opens the browser. The manual steps it automates follow.
+
 ### 1. Start the database and create it
 
 ```powershell

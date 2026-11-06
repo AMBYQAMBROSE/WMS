@@ -2,13 +2,15 @@ import { useState, type ReactNode } from "react";
 
 import { ArrowRightOutlined, HistoryOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Drawer, Empty, Spin, Tag, Timeline, Typography } from "antd";
+import { Button, Drawer, Empty, Skeleton, Timeline, Typography } from "antd";
 import dayjs from "dayjs";
 
 import { apiClient } from "@/api/client";
 import { useCan } from "@/api/me";
 import type { AuditChange, AuditLog } from "@/api/types";
+import { toneOf } from "@/components/StatusTag";
 import { AUDIT_ACTION_LABELS, AUDIT_ENTITY_LABELS, DOC_TYPE_LABELS } from "@/constants/labels";
+import { ACCENTS } from "@/theme";
 
 // No imports from ui/documents: DocTitle in ui.tsx renders HistoryButton, and that would make an import cycle
 
@@ -42,7 +44,12 @@ export function entityTitle(log: AuditLog) {
 
 export function ActionTag({ action }: { action: string }) {
   const label = AUDIT_ACTION_LABELS[action] ?? { text: action, color: "default" };
-  return <Tag color={label.color}>{label.text}</Tag>;
+  const tone = ACCENTS[toneOf(label.color)];
+  return (
+    <span className="wms-pill" style={{ color: tone.fg, background: tone.bg }}>
+      {label.text}
+    </span>
+  );
 }
 
 /** Field-by-field old -> new; a create shows only new values and a hard delete only old ones */
@@ -74,7 +81,7 @@ export function AuditTimeline({ entityId }: { entityId: string }) {
     queryKey: ["audit-logs", "entity", entityId],
     queryFn: async () => (await apiClient.get<AuditLog[]>("/audit-logs", { params: { entity_id: entityId, limit: 500 } })).data,
   });
-  if (isLoading) return <Spin />;
+  if (isLoading) return <Skeleton active paragraph={{ rows: 6 }} />;
   if (!data?.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No recorded changes" />;
   return (
     <Timeline
@@ -88,7 +95,7 @@ export function AuditTimeline({ entityId }: { entityId: string }) {
         ),
         content: (
           <div>
-            <div style={{ marginBottom: 4 }}>
+            <div style={{ marginBottom: 4, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <ActionTag action={log.action} />
               <Typography.Text strong>{entityTitle(log)}</Typography.Text>
             </div>

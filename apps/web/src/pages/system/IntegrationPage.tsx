@@ -18,10 +18,10 @@ import {
   Switch,
   Table,
   Tabs,
-  Tag,
   Typography,
   message,
 } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { Link } from "react-router";
 
@@ -30,16 +30,26 @@ import { showError } from "@/api/errors";
 import { useCan } from "@/api/me";
 import type { Connector, ConnectorWithSecret, EventType, IntegrationJob, IntegrationJobDetail, IntegrationSummary } from "@/api/types";
 import { formatDateTime, preventEnterSubmit } from "@/components/documents";
+import { Pill, Toolbar, type Accent } from "@/components/ui";
 import { DOC_PATHS, DOC_TYPE_LABELS } from "@/constants/labels";
 
 const KEY = "integration";
 
-const JOB_STATUS: Record<string, { text: string; color: string }> = {
-  PENDING: { text: "Pending", color: "blue" },
-  RUNNING: { text: "Delivering", color: "processing" },
-  SUCCEEDED: { text: "Succeeded", color: "green" },
-  FAILED: { text: "Failed", color: "red" },
+const JOB_STATUS: Record<string, { text: string; tone: Accent }> = {
+  PENDING: { text: "Pending", tone: "blue" },
+  RUNNING: { text: "Delivering", tone: "indigo" },
+  SUCCEEDED: { text: "Succeeded", tone: "green" },
+  FAILED: { text: "Failed", tone: "red" },
 };
+
+function JobStatus({ status }: { status: string }) {
+  const s = JOB_STATUS[status] ?? { text: status, tone: "slate" as Accent };
+  return (
+    <Pill tone={s.tone} dot>
+      {s.text}
+    </Pill>
+  );
+}
 
 interface ConnectorForm {
   code: string;
@@ -164,7 +174,7 @@ function ConnectorModal({
             <Space orientation="vertical" style={{ width: "100%" }}>
               {groups.map(([docType, events]) => (
                 <div key={docType}>
-                  <Typography.Text type="secondary" style={{ display: "inline-block", width: 80 }}>
+                  <Typography.Text type="secondary" style={{ display: "inline-block", width: 140 }}>
                     {DOC_TYPE_LABELS[docType] ?? docType}
                   </Typography.Text>
                   {events.map((e) => (
@@ -242,7 +252,7 @@ function JobDrawer({ jobId, onClose }: { jobId: string | null; onClose: () => vo
         <Space orientation="vertical" style={{ width: "100%" }}>
           <Descriptions column={2} size="small" bordered>
             <Descriptions.Item label="Status">
-              <Tag color={JOB_STATUS[job.status].color}>{JOB_STATUS[job.status].text}</Tag>
+              <JobStatus status={job.status} />
             </Descriptions.Item>
             <Descriptions.Item label="Connector">{job.connector_name}</Descriptions.Item>
             <Descriptions.Item label="Event">{job.event_name}</Descriptions.Item>
@@ -276,7 +286,7 @@ function JobDrawer({ jobId, onClose }: { jobId: string | null; onClose: () => vo
             columns={[
               { title: "#", dataIndex: "attempt_no", width: 48 },
               { title: "Time", dataIndex: "requested_at", render: formatDateTime },
-              { title: "Result", render: (_, l) => (l.success ? <Tag color="green">Succeeded</Tag> : <Tag color="red">Failed</Tag>) },
+              { title: "Result", render: (_, l) => (l.success ? <Pill tone="green" dot>Succeeded</Pill> : <Pill tone="red" dot>Failed</Pill>) },
               { title: "Status code", dataIndex: "status_code", render: (v) => v ?? "-" },
               { title: "Duration", dataIndex: "duration_ms", render: (v: number) => `${v} ms` },
             ]}
@@ -346,20 +356,25 @@ export default function IntegrationPage() {
             label: "Connectors",
             children: (
               <Space orientation="vertical" style={{ width: "100%" }}>
-                {manage && (
-                  <Button type="primary" onClick={() => setCreating(true)}>
-                    New connector
-                  </Button>
-                )}
+                <Toolbar
+                  left={<span className="wms-toolbar-meta">Webhooks that receive business events as they happen</span>}
+                  right={
+                    manage && (
+                      <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>
+                        New connector
+                      </Button>
+                    )
+                  }
+                />
                 <Table<Connector>
                   rowKey="id"
                   loading={connectors.isLoading}
                   dataSource={connectors.data}
                   pagination={false}
                   columns={[
-                    { title: "Code", dataIndex: "code" },
+                    { title: "Code", dataIndex: "code", render: (v: string) => <span className="wms-mono">{v}</span> },
                     { title: "Name", dataIndex: "name" },
-                    { title: "Endpoint URL", dataIndex: "endpoint_url", ellipsis: true },
+                    { title: "Endpoint URL", dataIndex: "endpoint_url", ellipsis: true, render: (v: string) => <span className="wms-code">{v}</span> },
                     {
                       title: "Subscribed events",
                       dataIndex: "event_types",
@@ -397,7 +412,9 @@ export default function IntegrationPage() {
             label: "Delivery log",
             children: (
               <Space orientation="vertical" style={{ width: "100%" }}>
-                <Space wrap>
+                <Toolbar
+                  left={
+                  <>
                   <Select
                     allowClear
                     placeholder="All statuses"
@@ -421,20 +438,24 @@ export default function IntegrationPage() {
                     style={{ width: 200 }}
                     onSearch={(doc_no) => setFilters((f) => ({ ...f, doc_no: doc_no || undefined }))}
                   />
-                </Space>
+                  </>
+                  }
+                />
                 <Table<IntegrationJob>
                   rowKey="id"
                   size="small"
                   loading={jobs.isLoading}
                   dataSource={jobs.data}
-                  onRow={(job) => ({ onClick: () => setJobId(job.id), style: { cursor: "pointer" } })}
+                  rowClassName="wms-row-link"
+                  scroll={{ x: "max-content" }}
+                  onRow={(job) => ({ onClick: () => setJobId(job.id) })}
                   columns={[
-                    { title: "Time", dataIndex: "created_at", render: formatDateTime },
+                    { title: "Time", dataIndex: "created_at", render: (v: string) => <span style={{ whiteSpace: "nowrap" }}>{formatDateTime(v)}</span> },
                     { title: "Event", dataIndex: "event_name" },
-                    { title: "Document no.", dataIndex: "doc_no", render: (v) => v ?? "-" },
+                    { title: "Document no.", dataIndex: "doc_no", render: (v) => (v ? <span className="wms-mono">{v}</span> : <span className="wms-empty-value">—</span>) },
                     { title: "Connector", dataIndex: "connector_name" },
-                    { title: "Status", dataIndex: "status", render: (s: string) => <Tag color={JOB_STATUS[s].color}>{JOB_STATUS[s].text}</Tag> },
-                    { title: "Attempts", dataIndex: "attempts" },
+                    { title: "Status", dataIndex: "status", render: (s: string) => <JobStatus status={s} /> },
+                    { title: "Attempts", dataIndex: "attempts", align: "right" },
                     { title: "Last error", dataIndex: "last_error", ellipsis: true, render: (v) => v ?? "" },
                   ]}
                 />

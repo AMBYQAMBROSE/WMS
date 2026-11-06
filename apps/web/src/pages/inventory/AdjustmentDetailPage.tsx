@@ -1,7 +1,7 @@
-import { Card, Descriptions, Space, Spin, Typography } from "antd";
+import { Card, Descriptions, Space, Typography } from "antd";
 import { useParams } from "react-router";
 
-import { DocTitle } from "@/components/ui";
+import { DESC_COLUMNS, DetailSkeleton, DocTitle, ErrorState, formatQty } from "@/components/ui";
 import {
   ActionButton,
   DocumentLinesTable,
@@ -12,10 +12,11 @@ import {
 
 export default function AdjustmentDetailPage() {
   const { id = "" } = useParams();
-  const { data: doc, isLoading } = useDocument("adjustments", id);
+  const { data: doc, isLoading, error, refetch } = useDocument("adjustments", id);
   const action = useDocumentAction("adjustments", id);
 
-  if (isLoading || !doc) return <Spin />;
+  if (isLoading) return <DetailSkeleton />;
+  if (!doc) return <ErrorState title="Could not load this adjustment" error={error} onRetry={() => refetch()} back={{ to: "/adjustments", label: "Back to stock adjustments" }} />;
   const run = (name: string) => () => action.mutate(name);
 
   return (
@@ -24,7 +25,7 @@ export default function AdjustmentDetailPage() {
         title={<DocTitle label={"Stock adjustment"} no={doc.doc_no} status={doc.status} historyOf={doc.id} />}
         extra={
           doc.status === "DRAFT" && (
-            <Space>
+            <Space wrap>
               <ActionButton
                 perm="adjustment.post"
                 type="primary"
@@ -38,13 +39,13 @@ export default function AdjustmentDetailPage() {
           )
         }
       >
-        <Descriptions column={3}>
+        <Descriptions column={DESC_COLUMNS}>
           <Descriptions.Item label="Reason">
             {doc.reason_code && `${doc.reason_code.code} ${doc.reason_code.name}`}
           </Descriptions.Item>
-          <Descriptions.Item label="Posted">{formatDateTime(doc.posted_at)}</Descriptions.Item>
-          <Descriptions.Item label="Remark" span={3}>
-            {doc.remark}
+          <Descriptions.Item label="Posted">{formatDateTime(doc.posted_at) || <span className="wms-empty-value">Not yet — needs approval</span>}</Descriptions.Item>
+          <Descriptions.Item label="Remark" span="filled">
+            {doc.remark || <span className="wms-empty-value">—</span>}
           </Descriptions.Item>
         </Descriptions>
       </Card>
@@ -52,12 +53,15 @@ export default function AdjustmentDetailPage() {
         <DocumentLinesTable
           lines={doc.lines}
           columns={[
-            { title: "Location", render: (_, l) => l.to_location?.code },
+            { title: "Location", render: (_, l) => <span className="wms-mono">{l.to_location?.code}</span> },
             {
               title: "Adjustment",
               dataIndex: "qty_actual",
+              align: "right",
               render: (v: number) => (
-                <Typography.Text type={v < 0 ? "danger" : "success"}>{v > 0 ? `+${v}` : v}</Typography.Text>
+                <Typography.Text type={v < 0 ? "danger" : "success"} className="wms-num" strong>
+                  {v > 0 ? `+${formatQty(v)}` : formatQty(v)}
+                </Typography.Text>
               ),
             },
             { title: "Batch no.", dataIndex: "batch_no" },

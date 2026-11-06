@@ -1,10 +1,11 @@
 import { useState } from "react";
 
 import { useQuery } from "@tanstack/react-query";
-import { Segmented, Space, Table, Tag } from "antd";
+import { Segmented, Space, Table } from "antd";
 
 import { apiClient } from "@/api/client";
 import type { ExpiryRow } from "@/api/types";
+import { Pill, STICKY_HEADER, formatQty } from "@/components/ui";
 import { exportReport, ReportFilters, TruncatedHint, type ReportPage } from "@/components/reports";
 
 const WINDOWS = [7, 30, 60, 90, 180];
@@ -34,12 +35,14 @@ export default function ExpiryReportPage() {
         rowKey={(r) => `${r.item.id}-${r.location_code}-${r.batch_no}-${r.expiry_date}`}
         size="small"
         loading={isFetching && !data}
-        style={{ opacity: isFetching && data ? 0.6 : 1 }}
+        className={isFetching && data ? "wms-refreshing" : undefined}
+        sticky={STICKY_HEADER}
+        scroll={{ x: "max-content" }}
         dataSource={data?.rows}
         columns={[
-          { title: "SKU", render: (_, r) => r.item.sku_code },
+          { title: "SKU", render: (_, r) => <span className="wms-mono">{r.item.sku_code}</span> },
           { title: "Item", render: (_, r) => r.item.name },
-          { title: "Location", dataIndex: "location_code" },
+          { title: "Location", dataIndex: "location_code", render: (v: string) => <span className="wms-mono">{v}</span> },
           { title: "Batch", dataIndex: "batch_no" },
           { title: "Expiry date", dataIndex: "expiry_date" },
           {
@@ -48,10 +51,16 @@ export default function ExpiryReportPage() {
             align: "right",
             // Status uses text plus color, never color alone
             render: (v: number) =>
-              v < 0 ? <Tag color="red">Expired {-v} days ago</Tag> : v <= 7 ? <Tag color="orange">{v} days</Tag> : `${v} days`,
+              v < 0 ? (
+                <Pill tone="red" dot>Expired {-v} days ago</Pill>
+              ) : v <= 7 ? (
+                <Pill tone="amber" dot>{v} days</Pill>
+              ) : (
+                `${v} days`
+              ),
           },
-          { title: "On hand", dataIndex: "qty_on_hand", align: "right" },
-          { title: "Allocated", dataIndex: "qty_allocated", align: "right" },
+          { title: "On hand", dataIndex: "qty_on_hand", align: "right", render: formatQty },
+          { title: "Allocated", dataIndex: "qty_allocated", align: "right", render: formatQty },
           { title: "Unit", render: (_, r) => r.item.base_uom.code },
         ]}
       />

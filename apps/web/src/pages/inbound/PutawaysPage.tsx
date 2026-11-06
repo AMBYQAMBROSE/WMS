@@ -14,7 +14,7 @@ export default function PutawaysPage() {
       columns={[
         {
           title: "Source goods receipt",
-          render: (_, r) => r.ref_document && <Link to={`/grns/${r.ref_document.id}`}>{r.ref_document.doc_no}</Link>,
+          render: (_, r) => r.ref_document && <Link className="wms-mono" to={`/grns/${r.ref_document.id}`}>{r.ref_document.doc_no}</Link>,
         },
         { title: "Posted", dataIndex: "posted_at", render: formatDateTime },
         { title: "Remark", dataIndex: "remark", ellipsis: true },

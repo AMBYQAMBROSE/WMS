@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Card, DatePicker, Empty, Form, Input, InputNumber, Select, Space, Table, message } from "antd";
+import { DeleteOutlined, SplitCellsOutlined } from "@ant-design/icons";
+import { Button, Card, Col, DatePicker, Form, Input, InputNumber, Row, Select, Table, Tooltip, message } from "antd";
 import type { Dayjs } from "dayjs";
 import { useNavigate, useSearchParams } from "react-router";
 
@@ -10,7 +11,7 @@ import { showError } from "@/api/errors";
 import type { Document, DocumentLine, DocumentSummary } from "@/api/types";
 import { preventEnterSubmit, useDocument } from "@/components/documents";
 import { LocationSelect } from "@/components/selects";
-import { FormFooter } from "@/components/ui";
+import { EmptyState, FormFooter, FormSection, formatQty, useUnsavedChanges } from "@/components/ui";
 
 interface GrnLineValues {
   po_line_id: string;
@@ -34,8 +35,9 @@ export default function GrnCreatePage() {
   const queryClient = useQueryClient();
   const [form] = Form.useForm<FormValues>();
   const { data: po } = useDocument("purchase-orders", poId);
+  const unsaved = useUnsavedChanges();
 
-  const { data: receivablePos } = useQuery({
+  const { data: receivablePos, isLoading: posLoading } = useQuery({
     queryKey: ["purchase-orders", "receivable"],
     queryFn: async () => {
       const fetch = (status: string) =>
@@ -66,6 +68,7 @@ export default function GrnCreatePage() {
       return (await apiClient.post<Document>("/grns", { ...values, po_id: poId, lines })).data;
     },
     onSuccess: (grn) => {
+      unsaved.reset();
       message.success(`Created goods receipt ${grn.doc_no}; post it once checked`);
       queryClient.invalidateQueries({ queryKey: ["grns"] });
       navigate(`/grns/${grn.id}`);
@@ -77,33 +80,43 @@ export default function GrnCreatePage() {
 
   return (
     <Card title="New goods receipt">
-      <Space orientation="vertical" style={{ width: "100%" }}>
-        <Space>
-          Purchase order:
+      <div style={{ display: "grid", gap: 4 }}>
+        <FormSection title="Purchase order" description="Receive against a confirmed or partially received order; its open quantities are filled in.">
+          <label htmlFor="grn-po" className="wms-sr-only">Purchase order</label>
           <Select
+            id="grn-po"
             showSearch
             optionFilterProp="label"
-            style={{ width: 360 }}
+            style={{ width: "100%", maxWidth: 480 }}
             placeholder="Choose a confirmed purchase order"
+            loading={posLoading}
             value={poId}
             onChange={(v) => setSearchParams({ po: v })}
             options={(receivablePos ?? []).map((p) => ({ value: p.id, label: `${p.doc_no} ${p.partner?.name ?? ""}` }))}
+            notFoundContent={posLoading ? undefined : "No purchase orders waiting to be received"}
           />
-        </Space>
+        </FormSection>
 
         {!po ? (
-          <Empty description="Choose a purchase order first" />
+          <EmptyState title="Choose a purchase order first" hint="Its open lines appear here, ready to receive." />
         ) : (
-          <Form form={form} layout="vertical" onKeyDown={preventEnterSubmit} onFinish={(v) => save.mutate(v)}>
-            <Space size="large" wrap>
-              <Form.Item name="location_id" label="Receiving location" rules={[{ required: true }]}>
-                <LocationSelect types={["DOCK", "BIN"]} style={{ width: 260 }} placeholder="Usually the receiving dock" />
-              </Form.Item>
-              <Form.Item name="remark" label="Remark">
-                <Input style={{ width: 320 }} maxLength={400} />
-              </Form.Item>
-            </Space>
+          <Form form={form} layout="vertical" onKeyDown={preventEnterSubmit} onFinish={(v) => save.mutate(v)} {...unsaved.formProps}>
+            <FormSection title="Receipt details">
+              <Row gutter={16}>
+                <Col xs={24} md={10}>
+                  <Form.Item name="location_id" label="Receiving location" rules={[{ required: true }]}>
+                    <LocationSelect types={["DOCK", "BIN"]} style={{ width: "100%" }} placeholder="Usually the receiving dock" />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={14}>
+                  <Form.Item name="remark" label="Remark">
+                    <Input maxLength={400} placeholder="Optional" />
+                  </Form.Item>
+                </Col>
+              </Row>
+            </FormSection>
 
+            <FormSection title="Lines" description="Set the quantity actually received. Lines left at 0 are skipped.">
             <Form.List name="lines">
               {(fields, { add, remove }) => (
                 <Table
@@ -111,27 +124,33 @@ export default function GrnCreatePage() {
                   size="small"
                   pagination={false}
                   dataSource={fields}
+                  scroll={{ x: "max-content" }}
                   columns={[
                     {
                       title: "Item",
                       render: (_, f) => {
                         const l = poLine(form.getFieldValue(["lines", f.name, "po_line_id"]));
-                        return l && `${l.item.sku_code} ${l.item.name}`;
+                        return l && (
+                          <span>
+                            <span className="wms-mono">{l.item.sku_code}</span> {l.item.name}
+                          </span>
+                        );
                       },
                     },
                     { title: "Unit", render: (_, f) => poLine(form.getFieldValue(["lines", f.name, "po_line_id"]))?.uom.code },
                     {
                       title: "Open",
+                      align: "right",
                       render: (_, f) => {
                         const l = poLine(form.getFieldValue(["lines", f.name, "po_line_id"]));
-                        return l && remaining(l);
+                        return l && formatQty(remaining(l));
                       },
                     },
                     {
                       title: "Received now",
                       render: (_, f) => (
                         <Form.Item name={[f.name, "qty"]} noStyle rules={[{ required: true }]}>
-                          <InputNumber min={0} />
+                          <InputNumber min={0} aria-label={`Received quantity, line ${f.name + 1}`} />
                         </Form.Item>
                       ),
                     },
@@ -162,20 +181,21 @@ export default function GrnCreatePage() {
                       },
                     },
                     {
-                      title: "Actions",
+                      title: "",
+                      width: 84,
                       render: (_, f) => {
                         const l = poLine(form.getFieldValue(["lines", f.name, "po_line_id"]));
                         return (
-                          <Space>
+                          <span style={{ display: "inline-flex", gap: 2 }}>
                             {l?.item.is_batch_managed && (
-                              <Button size="small" onClick={() => add({ po_line_id: l.id, qty: 0 }, f.name + 1)}>
-                                Split batch
-                              </Button>
+                              <Tooltip title="Split batch: receive this line as several batches">
+                                <Button type="text" size="small" icon={<SplitCellsOutlined />} aria-label={`Split batch, line ${f.name + 1}`} onClick={() => add({ po_line_id: l.id, qty: 0 }, f.name + 1)} />
+                              </Tooltip>
                             )}
-                            <Button size="small" onClick={() => remove(f.name)}>
-                              Remove
-                            </Button>
-                          </Space>
+                            <Tooltip title="Remove line">
+                              <Button type="text" size="small" danger icon={<DeleteOutlined />} aria-label={`Remove line ${f.name + 1}`} onClick={() => remove(f.name)} />
+                            </Tooltip>
+                          </span>
                         );
                       },
                     },
@@ -183,8 +203,9 @@ export default function GrnCreatePage() {
                 />
               )}
             </Form.List>
+            </FormSection>
 
-            <FormFooter>
+            <FormFooter note="Created as a draft; posting adds the stock">
               <Button type="primary" htmlType="submit" loading={save.isPending}>
                 Create goods receipt
               </Button>
@@ -192,7 +213,7 @@ export default function GrnCreatePage() {
             </FormFooter>
           </Form>
         )}
-      </Space>
+      </div>
     </Card>
   );
 }

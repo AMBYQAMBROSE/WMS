@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
 
 import { DownloadOutlined } from "@ant-design/icons";
-import { Alert, Button, DatePicker, Segmented, Space } from "antd";
+import { Alert, Button, DatePicker, Segmented } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
 
 import { apiClient } from "@/api/client";
 import { showError } from "@/api/errors";
+import { Toolbar } from "@/components/ui";
 
 export type Range = [Dayjs, Dayjs];
 
@@ -39,8 +40,9 @@ export function ReportFilters({
 }) {
   const preset = range && PRESETS.find((p) => range[1].isSame(dayjs(), "day") && range[1].diff(range[0], "day") + 1 === p.days);
   return (
-    <Space wrap style={{ width: "100%", justifyContent: "space-between" }}>
-      <Space wrap>
+    <Toolbar
+      left={
+        <>
         {range && onRangeChange && (
           <>
             <Segmented
@@ -61,13 +63,16 @@ export function ReportFilters({
           </>
         )}
         {children}
-      </Space>
-      {onExport && (
-        <Button icon={<DownloadOutlined />} onClick={onExport} disabled={exportDisabled}>
-          Export CSV
-        </Button>
-      )}
-    </Space>
+        </>
+      }
+      right={
+        onExport && (
+          <Button icon={<DownloadOutlined />} onClick={onExport} disabled={exportDisabled}>
+            Export CSV
+          </Button>
+        )
+      }
+    />
   );
 }
 

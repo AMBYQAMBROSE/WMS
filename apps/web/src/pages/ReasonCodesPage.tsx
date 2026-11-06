@@ -1,13 +1,14 @@
 import { useState } from "react";
 
 import { useQuery } from "@tanstack/react-query";
+import { PlusOutlined } from "@ant-design/icons";
 import { Button, Form, Input, Segmented, Space, Table } from "antd";
 
 import { apiClient } from "@/api/client";
 import { useCan } from "@/api/me";
 import type { ReasonCode } from "@/api/types";
 import CreateModal from "@/components/CreateModal";
-import { YesNo } from "@/components/ui";
+import { Toolbar, YesNo } from "@/components/ui";
 
 const CATEGORIES = { ADJUST: "Adjustment reasons", RETURN: "Return reasons" };
 
@@ -23,26 +24,30 @@ export default function ReasonCodesPage() {
 
   return (
     <Space orientation="vertical" style={{ width: "100%" }}>
-      <Space>
-        <Segmented
-          value={category}
-          onChange={(v) => setCategory(v as keyof typeof CATEGORIES)}
-          options={Object.entries(CATEGORIES).map(([value, l]) => ({ value, label: l }))}
-        />
-        {can("reason_code.create") && (
-          <Button type="primary" onClick={() => setCreating(true)}>
-            New {label.toLowerCase().replace(/s$/, "")}
-          </Button>
-        )}
-      </Space>
+      <Toolbar
+        left={
+          <Segmented
+            value={category}
+            onChange={(v) => setCategory(v as keyof typeof CATEGORIES)}
+            options={Object.entries(CATEGORIES).map(([value, l]) => ({ value, label: l }))}
+          />
+        }
+        right={
+          can("reason_code.create") && (
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>
+              New {label.toLowerCase().replace(/s$/, "")}
+            </Button>
+          )
+        }
+      />
       <Table<ReasonCode>
         rowKey="id"
         loading={isLoading}
         dataSource={data}
         columns={[
-          { title: "Code", dataIndex: "code" },
+          { title: "Code", dataIndex: "code", render: (v: string) => <span className="wms-mono">{v}</span> },
           { title: "Name", dataIndex: "name" },
-          { title: "ERP transaction code", dataIndex: "external_code" },
+          { title: "ERP transaction code", dataIndex: "external_code", render: (v: string | null) => (v ? <span className="wms-code">{v}</span> : <span className="wms-empty-value">—</span>) },
           { title: "Active", dataIndex: "is_active", render: (v: boolean) => <YesNo value={v} /> },
         ]}
       />

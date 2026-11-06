@@ -7,7 +7,7 @@ import { showError } from "@/api/errors";
 import type { CycleCount } from "@/api/types";
 import { preventEnterSubmit } from "@/components/documents";
 import { LocationSelect } from "@/components/selects";
-import { FormFooter } from "@/components/ui";
+import { FormFooter, FormSection } from "@/components/ui";
 
 interface FormValues {
   location_ids: string[];
@@ -36,12 +36,14 @@ export default function CycleCountCreatePage() {
         title="The selected locations are frozen immediately (no receiving, putaway, moves or adjustments) until the count is posted or cancelled. Avoid peak hours."
       />
       <Form layout="vertical" onKeyDown={preventEnterSubmit} onFinish={(v: FormValues) => save.mutate(v)}>
-        <Form.Item name="location_ids" label="Locations to count" rules={[{ required: true, message: "Choose at least one location" }]}>
-          <LocationSelect mode="multiple" types={["BIN", "DOCK"]} allowLocked style={{ maxWidth: 640 }} placeholder="Multiple allowed, empty locations too" />
-        </Form.Item>
-        <Form.Item name="remark" label="Remark">
-          <Input style={{ maxWidth: 640 }} maxLength={400} />
-        </Form.Item>
+        <FormSection title="Scope" description="Bins and docks to count. Empty locations can be counted too.">
+          <Form.Item name="location_ids" label="Locations to count" rules={[{ required: true, message: "Choose at least one location" }]} style={{ maxWidth: 640 }}>
+            <LocationSelect mode="multiple" types={["BIN", "DOCK"]} allowLocked style={{ width: "100%" }} placeholder="Multiple allowed, empty locations too" />
+          </Form.Item>
+          <Form.Item name="remark" label="Remark" style={{ maxWidth: 640 }}>
+            <Input maxLength={400} placeholder="Optional" />
+          </Form.Item>
+        </FormSection>
         <FormFooter>
           <Button type="primary" htmlType="submit" loading={save.isPending}>
             Start count

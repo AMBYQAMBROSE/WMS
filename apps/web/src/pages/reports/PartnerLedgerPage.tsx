@@ -5,6 +5,7 @@ import { Space, Table } from "antd";
 
 import { apiClient } from "@/api/client";
 import type { PartnerLedgerRow } from "@/api/types";
+import { STICKY_HEADER } from "@/components/ui";
 import { exportReport, presetRange, rangeParams, ReportFilters, TruncatedHint, type Range, type ReportPage } from "@/components/reports";
 import { PartnerSelect } from "@/components/selects";
 
@@ -31,12 +32,13 @@ export default function PartnerLedgerPage() {
         rowKey={(r) => `${r.partner.id}-${r.item.id}`}
         size="small"
         loading={isFetching && !data}
-        style={{ opacity: isFetching && data ? 0.6 : 1 }}
+        className={isFetching && data ? "wms-refreshing" : undefined}
+        sticky={STICKY_HEADER}
         dataSource={data?.rows}
-        scroll={{ x: true }}
+        scroll={{ x: "max-content" }}
         columns={[
           { title: "Partner", render: (_, r) => `${r.partner.code} ${r.partner.name}` },
-          { title: "SKU", render: (_, r) => r.item.sku_code },
+          { title: "SKU", render: (_, r) => <span className="wms-mono">{r.item.sku_code}</span> },
           { title: "Item", render: (_, r) => r.item.name },
           { title: "Unit", render: (_, r) => r.item.base_uom.code },
           { title: "Received", dataIndex: "received", align: "right" },

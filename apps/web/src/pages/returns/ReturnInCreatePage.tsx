@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Button, Card, Form, Input, Space, Spin, message } from "antd";
+import { Alert, Button, Card, Col, Form, Input, Row, message } from "antd";
 import type { Dayjs } from "dayjs";
 import { Link, useNavigate, useSearchParams } from "react-router";
 
@@ -11,7 +11,7 @@ import type { Document, SalesOrder } from "@/api/types";
 import StockLinesEditor, { toLinePayload } from "@/components/StockLinesEditor";
 import { preventEnterSubmit } from "@/components/documents";
 import { CustomerSelect, ReasonSelect } from "@/components/selects";
-import { FormFooter } from "@/components/ui";
+import { DetailSkeleton, FormFooter, FormSection, useUnsavedChanges } from "@/components/ui";
 
 interface LineValues {
   item_id?: string;
@@ -37,6 +37,7 @@ export default function ReturnInCreatePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [form] = Form.useForm<FormValues>();
+  const unsaved = useUnsavedChanges();
 
   const { data: so, isLoading } = useQuery({
     queryKey: ["sales-orders", soId],
@@ -68,6 +69,7 @@ export default function ReturnInCreatePage() {
       return (await apiClient.post<Document>("/returns-in", { ...values, ref_document_id: soId ?? null, lines })).data;
     },
     onSuccess: (doc) => {
+      unsaved.reset();
       message.success(`Created customer return ${doc.doc_no}; post it after inspection`);
       queryClient.invalidateQueries({ queryKey: ["returns-in"] });
       navigate(`/returns-in/${doc.id}`);
@@ -75,7 +77,7 @@ export default function ReturnInCreatePage() {
     onError: showError,
   });
 
-  if (soId && isLoading) return <Spin />;
+  if (soId && isLoading) return <DetailSkeleton />;
 
   return (
     <Card title="New customer return">
@@ -97,20 +99,31 @@ export default function ReturnInCreatePage() {
         initialValues={{ lines: [{ disposition: "RESTOCK" }] }}
         onKeyDown={preventEnterSubmit}
         onFinish={(v) => save.mutate(v)}
+        {...unsaved.formProps}
       >
-        <Space size="large" wrap>
-          <Form.Item name="partner_id" label="Customer" rules={[{ required: true }]}>
-            <CustomerSelect style={{ width: 260 }} disabled={!!so} />
-          </Form.Item>
-          <Form.Item name="reason_code_id" label="Return reason" rules={[{ required: true }]}>
-            <ReasonSelect category="RETURN" style={{ width: 220 }} />
-          </Form.Item>
-          <Form.Item name="remark" label="Remark">
-            <Input style={{ width: 320 }} maxLength={400} />
-          </Form.Item>
-        </Space>
-        <StockLinesEditor form={form} name="lines" locationLabel="Restock location" withDisposition />
-        <FormFooter>
+        <FormSection title="Return details">
+          <Row gutter={16}>
+            <Col xs={24} md={8}>
+              <Form.Item name="partner_id" label="Customer" rules={[{ required: true }]}>
+                <CustomerSelect style={{ width: "100%" }} disabled={!!so} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={8}>
+              <Form.Item name="reason_code_id" label="Return reason" rules={[{ required: true }]}>
+                <ReasonSelect category="RETURN" style={{ width: "100%" }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={8}>
+              <Form.Item name="remark" label="Remark">
+                <Input maxLength={400} placeholder="Optional" />
+              </Form.Item>
+            </Col>
+          </Row>
+        </FormSection>
+        <FormSection title="Lines" description="Restock puts goods back into a location; scrap only records them.">
+          <StockLinesEditor form={form} name="lines" locationLabel="Restock location" withDisposition />
+        </FormSection>
+        <FormFooter note="Created as a draft; post it after inspection">
           <Button type="primary" htmlType="submit" loading={save.isPending}>
             Create return
           </Button>

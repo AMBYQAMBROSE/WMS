@@ -1,16 +1,62 @@
 import { theme, type ThemeConfig } from "antd";
 
 export type ColorMode = "light" | "dark";
+/** What the user picked; "system" follows the operating system setting */
+export type ThemePreference = ColorMode | "system";
+export type Density = "comfortable" | "compact";
 
-/** Brand palette. Everything else derives from antd's algorithm so components stay consistent in light and dark. */
+/**
+ * Design tokens. One neutral scale per mode plus a single indigo accent; status colors live in global.css as CSS variables
+ * (--wms-tone-*) so they can be tuned per mode without touching components. antd components read the values below.
+ */
+export const PALETTE = {
+  light: {
+    primary: "#4f46e5",
+    bgLayout: "#f7f8fa",
+    bgSider: "#fbfbfc",
+    bgContainer: "#ffffff",
+    bgElevated: "#ffffff",
+    bgSubtle: "#f9fafb",
+    bgHover: "#f3f4f6",
+    border: "#e4e6eb",
+    borderSubtle: "#eef0f3",
+    text: "#0f1115",
+    textSecondary: "#545a66",
+    textTertiary: "#7d8390",
+    textQuaternary: "#a9aeb8",
+    success: "#15803d",
+    warning: "#b45309",
+    error: "#dc2626",
+    info: "#2563eb",
+  },
+  dark: {
+    primary: "#6d6ff5",
+    bgLayout: "#0e0f12",
+    bgSider: "#111215",
+    bgContainer: "#16171b",
+    bgElevated: "#1c1d22",
+    bgSubtle: "#191a1f",
+    bgHover: "#202127",
+    border: "#2a2c33",
+    borderSubtle: "#222329",
+    text: "#ecedef",
+    textSecondary: "#a4a8b1",
+    textTertiary: "#7b808a",
+    textQuaternary: "#585c65",
+    success: "#22c55e",
+    warning: "#f59e0b",
+    error: "#f05252",
+    info: "#4f8ff7",
+  },
+} as const;
+
+/** Kept for existing imports: the light-mode brand values */
 export const BRAND = {
-  primary: "#4f46e5",
-  primaryDeep: "#3730a3",
-  accent: "#06b6d4",
-  success: "#16a34a",
-  warning: "#d97706",
-  error: "#dc2626",
-  info: "#2563eb",
+  primary: PALETTE.light.primary,
+  success: PALETTE.light.success,
+  warning: PALETTE.light.warning,
+  error: PALETTE.light.error,
+  info: PALETTE.light.info,
 };
 
 export const FONT_FAMILY =
@@ -18,135 +64,201 @@ export const FONT_FAMILY =
 
 export const MONO_FAMILY = "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
 
-/** Sider is always dark: it anchors the layout and keeps the navigation readable at a glance */
-export const SIDER = {
-  bg: "#0f1222",
-  bgElevated: "#171a2e",
-  border: "rgba(255,255,255,0.06)",
-  text: "rgba(226,229,240,0.72)",
-  textActive: "#ffffff",
-  groupText: "rgba(226,229,240,0.38)",
+/** Shell dimensions, shared by the layout and the CSS (sticky table headers sit under the top bar) */
+export const SHELL = {
+  headerHeight: 56,
+  siderWidth: 248,
+  siderCollapsedWidth: 64,
 };
 
-export function buildTheme(mode: ColorMode): ThemeConfig {
+const prefersReducedMotion = () =>
+  typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+export function buildTheme(mode: ColorMode, density: Density = "comfortable"): ThemeConfig {
   const dark = mode === "dark";
+  const p = PALETTE[mode];
+  const compact = density === "compact";
   return {
     algorithm: dark ? theme.darkAlgorithm : theme.defaultAlgorithm,
     cssVar: {},
     hashed: false,
     token: {
-      colorPrimary: BRAND.primary,
-      colorSuccess: BRAND.success,
-      colorWarning: BRAND.warning,
-      colorError: BRAND.error,
-      colorInfo: BRAND.info,
-      colorLink: BRAND.primary,
-      colorBgLayout: dark ? "#0b0d17" : "#f4f6fb",
-      colorBgContainer: dark ? "#141726" : "#ffffff",
-      colorBgElevated: dark ? "#1b1f33" : "#ffffff",
-      colorBorder: dark ? "#2a2f48" : "#e3e7ef",
-      colorBorderSecondary: dark ? "#232840" : "#edf0f5",
-      colorText: dark ? "#e7e9f3" : "#111827",
-      colorTextSecondary: dark ? "#a3a9c2" : "#4b5563",
-      colorTextTertiary: dark ? "#7c829c" : "#6b7280",
-      colorTextQuaternary: dark ? "#5b6079" : "#9ca3af",
+      colorPrimary: p.primary,
+      colorSuccess: p.success,
+      colorWarning: p.warning,
+      colorError: p.error,
+      colorInfo: p.info,
+      colorLink: p.primary,
+      colorBgLayout: p.bgLayout,
+      colorBgContainer: p.bgContainer,
+      colorBgElevated: p.bgElevated,
+      colorBorder: p.border,
+      colorBorderSecondary: p.borderSubtle,
+      colorText: p.text,
+      colorTextSecondary: p.textSecondary,
+      colorTextTertiary: p.textTertiary,
+      colorTextQuaternary: p.textQuaternary,
+      colorFillQuaternary: dark ? "rgba(255,255,255,0.03)" : "rgba(15,17,21,0.025)",
       fontFamily: FONT_FAMILY,
       fontFamilyCode: MONO_FAMILY,
       fontSize: 14,
+      lineHeight: 1.5,
       borderRadius: 8,
-      borderRadiusLG: 12,
+      borderRadiusLG: 10,
       borderRadiusSM: 6,
-      controlHeight: 36,
-      controlHeightSM: 28,
-      controlHeightLG: 42,
+      borderRadiusXS: 4,
+      controlHeight: 34,
+      controlHeightSM: 26,
+      controlHeightLG: 40,
       boxShadow: dark
-        ? "0 8px 24px rgba(0,0,0,0.45)"
-        : "0 1px 2px rgba(16,24,40,0.04), 0 8px 24px rgba(16,24,40,0.08)",
+        ? "0 0 0 1px rgba(255,255,255,0.04), 0 8px 24px rgba(0,0,0,0.5)"
+        : "0 0 0 1px rgba(15,17,21,0.04), 0 4px 12px rgba(15,17,21,0.06), 0 12px 32px -8px rgba(15,17,21,0.10)",
       boxShadowSecondary: dark
-        ? "0 12px 32px rgba(0,0,0,0.5)"
-        : "0 4px 6px -2px rgba(16,24,40,0.05), 0 12px 32px -4px rgba(16,24,40,0.12)",
+        ? "0 0 0 1px rgba(255,255,255,0.05), 0 12px 32px rgba(0,0,0,0.55)"
+        : "0 0 0 1px rgba(15,17,21,0.05), 0 8px 16px -4px rgba(15,17,21,0.08), 0 20px 40px -8px rgba(15,17,21,0.14)",
+      motion: !prefersReducedMotion(),
+      motionDurationFast: "0.12s",
+      motionDurationMid: "0.18s",
+      motionDurationSlow: "0.24s",
       wireframe: false,
     },
     components: {
       Layout: {
-        siderBg: SIDER.bg,
+        siderBg: p.bgSider,
         headerBg: "transparent",
-        headerHeight: 64,
-        headerPadding: "0 24px",
-        bodyBg: dark ? "#0b0d17" : "#f4f6fb",
+        headerHeight: SHELL.headerHeight,
+        headerPadding: "0 20px",
+        bodyBg: p.bgLayout,
       },
       Menu: {
-        darkItemBg: SIDER.bg,
-        darkSubMenuItemBg: SIDER.bg,
-        darkPopupBg: SIDER.bgElevated,
-        darkItemColor: SIDER.text,
-        darkItemHoverColor: SIDER.textActive,
-        darkItemHoverBg: "rgba(255,255,255,0.06)",
-        darkItemSelectedBg: BRAND.primary,
-        darkItemSelectedColor: "#ffffff",
-        darkGroupTitleColor: SIDER.groupText,
-        itemHeight: 38,
-        itemBorderRadius: 8,
-        itemMarginInline: 10,
-        subMenuItemBorderRadius: 8,
+        itemBg: "transparent",
+        subMenuItemBg: "transparent",
+        itemColor: p.textSecondary,
+        itemHoverColor: p.text,
+        itemHoverBg: p.bgHover,
+        itemActiveBg: p.bgHover,
+        itemSelectedBg: dark ? "rgba(109,111,245,0.16)" : "rgba(79,70,229,0.08)",
+        itemSelectedColor: dark ? "#c7c8ff" : p.primary,
+        groupTitleColor: p.textTertiary,
+        popupBg: p.bgElevated,
+        itemHeight: 32,
+        itemBorderRadius: 6,
+        itemMarginInline: 8,
+        itemMarginBlock: 1,
+        subMenuItemBorderRadius: 6,
         iconSize: 16,
-        collapsedIconSize: 18,
+        collapsedIconSize: 16,
+        iconMarginInlineEnd: 10,
+        fontSize: 13.5,
+        activeBarBorderWidth: 0,
       },
       Card: {
-        headerFontSize: 15,
+        headerFontSize: 14,
         headerHeight: 52,
-        headerHeightSM: 44,
+        headerHeightSM: 42,
         paddingLG: 20,
       },
       Table: {
-        headerBg: dark ? "#181c2e" : "#f8f9fc",
-        headerColor: dark ? "#a3a9c2" : "#4b5563",
+        headerBg: p.bgSubtle,
+        headerColor: p.textTertiary,
         headerSplitColor: "transparent",
-        rowHoverBg: dark ? "#1a1e33" : "#f5f6ff",
-        borderColor: dark ? "#232840" : "#eef0f5",
-        cellPaddingBlock: 12,
-        cellPaddingBlockSM: 8,
-        headerBorderRadius: 10,
+        headerSortActiveBg: p.bgHover,
+        headerSortHoverBg: p.bgHover,
+        rowHoverBg: dark ? "#1b1c21" : "#f8f9fb",
+        rowSelectedBg: dark ? "rgba(109,111,245,0.10)" : "rgba(79,70,229,0.05)",
+        rowSelectedHoverBg: dark ? "rgba(109,111,245,0.14)" : "rgba(79,70,229,0.08)",
+        borderColor: p.borderSubtle,
+        cellPaddingBlock: compact ? 7 : 11,
+        cellPaddingInline: compact ? 12 : 16,
+        cellPaddingBlockMD: compact ? 6 : 9,
+        cellPaddingBlockSM: compact ? 5 : 7,
+        cellPaddingInlineMD: compact ? 12 : 16,
+        cellPaddingInlineSM: compact ? 10 : 14,
+        cellFontSize: compact ? 13 : 14,
+        headerBorderRadius: 0,
+        footerBg: p.bgSubtle,
       },
       Button: {
         fontWeight: 500,
-        primaryShadow: "0 1px 2px rgba(79,70,229,0.25)",
+        primaryShadow: "none",
         defaultShadow: "none",
+        dangerShadow: "none",
+        paddingInline: 14,
+      },
+      Input: {
+        activeShadow: dark ? "0 0 0 3px rgba(109,111,245,0.22)" : "0 0 0 3px rgba(79,70,229,0.12)",
+      },
+      Select: {
+        optionSelectedBg: dark ? "rgba(109,111,245,0.16)" : "rgba(79,70,229,0.07)",
       },
       Tag: {
-        defaultBg: dark ? "#232840" : "#f3f4f6",
+        defaultBg: p.bgHover,
+        defaultColor: p.textSecondary,
       },
       Segmented: {
-        itemSelectedBg: dark ? "#2a2f48" : "#ffffff",
-        trackBg: dark ? "#0f1222" : "#eef0f5",
+        itemSelectedBg: dark ? "#2a2c33" : "#ffffff",
+        trackBg: dark ? "#111215" : "#eef0f3",
+        trackPadding: 3,
       },
       Descriptions: {
-        labelBg: dark ? "#181c2e" : "#f8f9fc",
-        itemPaddingBottom: 12,
+        labelBg: p.bgSubtle,
+        itemPaddingBottom: 14,
+        colonMarginRight: 0,
+        colonMarginLeft: 0,
       },
       Modal: {
-        titleFontSize: 17,
+        titleFontSize: 16,
+        contentBg: p.bgElevated,
+        headerBg: p.bgElevated,
+        footerBg: p.bgElevated,
+      },
+      Drawer: {
+        colorBgElevated: p.bgElevated,
       },
       Statistic: {
-        contentFontSize: 26,
+        contentFontSize: 24,
       },
       Tabs: {
         titleFontSize: 14,
-        horizontalItemPadding: "12px 4px",
+        horizontalItemPadding: "12px 2px",
+        horizontalItemGutter: 24,
+        inkBarColor: p.primary,
+      },
+      Breadcrumb: {
+        itemColor: p.textTertiary,
+        lastItemColor: p.text,
+        linkColor: p.textTertiary,
+        linkHoverColor: p.text,
+        separatorColor: p.textQuaternary,
+        fontSize: 13,
+      },
+      Tooltip: {
+        colorBgSpotlight: dark ? "#2a2c33" : "#16171b",
+      },
+      Progress: {
+        defaultColor: p.primary,
+        remainingColor: dark ? "rgba(255,255,255,0.08)" : "rgba(15,17,21,0.06)",
+      },
+      Alert: {
+        withDescriptionPadding: "14px 16px",
       },
     },
   };
 }
 
-/** Accent colors for icons and stat cards; each pairs a strong tone with a soft background */
+/**
+ * Tones for icons, stat cards and status pills. Values are CSS variables (defined per mode in global.css), so one
+ * component renders correctly in light and dark without reading the current mode.
+ */
+const tone = (name: string) => ({ fg: `var(--wms-tone-${name}-fg)`, bg: `var(--wms-tone-${name}-bg)` });
 export const ACCENTS = {
-  indigo: { fg: "#4f46e5", bg: "rgba(79,70,229,0.12)" },
-  cyan: { fg: "#0891b2", bg: "rgba(8,145,178,0.12)" },
-  green: { fg: "#16a34a", bg: "rgba(22,163,74,0.12)" },
-  amber: { fg: "#d97706", bg: "rgba(217,119,6,0.14)" },
-  red: { fg: "#dc2626", bg: "rgba(220,38,38,0.12)" },
-  violet: { fg: "#7c3aed", bg: "rgba(124,58,237,0.12)" },
-  blue: { fg: "#2563eb", bg: "rgba(37,99,235,0.12)" },
-  slate: { fg: "#64748b", bg: "rgba(100,116,139,0.14)" },
+  indigo: tone("indigo"),
+  cyan: tone("cyan"),
+  green: tone("green"),
+  amber: tone("amber"),
+  red: tone("red"),
+  violet: tone("violet"),
+  blue: tone("blue"),
+  slate: tone("slate"),
 } as const;
 export type Accent = keyof typeof ACCENTS;

@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Alert, Button, Card, DatePicker, Form, Input, InputNumber, Space, Table, message } from "antd";
+import { Alert, Button, Card, DatePicker, Form, Input, InputNumber, Table, Tooltip, message } from "antd";
+import { DeleteOutlined, PlusOutlined, SplitCellsOutlined } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
 import { useNavigate } from "react-router";
 
@@ -10,7 +11,7 @@ import { showError } from "@/api/errors";
 import type { Document } from "@/api/types";
 import { preventEnterSubmit } from "@/components/documents";
 import { ItemSelect, LocationSelect, UomSelect, useItemRecords } from "@/components/selects";
-import { FormFooter } from "@/components/ui";
+import { FormFooter, FormSection, useUnsavedChanges } from "@/components/ui";
 
 interface LineValues {
   item_id?: string;
@@ -44,6 +45,7 @@ export default function TransferForm({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [form] = Form.useForm<FormValues>();
+  const unsaved = useUnsavedChanges();
 
   // Fill the form once per source document, not on every refetch (live updates, window focus): that would wipe the user's edits
   const filledFrom = useRef<string>(undefined);
@@ -76,6 +78,7 @@ export default function TransferForm({
       ).data;
     },
     onSuccess: (doc) => {
+      unsaved.reset();
       message.success(`Created ${docLabel.toLowerCase()} ${doc.doc_no}; post it once the goods are moved`);
       queryClient.invalidateQueries({ queryKey: [path] });
       navigate(`/${path}/${doc.id}`);
@@ -98,10 +101,17 @@ export default function TransferForm({
         initialValues={{ lines: [{}] }}
         onKeyDown={preventEnterSubmit}
         onFinish={(v) => save.mutate(v)}
+        {...unsaved.formProps}
       >
-        <Form.Item name="remark" label="Remark">
-          <Input style={{ width: 320 }} maxLength={400} />
-        </Form.Item>
+        <FormSection title="Details">
+          <Form.Item name="remark" label="Remark" style={{ maxWidth: 520 }}>
+            <Input maxLength={400} placeholder="Optional" />
+          </Form.Item>
+        </FormSection>
+        <FormSection
+          title="Lines"
+          description={sourceGrn ? "Prefilled from the goods receipt. Split a line to put one batch into several bins." : "One line per item, batch and location pair."}
+        >
         <Form.List name="lines">
           {(fields, { add, remove }) => (
             <>
@@ -178,34 +188,47 @@ export default function TransferForm({
                     ),
                   },
                   {
-                    title: "Actions",
+                    title: "",
+                    width: 84,
                     render: (_, f) => (
-                      <Space>
-                        <Button
-                          size="small"
-                          onClick={() =>
-                            add({ ...form.getFieldValue(["lines", f.name]), qty: undefined, to_location_id: undefined }, f.name + 1)
-                          }
-                        >
-                          Split
-                        </Button>
-                        <Button size="small" onClick={() => remove(f.name)} disabled={fields.length === 1}>
-                          Remove
-                        </Button>
-                      </Space>
+                      <span style={{ display: "inline-flex", gap: 2 }}>
+                        <Tooltip title="Split into another line">
+                          <Button
+                            type="text"
+                            size="small"
+                            icon={<SplitCellsOutlined />}
+                            aria-label={`Split line ${f.name + 1}`}
+                            onClick={() =>
+                              add({ ...form.getFieldValue(["lines", f.name]), qty: undefined, to_location_id: undefined }, f.name + 1)
+                            }
+                          />
+                        </Tooltip>
+                        <Tooltip title="Remove line">
+                          <Button
+                            type="text"
+                            size="small"
+                            danger
+                            icon={<DeleteOutlined />}
+                            aria-label={`Remove line ${f.name + 1}`}
+                            onClick={() => remove(f.name)}
+                            disabled={fields.length === 1}
+                          />
+                        </Tooltip>
+                      </span>
                     ),
                   },
                 ]}
               />
               {!sourceGrn && (
-                <Button type="dashed" style={{ marginTop: 8 }} onClick={() => add({})}>
+                <Button type="dashed" block icon={<PlusOutlined />} style={{ marginTop: 12 }} onClick={() => add({})}>
                   Add line
                 </Button>
               )}
             </>
           )}
         </Form.List>
-        <FormFooter>
+        </FormSection>
+        <FormFooter note="Created as a draft; post it once the goods are moved">
           <Button
             type="primary"
             htmlType="submit"

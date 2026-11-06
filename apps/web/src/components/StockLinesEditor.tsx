@@ -63,7 +63,7 @@ export default function StockLinesEditor({
                 title: "Quantity",
                 render: (_, f) => (
                   <Form.Item name={[f.name, "qty"]} noStyle rules={[{ required: true }]}>
-                    <InputNumber min={0.0001} />
+                    <InputNumber min={0.0001} aria-label={`Quantity, line ${f.name + 1}`} />
                   </Form.Item>
                 ),
               },
@@ -90,7 +90,7 @@ export default function StockLinesEditor({
                       <LocationSelect types={locationTypes} style={{ width: 170 }} />
                     </Form.Item>
                   ) : (
-                    "Not stocked"
+                    <span className="wms-empty-value">Not stocked</span>
                   ),
               },
               {
@@ -119,7 +119,7 @@ export default function StockLinesEditor({
                 title: "",
                 width: 48,
                 render: (_, f) => (
-                  <Button type="text" danger icon={<DeleteOutlined />} onClick={() => remove(f.name)} disabled={fields.length === 1} aria-label="Remove" />
+                  <Button type="text" size="small" danger icon={<DeleteOutlined />} onClick={() => remove(f.name)} disabled={fields.length === 1} aria-label={`Remove line ${f.name + 1}`} />
                 ),
               },
             ]}

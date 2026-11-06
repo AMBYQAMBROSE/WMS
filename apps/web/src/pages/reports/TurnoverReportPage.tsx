@@ -5,6 +5,7 @@ import { Alert, Input, Space, Table } from "antd";
 
 import { apiClient } from "@/api/client";
 import type { TurnoverRow } from "@/api/types";
+import { STICKY_HEADER } from "@/components/ui";
 import { exportReport, presetRange, rangeParams, ReportFilters, TruncatedHint, type Range, type ReportPage } from "@/components/reports";
 
 /** Stock turnover (Ninso TurnOverReport) */
@@ -23,7 +24,7 @@ export default function TurnoverReportPage() {
   return (
     <Space orientation="vertical" style={{ width: "100%" }}>
       <ReportFilters range={range} onRangeChange={setRange} onExport={exportCsv} exportDisabled={!data?.total}>
-        <Input.Search allowClear placeholder="SKU / item name" style={{ width: 220 }} onSearch={setKeyword} />
+        <Input.Search allowClear placeholder="SKU / item name" aria-label="Search SKU or item name" style={{ width: 220 }} onSearch={setKeyword} />
       </ReportFilters>
       <Alert
         type="info"
@@ -35,11 +36,12 @@ export default function TurnoverReportPage() {
         rowKey={(r) => r.item.id}
         size="small"
         loading={isFetching && !data}
-        style={{ opacity: isFetching && data ? 0.6 : 1 }}
+        className={isFetching && data ? "wms-refreshing" : undefined}
+        sticky={STICKY_HEADER}
         dataSource={data?.rows}
-        scroll={{ x: true }}
+        scroll={{ x: "max-content" }}
         columns={[
-          { title: "SKU", render: (_, r) => r.item.sku_code, fixed: "left" },
+          { title: "SKU", render: (_, r) => <span className="wms-mono">{r.item.sku_code}</span>, fixed: "left" },
           { title: "Item", render: (_, r) => r.item.name },
           { title: "Unit", render: (_, r) => r.item.base_uom.code },
           { title: "Opening", dataIndex: "opening", align: "right" },

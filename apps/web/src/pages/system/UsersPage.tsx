@@ -1,12 +1,14 @@
 import { useState } from "react";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Form, Input, Modal, Select, Space, Switch, Table, Tag, message } from "antd";
+import { KeyOutlined, PlusOutlined } from "@ant-design/icons";
+import { Avatar, Button, Form, Input, Modal, Select, Space, Switch, Table, Typography, message } from "antd";
 
 import { apiClient } from "@/api/client";
 import { showError } from "@/api/errors";
 import { useCan, useMe } from "@/api/me";
 import type { components } from "@/api/schema";
+import { Pill, STICKY_HEADER, Toolbar } from "@/components/ui";
 
 type User = components["schemas"]["UserRead"];
 
@@ -90,46 +92,79 @@ export default function UsersPage() {
 
   return (
     <Space orientation="vertical" style={{ width: "100%" }}>
-      <Space>
-        {can("user.create") && (
-          <Button type="primary" onClick={() => open("new")}>
-            New user
-          </Button>
-        )}
-        <Input.Search
-          allowClear
-          placeholder="Search by username/name"
-          style={{ width: 240 }}
-          onChange={(e) => setKeyword(e.target.value)}
-          data-testid="user-search"
-        />
-      </Space>
+      <Toolbar
+        left={
+          <>
+            <Input.Search
+              allowClear
+              placeholder="Search by username/name"
+              aria-label="Search users"
+              style={{ width: 280 }}
+              onChange={(e) => setKeyword(e.target.value)}
+              data-testid="user-search"
+            />
+            {users && <span className="wms-toolbar-meta">{shown.length} of {users.length} users</span>}
+          </>
+        }
+        right={
+          can("user.create") && (
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => open("new")}>
+              New user
+            </Button>
+          )
+        }
+      />
       <Table<User>
         rowKey="id"
         loading={isLoading}
         dataSource={shown}
+        sticky={STICKY_HEADER}
+        scroll={{ x: "max-content" }}
+        pagination={{ pageSize: 50, hideOnSinglePage: true }}
         columns={[
-          { title: "Username", dataIndex: "username" },
-          { title: "Name", dataIndex: "display_name" },
-          { title: "Email", dataIndex: "email" },
-          { title: "Roles", render: (_, u) => u.roles.map((r) => <Tag key={r.id}>{r.name}</Tag>) },
+          {
+            title: "User",
+            dataIndex: "display_name",
+            render: (_, u) => (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+                <Avatar size={28} className="wms-avatar">
+                  {u.display_name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join("") || "?"}
+                </Avatar>
+                <span style={{ lineHeight: 1.25 }}>
+                  <span style={{ display: "block", fontWeight: 500 }}>{u.display_name}</span>
+                  <Typography.Text type="secondary" style={{ fontSize: 12.5 }}>@{u.username}</Typography.Text>
+                </span>
+              </span>
+            ),
+          },
+          { title: "Email", dataIndex: "email", render: (v: string | null) => v || <span className="wms-empty-value">—</span> },
+          {
+            title: "Roles",
+            render: (_, u) =>
+              u.roles.length ? (
+                <span className="wms-pill-list">
+                  {u.roles.map((r) => (
+                    <Pill key={r.id}>{r.name}</Pill>
+                  ))}
+                </span>
+              ) : (
+                <span className="wms-empty-value">No roles</span>
+              ),
+          },
           {
             title: "Status",
             dataIndex: "is_active",
-            render: (v: boolean) => (v ? <Tag color="green">Active</Tag> : <Tag color="red">Disabled</Tag>),
+            render: (v: boolean) => (v ? <Pill tone="green" dot>Active</Pill> : <Pill tone="slate" dot>Disabled</Pill>),
           },
           {
             title: "Actions",
             render: (_, u) =>
               can("user.update") && (
-                <Space>
-                  <Button size="small" onClick={() => open(u)}>
+                <Space size={4}>
+                  <Button size="small" type="text" onClick={() => open(u)} aria-label={`Edit ${u.username}`}>
                     Edit
                   </Button>
-                  <Button
-                    size="small"
-                    onClick={() => setResetting(u)}
-                  >
+                  <Button size="small" type="text" icon={<KeyOutlined />} onClick={() => setResetting(u)} aria-label={`Reset password for ${u.username}`}>
                     Reset password
                   </Button>
                 </Space>

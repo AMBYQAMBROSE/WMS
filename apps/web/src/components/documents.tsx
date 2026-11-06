@@ -24,13 +24,18 @@ import {
   type ListPrefs,
 } from "@/components/ListTools";
 import StatusTag from "@/components/StatusTag";
-import { Toolbar } from "@/components/ui";
+import { ErrorState, STICKY_HEADER, Toolbar, formatQty } from "@/components/ui";
 import { STATUS_LABELS } from "@/constants/labels";
 
 // Lists load the newest documents matching the filters, up to this many
 const LIST_LIMIT = 200;
 
 export const formatDateTime = (v: string | null) => (v ? dayjs(v + "Z").format("YYYY-MM-DD HH:mm") : "");
+
+/** A right-aligned quantity column with thousands separators and tabular figures */
+export function qtyColumn<T>(title: string, dataIndex: keyof T & string, extra: Partial<ColumnsType<T>[number]> = {}): ColumnsType<T>[number] {
+  return { title, dataIndex, align: "right", render: (v: number | null) => formatQty(v), ...extra } as ColumnsType<T>[number];
+}
 
 // Barcode scanners send Enter after every scan, so document entry forms must not submit on Enter, only via the button
 export function preventEnterSubmit(e: KeyboardEvent<HTMLFormElement>) {
@@ -146,7 +151,7 @@ export function DocumentListPage({
     return () => clearTimeout(timer);
   }, [keywordInput]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: [path, "list", filters, extraParams],
     queryFn: async () =>
       (
@@ -171,7 +176,7 @@ export function DocumentListPage({
     },
     { title: "Status", dataIndex: "status", render: (v: string) => <StatusTag status={v} /> },
     ...columns,
-    { title: "Created", dataIndex: "created_at", render: (v: string | null) => <Typography.Text type="secondary">{formatDateTime(v)}</Typography.Text> },
+    { title: "Created", dataIndex: "created_at", render: (v: string | null) => <Typography.Text type="secondary" style={{ whiteSpace: "nowrap" }}>{formatDateTime(v)}</Typography.Text> },
   ];
   // The document number always shows: it is how a row is recognised and opened
   const configurable = allColumns.slice(1).map((c) => String(c.title));
@@ -228,7 +233,7 @@ export function DocumentListPage({
       </div>
       {selected.length > 0 && allowedActions.length > 0 && (
         <div className="wms-batch-bar" role="region" aria-label="Batch actions">
-          <Typography.Text strong>{selected.length} selected</Typography.Text>
+          <span className="wms-batch-count">{selected.length} selected</span>
           {allowedActions.map((action) => {
             const eligible = selected.filter((d) => action.statuses.includes(d.status)).length;
             const skipped = selected.length - eligible;
@@ -251,9 +256,16 @@ export function DocumentListPage({
           </Button>
         </div>
       )}
+      {error && !data ? (
+        <ErrorState title="Could not load the list" error={error} onRetry={() => refetch()} />
+      ) : (
       <Table<DocumentSummary>
         rowKey="id"
         loading={isLoading}
+        className={isFetching && !isLoading ? "wms-refreshing" : undefined}
+        sticky={STICKY_HEADER}
+        scroll={{ x: "max-content" }}
+        rowClassName="wms-row-link"
         dataSource={data}
         rowSelection={
           allowedActions.length
@@ -275,10 +287,10 @@ export function DocumentListPage({
             // Clicking anywhere on the row opens the document, except on links, buttons and the selection checkbox
             if (!(e.target as HTMLElement).closest("a,button,.ant-table-selection-column")) navigate(`/${path}/${r.id}`);
           },
-          style: { cursor: "pointer" },
         })}
         columns={visibleColumns}
       />
+      )}
       {batch.modal}
     </Space>
   );
@@ -297,8 +309,9 @@ export function DocumentLinesTable({
       size="small"
       pagination={false}
       dataSource={lines}
+      scroll={{ x: "max-content" }}
       columns={[
-        { title: "Line", dataIndex: "line_no", width: 60 },
+        { title: "#", dataIndex: "line_no", width: 48, render: (v: number) => <Typography.Text type="secondary" className="wms-num">{v}</Typography.Text> },
         { title: "SKU", render: (_, l) => <span className="wms-mono">{l.item.sku_code}</span> },
         { title: "Item", render: (_, l) => l.item.name },
         { title: "Unit", render: (_, l) => l.uom.code, width: 70 },

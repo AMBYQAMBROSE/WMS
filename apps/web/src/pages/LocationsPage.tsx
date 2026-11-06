@@ -2,19 +2,29 @@ import { useState } from "react";
 
 import { PlusOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Checkbox, Form, Input, Select, Space, Table } from "antd";
+import { Button, Checkbox, Form, Input, Select, Space, Table, Typography } from "antd";
 
 import { apiClient } from "@/api/client";
 import { useCan } from "@/api/me";
 import type { Location } from "@/api/types";
 import MasterSearch, { MASTER_LIST_LIMIT } from "@/components/MasterSearch";
 import { useColumnPrefs } from "@/components/ListTools";
-import { YesNo } from "@/components/ui";
+import { Pill, STICKY_HEADER, YesNo } from "@/components/ui";
 import CreateModal from "@/components/CreateModal";
 import { LocationSelect } from "@/components/selects";
 import { LOCATION_TYPE_LABELS } from "@/constants/labels";
 
 const yesNo = (v: boolean) => <YesNo value={v} />;
+
+/** Hierarchy levels get distinct but quiet tones; docks (receiving/shipping) stand out */
+const TYPE_TONE: Record<string, "indigo" | "blue" | "cyan" | "violet" | "slate" | "amber"> = {
+  WAREHOUSE: "indigo",
+  ZONE: "violet",
+  AISLE: "blue",
+  RACK: "cyan",
+  BIN: "slate",
+  DOCK: "amber",
+};
 
 export default function LocationsPage() {
   const can = useCan();
@@ -26,12 +36,12 @@ export default function LocationsPage() {
   });
 
   const { columns, settings: columnSettings } = useColumnPrefs<Location>("locations", [
-    { title: "Code", dataIndex: "code" },
+    { title: "Code", dataIndex: "code", render: (v: string) => <span className="wms-mono">{v}</span> },
     { title: "Name", dataIndex: "name" },
-    { title: "Type", dataIndex: "location_type", render: (v: string) => LOCATION_TYPE_LABELS[v] ?? v },
-    { title: "Path", dataIndex: "path" },
+    { title: "Type", dataIndex: "location_type", render: (v: string) => <Pill tone={TYPE_TONE[v] ?? "slate"}>{LOCATION_TYPE_LABELS[v] ?? v}</Pill> },
+    { title: "Path", dataIndex: "path", render: (v: string) => <Typography.Text type="secondary" className="wms-code">{v}</Typography.Text> },
     { title: "Pickable", dataIndex: "is_pickable", render: yesNo },
-    { title: "Locked", dataIndex: "is_locked", render: yesNo },
+    { title: "Locked", dataIndex: "is_locked", render: (v: boolean) => (v ? <Pill tone="red" dot>Locked</Pill> : <YesNo value={false} />) },
   ]);
 
   return (
@@ -52,6 +62,9 @@ export default function LocationsPage() {
       <Table<Location>
         rowKey="id"
         loading={isLoading}
+        sticky={STICKY_HEADER}
+        scroll={{ x: "max-content" }}
+        pagination={{ pageSize: 50, showSizeChanger: true, showTotal: (t) => `${t.toLocaleString()} records` }}
         dataSource={data}
         columns={columns}
       />

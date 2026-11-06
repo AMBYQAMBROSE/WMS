@@ -9,7 +9,7 @@ import { useCan } from "@/api/me";
 import type { BusinessPartner } from "@/api/types";
 import MasterSearch, { MASTER_LIST_LIMIT } from "@/components/MasterSearch";
 import { useColumnPrefs } from "@/components/ListTools";
-import { YesNo } from "@/components/ui";
+import { Pill, STICKY_HEADER, YesNo } from "@/components/ui";
 import CreateModal from "@/components/CreateModal";
 import { PARTNER_TYPE_LABELS } from "@/constants/labels";
 
@@ -24,9 +24,9 @@ export default function BusinessPartnersPage() {
   });
 
   const { columns, settings: columnSettings } = useColumnPrefs<BusinessPartner>("business-partners", [
-    { title: "Code", dataIndex: "code" },
+    { title: "Code", dataIndex: "code", render: (v: string) => <span className="wms-mono">{v}</span> },
     { title: "Name", dataIndex: "name" },
-    { title: "Type", dataIndex: "partner_type", render: (v: string) => PARTNER_TYPE_LABELS[v] ?? v },
+    { title: "Type", dataIndex: "partner_type", render: (v: string) => <Pill tone={v === "customer" ? "blue" : v === "supplier" ? "violet" : "cyan"}>{PARTNER_TYPE_LABELS[v] ?? v}</Pill> },
     { title: "Contact", dataIndex: "contact_name" },
     { title: "Phone", dataIndex: "contact_phone" },
     { title: "Active", dataIndex: "is_active", render: (v: boolean) => <YesNo value={v} /> },
@@ -50,6 +50,9 @@ export default function BusinessPartnersPage() {
       <Table<BusinessPartner>
         rowKey="id"
         loading={isLoading}
+        sticky={STICKY_HEADER}
+        scroll={{ x: "max-content" }}
+        pagination={{ pageSize: 50, showSizeChanger: true, showTotal: (t) => `${t.toLocaleString()} records` }}
         dataSource={data}
         columns={columns}
       />

@@ -7,13 +7,13 @@ import {
   ThunderboltOutlined,
 } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Button, Card, Col, Descriptions, Row, Space, Table, Tag, Typography } from "antd";
+import { Alert, Button, Card, Col, Descriptions, Row, Space, Table, Typography } from "antd";
 import dayjs from "dayjs";
 
 import { apiClient } from "@/api/client";
 import { useCan } from "@/api/me";
 import type { SystemStatus } from "@/api/types";
-import { SectionTitle, StatCard } from "@/components/ui";
+import { Pill, SectionTitle, StatCard } from "@/components/ui";
 
 function since(v: string | null | undefined) {
   if (!v) return "never";
@@ -65,6 +65,7 @@ export default function SystemHealthPage() {
             value={data.worker.healthy ? "Running" : "Stopped"}
             icon={<CloudServerOutlined />}
             accent={data.worker.healthy ? "green" : "red"}
+            alert={!data.worker.healthy}
             hint={`Last heartbeat ${since(data.worker.last_seen)}`}
           />
         </Col>
@@ -105,14 +106,14 @@ export default function SystemHealthPage() {
               <Descriptions.Item label="Version">{data.version}</Descriptions.Item>
               <Descriptions.Item label="Database schema">
                 <Typography.Text code>{data.db_revision ?? "unknown"}</Typography.Text>{" "}
-                {migrationOk ? <Tag color="green">up to date</Tag> : <Tag color="red">expected {data.code_revision}</Tag>}
+                {migrationOk ? <Pill tone="green" dot>Up to date</Pill> : <Pill tone="red" dot>Expected {data.code_revision}</Pill>}
               </Descriptions.Item>
               <Descriptions.Item label="Read committed snapshot">
-                {data.database.read_committed_snapshot == null ? "unknown" : data.database.read_committed_snapshot ? "On" : <Tag color="orange">Off</Tag>}
+                {data.database.read_committed_snapshot == null ? "unknown" : data.database.read_committed_snapshot ? <Pill tone="green" dot>On</Pill> : <Pill tone="amber" dot>Off</Pill>}
               </Descriptions.Item>
               <Descriptions.Item label="OpenTelemetry">
                 {data.telemetry.otel_enabled ? (
-                  <Tag color="green" icon={<ThunderboltOutlined />}>Exporting traces and metrics</Tag>
+                  <Pill tone="green" icon={<ThunderboltOutlined />}>Exporting traces and metrics</Pill>
                 ) : (
                   <Typography.Text type="secondary">Off (set OTEL_EXPORTER_OTLP_ENDPOINT to send to a collector)</Typography.Text>
                 )}

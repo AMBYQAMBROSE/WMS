@@ -1,9 +1,9 @@
-import { Card, Descriptions, Space, Spin } from "antd";
+import { Card, Descriptions, Space } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { Link, useParams } from "react-router";
 
 import type { Document, DocumentLine } from "@/api/types";
-import { DocTitle } from "@/components/ui";
+import { DESC_COLUMNS, DetailSkeleton, DocTitle, ErrorState } from "@/components/ui";
 import { ActionButton, DocumentLinesTable, formatDateTime, useDocument, useDocumentAction } from "@/components/documents";
 
 /** Detail page for two-step documents, draft -> post/cancel (shared by customer returns, returns to supplier and repacks) */
@@ -29,9 +29,10 @@ export default function SimpleDocDetail({
   lineFilter?: (doc: Document) => { title: string; lines: DocumentLine[] }[];
 }) {
   const { id = "" } = useParams();
-  const { data: doc, isLoading } = useDocument(path, id);
+  const { data: doc, isLoading, error, refetch } = useDocument(path, id);
   const action = useDocumentAction(path, id);
-  if (isLoading || !doc) return <Spin />;
+  if (isLoading) return <DetailSkeleton />;
+  if (!doc) return <ErrorState title={`Could not load this ${docLabel.toLowerCase()}`} error={error} onRetry={() => refetch()} back={{ to: `/${path}`, label: "Back to the list" }} />;
   const run = (name: string) => () => action.mutate(name);
   const groups = lineFilter ? lineFilter(doc) : [{ title: "Lines", lines: doc.lines }];
 
@@ -41,14 +42,14 @@ export default function SimpleDocDetail({
         title={<DocTitle label={docLabel} no={doc.doc_no} status={doc.status} historyOf={doc.id} />}
         extra={
           doc.status === "DRAFT" && (
-            <Space>
+            <Space wrap>
               <ActionButton perm={`${permPrefix}.post`} type="primary" label="Post" confirm={postConfirm} onConfirm={run("post")} loading={action.isPending} />
               <ActionButton perm={`${permPrefix}.cancel`} danger label="Cancel" confirm={`Cancel this ${docLabel.toLowerCase()}?`} onConfirm={run("cancel")} loading={action.isPending} />
             </Space>
           )
         }
       >
-        <Descriptions column={3}>
+        <Descriptions column={DESC_COLUMNS}>
           {partnerLabel && (
             <Descriptions.Item label={partnerLabel}>
               {doc.partner?.code} {doc.partner?.name}
@@ -56,7 +57,7 @@ export default function SimpleDocDetail({
           )}
           {refPath && (
             <Descriptions.Item label="Source document">
-              {doc.ref_document ? <Link to={`/${refPath}/${doc.ref_document.id}`}>{doc.ref_document.doc_no}</Link> : "None"}
+              {doc.ref_document ? <Link className="wms-mono" to={`/${refPath}/${doc.ref_document.id}`}>{doc.ref_document.doc_no}</Link> : <span className="wms-empty-value">None</span>}
             </Descriptions.Item>
           )}
           {doc.reason_code && (
@@ -64,8 +65,8 @@ export default function SimpleDocDetail({
               {doc.reason_code.code} {doc.reason_code.name}
             </Descriptions.Item>
           )}
-          <Descriptions.Item label="Posted">{formatDateTime(doc.posted_at)}</Descriptions.Item>
-          <Descriptions.Item label="Remark">{doc.remark}</Descriptions.Item>
+          <Descriptions.Item label="Posted">{formatDateTime(doc.posted_at) || <span className="wms-empty-value">Not yet</span>}</Descriptions.Item>
+          <Descriptions.Item label="Remark">{doc.remark || <span className="wms-empty-value">—</span>}</Descriptions.Item>
         </Descriptions>
       </Card>
       {groups.map((g) => (

@@ -146,7 +146,7 @@ export default function TrendChart<T extends object>({
             <defs>
               {series.map((s) => (
                 <linearGradient key={s.key} id={`trend-fill-${s.key}`} x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stopColor={s.color} stopOpacity="0.18" />
+                  <stop offset="0%" stopColor={s.color} stopOpacity="0.16" />
                   <stop offset="100%" stopColor={s.color} stopOpacity="0" />
                 </linearGradient>
               ))}
@@ -155,6 +155,7 @@ export default function TrendChart<T extends object>({
               series.map((s) => (
                 <polygon
                   key={`area-${s.key}`}
+                  className="wms-chart-area"
                   fill={`url(#trend-fill-${s.key})`}
                   points={`${x(0)},${PAD.top + plotH} ${data.map((d, i) => `${x(i)},${y(num(d, s.key))}`).join(" ")} ${x(last)},${PAD.top + plotH}`}
                 />
@@ -162,6 +163,8 @@ export default function TrendChart<T extends object>({
             {series.map((s) => (
               <polyline
                 key={s.key}
+                className="wms-chart-line"
+                pathLength={1}
                 fill="none"
                 stroke={s.color}
                 strokeWidth="2"
@@ -192,20 +195,7 @@ export default function TrendChart<T extends object>({
             />
           </svg>
           {hover !== null && (
-            <div
-              style={{
-                position: "absolute",
-                top: PAD.top,
-                left: Math.min(x(hover) + 12, width - 160),
-                pointerEvents: "none",
-                background: token.colorBgElevated,
-                border: `1px solid ${GRID}`,
-                borderRadius: 10,
-                padding: "6px 10px",
-                boxShadow: token.boxShadowSecondary,
-                minWidth: 140,
-              }}
-            >
+            <div className="wms-chart-tooltip" style={{ top: PAD.top, left: Math.min(x(hover) + 12, width - 170) }}>
               <div style={{ fontSize: 12, color: INK_SECONDARY, marginBottom: 4 }}>{xLabel(data[hover][xKey])}</div>
               {series.map((s) => (
                 <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>

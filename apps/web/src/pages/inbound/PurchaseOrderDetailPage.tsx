@@ -1,12 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
-import { Button, Card, Descriptions, Space, Spin, Table } from "antd";
+import { Button, Card, Descriptions, Space, Table } from "antd";
 import { Link, useNavigate, useParams } from "react-router";
 
 import { apiClient } from "@/api/client";
 import { useCan } from "@/api/me";
 import type { DocumentSummary } from "@/api/types";
 import StatusTag from "@/components/StatusTag";
-import { DocTitle } from "@/components/ui";
+import { DESC_COLUMNS, DetailSkeleton, DocTitle, ErrorState, QtyProgress, emptyLocale, formatQty } from "@/components/ui";
+import { PurchaseOrderSteps } from "@/components/workflows";
 import {
   ActionButton,
   DocumentLinesTable,
@@ -19,14 +20,15 @@ export default function PurchaseOrderDetailPage() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
   const can = useCan();
-  const { data: po, isLoading } = useDocument("purchase-orders", id);
+  const { data: po, isLoading, error, refetch } = useDocument("purchase-orders", id);
   const action = useDocumentAction("purchase-orders", id);
-  const { data: grns } = useQuery({
+  const { data: grns, isLoading: grnsLoading } = useQuery({
     queryKey: ["grns", "by-po", id],
     queryFn: async () => (await apiClient.get<DocumentSummary[]>("/grns", { params: { po_id: id } })).data,
   });
 
-  if (isLoading || !po) return <Spin />;
+  if (isLoading) return <DetailSkeleton />;
+  if (!po) return <ErrorState title="Could not load this purchase order" error={error} onRetry={() => refetch()} back={{ to: "/purchase-orders", label: "Back to purchase orders" }} />;
   const run = (name: string) => () => action.mutate(name);
   const receivable = po.status === "CONFIRMED" || po.status === "PARTIALLY_RECEIVED";
 
@@ -35,7 +37,7 @@ export default function PurchaseOrderDetailPage() {
       <Card
         title={<DocTitle label={"Purchase order"} no={po.doc_no} status={po.status} historyOf={po.id} />}
         extra={
-          <Space>
+          <Space wrap>
             {po.status === "DRAFT" && (
               <>
                 {can("purchase_order.update") && (
@@ -58,11 +60,12 @@ export default function PurchaseOrderDetailPage() {
           </Space>
         }
       >
-        <Descriptions column={3}>
+        <PurchaseOrderSteps status={po.status} />
+        <Descriptions column={DESC_COLUMNS}>
           <Descriptions.Item label="Supplier">{po.partner?.code} {po.partner?.name}</Descriptions.Item>
-          <Descriptions.Item label="Expected arrival">{po.expected_date}</Descriptions.Item>
+          <Descriptions.Item label="Expected arrival">{po.expected_date ?? <span className="wms-empty-value">Not set</span>}</Descriptions.Item>
           <Descriptions.Item label="Created">{formatDateTime(po.created_at)}</Descriptions.Item>
-          <Descriptions.Item label="Remark" span={2}>{po.remark}</Descriptions.Item>
+          <Descriptions.Item label="Remark" span="filled">{po.remark || <span className="wms-empty-value">—</span>}</Descriptions.Item>
         </Descriptions>
       </Card>
 
@@ -70,9 +73,9 @@ export default function PurchaseOrderDetailPage() {
         <DocumentLinesTable
           lines={po.lines}
           columns={[
-            { title: "Ordered", dataIndex: "qty_planned" },
-            { title: "Received", dataIndex: "qty_actual" },
-            { title: "Open", render: (_, l) => Math.max(l.qty_planned - l.qty_actual, 0) },
+            { title: "Ordered", dataIndex: "qty_planned", align: "right", render: formatQty },
+            { title: "Received", key: "received", render: (_, l) => <QtyProgress done={l.qty_actual} total={l.qty_planned} label="Received" /> },
+            { title: "Open", align: "right", render: (_, l) => formatQty(Math.max(l.qty_planned - l.qty_actual, 0)) },
           ]}
         />
       </Card>
@@ -82,9 +85,12 @@ export default function PurchaseOrderDetailPage() {
           rowKey="id"
           size="small"
           pagination={false}
+          loading={grnsLoading}
           dataSource={grns}
+          scroll={{ x: "max-content" }}
+          locale={emptyLocale("No goods receipts yet")}
           columns={[
-            { title: "Receipt no.", dataIndex: "doc_no", render: (v: string, r) => <Link to={`/grns/${r.id}`}>{v}</Link> },
+            { title: "Receipt no.", dataIndex: "doc_no", render: (v: string, r) => <Link className="wms-mono" to={`/grns/${r.id}`}>{v}</Link> },
             { title: "Status", dataIndex: "status", render: (v: string) => <StatusTag status={v} /> },
             { title: "Receiving location", render: (_, r) => r.location?.code },
             { title: "Posted", dataIndex: "posted_at", render: formatDateTime },

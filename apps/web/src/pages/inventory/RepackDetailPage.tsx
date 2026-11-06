@@ -1,4 +1,5 @@
 import SimpleDocDetail from "@/components/SimpleDocDetail";
+import { formatQty } from "@/components/ui";
 
 export default function RepackDetailPage() {
   return (
@@ -8,8 +9,8 @@ export default function RepackDetailPage() {
       permPrefix="repack"
       postConfirm="Is the work done? Posting deducts the consumed and adds the produced items."
       columns={[
-        { title: "Quantity", dataIndex: "qty_actual" },
-        { title: "Location", render: (_, l) => (l.from_location ?? l.to_location)?.code },
+        { title: "Quantity", dataIndex: "qty_actual", align: "right", render: formatQty },
+        { title: "Location", render: (_, l) => <span className="wms-mono">{(l.from_location ?? l.to_location)?.code}</span> },
         { title: "Batch no.", dataIndex: "batch_no" },
         { title: "Expiry date", dataIndex: "expiry_date" },
       ]}

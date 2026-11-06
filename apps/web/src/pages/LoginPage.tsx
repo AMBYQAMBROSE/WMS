@@ -50,17 +50,17 @@ export default function LoginPage() {
     <div className="wms-login">
       <aside className="wms-login-art">
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <BrandMark size={40} />
+          <BrandMark size={34} />
           <div>
             <div style={{ fontSize: 18, fontWeight: 700 }}>WMS</div>
-            <div style={{ fontSize: 12, opacity: 0.6, letterSpacing: 0.4, textTransform: "uppercase" }}>Warehouse cloud</div>
+            <div style={{ fontSize: 12.5, opacity: 0.55 }}>Warehouse cloud</div>
           </div>
         </div>
 
         <div style={{ maxWidth: 600 }}>
-          <h1 style={{ fontSize: 40, lineHeight: 1.15, fontWeight: 700, letterSpacing: -1, margin: "0 0 16px" }}>
+          <h1 style={{ fontSize: 38, lineHeight: 1.15, fontWeight: 650, letterSpacing: -1, margin: "0 0 16px" }}>
             Run every dock, aisle and&nbsp;bin
-            <span style={{ display: "block", background: "linear-gradient(90deg,#a5b4fc,#67e8f9)", WebkitBackgroundClip: "text", color: "transparent" }}>
+            <span style={{ display: "block", color: "#a9abff" }}>
               from one place.
             </span>
           </h1>

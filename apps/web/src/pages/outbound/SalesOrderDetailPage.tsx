@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Card, Checkbox, Descriptions, Form, Input, Modal, Space, Spin, Table, Typography, message } from "antd";
+import { Button, Card, Checkbox, Col, Descriptions, Form, Input, Modal, Row, Space, Table, Typography, message } from "antd";
 import { Link, useNavigate, useParams } from "react-router";
 
 import { apiClient } from "@/api/client";
@@ -9,7 +9,8 @@ import { showError } from "@/api/errors";
 import { useCan, useFeature } from "@/api/me";
 import type { DocumentSummary, Pick, SalesOrder, SalesOrderLine, Shipment, Shortage } from "@/api/types";
 import StatusTag from "@/components/StatusTag";
-import { DocTitle } from "@/components/ui";
+import { DESC_COLUMNS, DetailSkeleton, DocTitle, ErrorState, QtyProgress, emptyLocale, formatQty } from "@/components/ui";
+import { SalesOrderSteps } from "@/components/workflows";
 import { ActionButton, formatDateTime, useDocumentAction } from "@/components/documents";
 import { LocationSelect } from "@/components/selects";
 
@@ -26,16 +27,19 @@ interface ShipForm {
   seal_no?: string;
 }
 
-function RelatedDocs({ title, path, docs }: { title: string; path: string; docs?: DocumentSummary[] }) {
+function RelatedDocs({ title, path, docs, loading }: { title: string; path: string; docs?: DocumentSummary[]; loading?: boolean }) {
   return (
     <Card title={title}>
       <Table<DocumentSummary>
         rowKey="id"
         size="small"
         pagination={false}
+        loading={loading}
         dataSource={docs}
+        scroll={{ x: "max-content" }}
+        locale={emptyLocale(`No ${title.toLowerCase()} yet`)}
         columns={[
-          { title: "Document no.", dataIndex: "doc_no", render: (v: string, r) => <Link to={`/${path}/${r.id}`}>{v}</Link> },
+          { title: "Document no.", dataIndex: "doc_no", render: (v: string, r) => <Link className="wms-mono" to={`/${path}/${r.id}`}>{v}</Link> },
           { title: "Status", dataIndex: "status", render: (v: string) => <StatusTag status={v} /> },
           { title: "Created", dataIndex: "created_at", render: formatDateTime },
           { title: "Posted", dataIndex: "posted_at", render: formatDateTime },
@@ -59,15 +63,15 @@ export default function SalesOrderDetailPage() {
   const [sourceId, setSourceId] = useState<string>();
   const [shipForm] = Form.useForm<ShipForm>();
 
-  const { data: so, isLoading } = useQuery({
+  const { data: so, isLoading, error, refetch } = useQuery({
     queryKey: ["sales-orders", id],
     queryFn: async () => (await apiClient.get<SalesOrder>(`/sales-orders/${id}`)).data,
   });
-  const { data: picks } = useQuery({
+  const { data: picks, isLoading: picksLoading } = useQuery({
     queryKey: ["picks", "by-so", id],
     queryFn: async () => (await apiClient.get<DocumentSummary[]>("/picks", { params: { so_id: id } })).data,
   });
-  const { data: shipments } = useQuery({
+  const { data: shipments, isLoading: shipmentsLoading } = useQuery({
     queryKey: ["shipments", "by-so", id],
     queryFn: async () => (await apiClient.get<DocumentSummary[]>("/shipments", { params: { so_id: id } })).data,
   });
@@ -122,7 +126,8 @@ export default function SalesOrderDetailPage() {
     onError: showError,
   });
 
-  if (isLoading || !so) return <Spin />;
+  if (isLoading) return <DetailSkeleton />;
+  if (!so) return <ErrorState title="Could not load this sales order" error={error} onRetry={() => refetch()} back={{ to: "/sales-orders", label: "Back to sales orders" }} />;
   const run = (name: string) => () => action.mutate(name);
   const fulfilling = FULFILLING.includes(so.status);
   const hasUnallocated = so.lines.some((l) => l.unallocated > 0);
@@ -132,7 +137,7 @@ export default function SalesOrderDetailPage() {
       <Card
         title={<DocTitle label={"Sales order"} no={so.doc_no} status={so.status} historyOf={so.id} />}
         extra={
-          <Space>
+          <Space wrap>
             {so.status === "DRAFT" && (
               <>
                 {can("sales_order.update") && <Button onClick={() => navigate(`/sales-orders/${id}/edit`)}>Edit</Button>}
@@ -159,48 +164,57 @@ export default function SalesOrderDetailPage() {
           </Space>
         }
       >
-        <Descriptions column={3}>
+        <SalesOrderSteps status={so.status} shippedAny={so.lines.some((l) => l.shipped > 0)} />
+        <Descriptions column={DESC_COLUMNS}>
           <Descriptions.Item label="Customer">
             {so.partner?.code} {so.partner?.name}
           </Descriptions.Item>
-          <Descriptions.Item label="Requested ship date">{so.expected_date}</Descriptions.Item>
+          <Descriptions.Item label="Requested ship date">{so.expected_date ?? <span className="wms-empty-value">Not set</span>}</Descriptions.Item>
           <Descriptions.Item label="Created">{formatDateTime(so.created_at)}</Descriptions.Item>
-          <Descriptions.Item label="Remark" span={2}>
-            {so.remark}
+          <Descriptions.Item label="Remark" span="filled">
+            {so.remark || <span className="wms-empty-value">—</span>}
           </Descriptions.Item>
         </Descriptions>
       </Card>
 
-      <Card title="Lines and progress (progress in base units)">
+      <Card title="Lines and progress" extra={<Typography.Text type="secondary">Progress in base units</Typography.Text>}>
         <Table<SalesOrderLine>
           rowKey="id"
           size="small"
           pagination={false}
           dataSource={so.lines}
+          scroll={{ x: "max-content" }}
           columns={[
-            { title: "Line", dataIndex: "line_no", width: 60 },
-            { title: "SKU", render: (_, l) => l.item.sku_code },
+            { title: "#", dataIndex: "line_no", width: 48, render: (v: number) => <Typography.Text type="secondary" className="wms-num">{v}</Typography.Text> },
+            { title: "SKU", render: (_, l) => <span className="wms-mono">{l.item.sku_code}</span> },
             { title: "Item", render: (_, l) => l.item.name },
-            { title: "Ordered", render: (_, l) => `${l.qty_planned} ${l.uom.code}` },
-            { title: "In base units", render: (_, l) => `${l.ordered_base} ${l.item.base_uom.code}` },
-            { title: "Allocated (to pick)", dataIndex: "allocated" },
-            { title: "Picked", dataIndex: "picked" },
-            { title: "Shipped", dataIndex: "shipped" },
+            { title: "Ordered", align: "right", render: (_, l) => `${formatQty(l.qty_planned)} ${l.uom.code}` },
+            { title: "In base units", align: "right", render: (_, l) => `${formatQty(l.ordered_base)} ${l.item.base_uom.code}` },
+            { title: "Allocated (to pick)", dataIndex: "allocated", align: "right", render: formatQty },
+            { title: "Picked", dataIndex: "picked", align: "right", render: formatQty },
+            { title: "Shipped", key: "shipped", render: (_, l) => <QtyProgress done={l.shipped} total={l.ordered_base} label="Shipped" /> },
             {
               title: "Unallocated",
               dataIndex: "unallocated",
+              align: "right",
               render: (v: number) =>
-                v > 0 && fulfilling ? <Typography.Text type="danger">{v}</Typography.Text> : v,
+                v > 0 && fulfilling ? <Typography.Text type="danger" strong>{formatQty(v)}</Typography.Text> : formatQty(v),
             },
             ...(feature("RETURNS") || so.lines.some((l) => l.returned > 0)
-              ? [{ title: "Returned", dataIndex: "returned" }]
+              ? [{ title: "Returned", dataIndex: "returned", align: "right" as const, render: formatQty }]
               : []),
           ]}
         />
       </Card>
 
-      <RelatedDocs title="Pick lists" path="picks" docs={picks} />
-      <RelatedDocs title="Shipments" path="shipments" docs={shipments} />
+      <Row gutter={[16, 16]}>
+        <Col xs={24} xl={12}>
+          <RelatedDocs title="Pick lists" path="picks" docs={picks} loading={picksLoading} />
+        </Col>
+        <Col xs={24} xl={12}>
+          <RelatedDocs title="Shipments" path="shipments" docs={shipments} loading={shipmentsLoading} />
+        </Col>
+      </Row>
 
       <Modal
         open={allocating}
@@ -211,8 +225,12 @@ export default function SalesOrderDetailPage() {
         onOk={() => allocate.mutate()}
         onCancel={() => setAllocating(false)}
       >
-        <p>Stock is reserved for the unallocated quantity by "first expiry first out, pickable bins first, first in first out", and a pick list is created.</p>
-        <p>Put picked goods at:</p>
+        <Typography.Paragraph type="secondary">
+          Stock is reserved for the unallocated quantity by “first expiry first out, pickable bins first, first in first out”, and a pick list is created.
+        </Typography.Paragraph>
+        <Typography.Text strong style={{ display: "block", marginBottom: 6 }}>
+          Put picked goods at
+        </Typography.Text>
         <LocationSelect
           types={["DOCK"]}
           style={{ width: "100%" }}
@@ -254,22 +272,28 @@ export default function SalesOrderDetailPage() {
           <Form.Item name="carrier" label="Carrier">
             <Input maxLength={100} />
           </Form.Item>
-          <Space>
-            <Form.Item name="vehicle_no" label="Vehicle plate">
-              <Input maxLength={30} />
-            </Form.Item>
-            <Form.Item name="seal_no" label="Seal no.">
-              <Input maxLength={50} />
-            </Form.Item>
-          </Space>
-          <Space>
-            <Form.Item name="driver_name" label="Driver">
-              <Input maxLength={50} />
-            </Form.Item>
-            <Form.Item name="driver_phone" label="Driver phone">
-              <Input maxLength={30} />
-            </Form.Item>
-          </Space>
+          <Row gutter={12}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="vehicle_no" label="Vehicle plate">
+                <Input maxLength={30} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="seal_no" label="Seal no.">
+                <Input maxLength={50} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="driver_name" label="Driver">
+                <Input maxLength={50} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="driver_phone" label="Driver phone">
+                <Input maxLength={30} />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Modal>
     </Space>

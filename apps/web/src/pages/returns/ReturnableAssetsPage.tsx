@@ -1,7 +1,8 @@
 import { useState } from "react";
 
+import { PlusOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Form, Input, InputNumber, Modal, Radio, Space, Table, Tabs, Tag, message } from "antd";
+import { Button, Form, Input, InputNumber, Modal, Radio, Space, Table, Tabs, message } from "antd";
 
 import { apiClient } from "@/api/client";
 import { showError } from "@/api/errors";
@@ -10,6 +11,7 @@ import type { AssetBalance, AssetTxn, AssetType } from "@/api/types";
 import CreateModal from "@/components/CreateModal";
 import { formatDateTime, preventEnterSubmit } from "@/components/documents";
 import { PartnerSelect } from "@/components/selects";
+import { Pill, Toolbar, YesNo, formatQty } from "@/components/ui";
 
 const KEY = "returnable-assets";
 
@@ -67,12 +69,17 @@ export default function ReturnableAssetsPage() {
   return (
     <Space orientation="vertical" style={{ width: "100%" }}>
       {can("returnable_asset.manage") && (
-        <Space>
-          <Button type="primary" onClick={() => open("ISSUE")}>
-            Record issue
-          </Button>
-          <Button onClick={() => open("RETURN")}>Record return</Button>
-        </Space>
+        <Toolbar
+          left={<span className="wms-toolbar-meta">Pallets, crates and other assets lent to partners</span>}
+          right={
+            <>
+              <Button onClick={() => open("RETURN")}>Record return</Button>
+              <Button type="primary" onClick={() => open("ISSUE")}>
+                Record issue
+              </Button>
+            </>
+          }
+        />
       )}
       <Tabs
         items={[
@@ -96,19 +103,25 @@ export default function ReturnableAssetsPage() {
                   columns={[
                     {
                       title: "Partner",
-                      render: (_, r) => `${r.partner.code} ${r.partner.name}`,
+                      render: (_, r) => (
+                        <span>
+                          <span className="wms-mono">{r.partner.code}</span> {r.partner.name}
+                        </span>
+                      ),
                     },
                     {
                       title: "Asset type",
                       render: (_, r) => `${r.asset_type.code} ${r.asset_type.name}`,
                     },
-                    { title: "Outstanding", dataIndex: "outstanding" },
+                    { title: "Outstanding", dataIndex: "outstanding", align: "right", render: (v: number) => <strong>{formatQty(v)}</strong> },
                     {
                       title: "Actions",
                       render: (_, r) =>
                         can("returnable_asset.manage") && (
                           <Button
                             size="small"
+                            type="text"
+                            aria-label={`Record return from ${r.partner.name}`}
                             onClick={() =>
                               open("RETURN", {
                                 partner_id: r.partner.id,
@@ -149,9 +162,9 @@ export default function ReturnableAssetsPage() {
                     title: "Type",
                     dataIndex: "txn_type",
                     render: (t: string) =>
-                      t === "ISSUE" ? <Tag color="orange">Issued</Tag> : <Tag color="green">Returned</Tag>,
+                      t === "ISSUE" ? <Pill tone="amber" dot>Issued</Pill> : <Pill tone="green" dot>Returned</Pill>,
                   },
-                  { title: "Quantity", dataIndex: "qty_change" },
+                  { title: "Quantity", dataIndex: "qty_change", align: "right", render: formatQty },
                   { title: "Remark", dataIndex: "remark" },
                 ]}
               />
@@ -162,19 +175,25 @@ export default function ReturnableAssetsPage() {
             label: "Asset types",
             children: (
               <Space orientation="vertical" style={{ width: "100%" }}>
-                {can("returnable_asset.manage") && <Button onClick={() => setCreatingType(true)}>New asset type</Button>}
+                {can("returnable_asset.manage") && (
+                  <div>
+                    <Button icon={<PlusOutlined />} onClick={() => setCreatingType(true)}>
+                      New asset type
+                    </Button>
+                  </div>
+                )}
                 <Table<AssetType>
                   rowKey="id"
                   loading={types.isLoading}
                   dataSource={types.data}
                   pagination={false}
                   columns={[
-                    { title: "Code", dataIndex: "code" },
+                    { title: "Code", dataIndex: "code", render: (v: string) => <span className="wms-mono">{v}</span> },
                     { title: "Name", dataIndex: "name" },
                     {
                       title: "Active",
                       dataIndex: "is_active",
-                      render: (v: boolean) => (v ? "Yes" : "No"),
+                      render: (v: boolean) => <YesNo value={v} />,
                     },
                   ]}
                 />

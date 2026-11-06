@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { InfoCircleOutlined, SearchOutlined } from "@ant-design/icons";
+import { InfoCircleOutlined } from "@ant-design/icons";
 import { Input, Typography } from "antd";
 
 import { Toolbar } from "@/components/ui";
@@ -26,8 +26,8 @@ export default function MasterSearch({
         <>
           <Input.Search
             allowClear
-            prefix={<SearchOutlined style={{ color: "var(--ant-color-text-quaternary)" }} />}
             placeholder={placeholder}
+            aria-label={`Search: ${placeholder}`}
             style={{ width: 320 }}
             onSearch={(v) => onSearch(v.trim())}
           />

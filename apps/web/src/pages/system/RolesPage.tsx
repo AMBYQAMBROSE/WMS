@@ -1,12 +1,14 @@
 import { useState } from "react";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Card, Checkbox, Form, Input, Modal, Popconfirm, Space, Table, Tag, message } from "antd";
+import { LockOutlined, PlusOutlined } from "@ant-design/icons";
+import { Button, Card, Checkbox, Col, Form, Input, Modal, Popconfirm, Row, Space, Table, Typography, message } from "antd";
 
 import { apiClient } from "@/api/client";
 import { showError } from "@/api/errors";
 import { useCan } from "@/api/me";
 import type { components } from "@/api/schema";
+import { Pill, Toolbar } from "@/components/ui";
 import { PERMISSION_MODULE_LABELS } from "@/constants/labels";
 
 type Schemas = components["schemas"];
@@ -39,7 +41,7 @@ function PermissionPicker({
     onChange?.([...others, ...codes]);
   };
   return (
-    <Space orientation="vertical" style={{ width: "100%" }}>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))", gap: 12, width: "100%" }}>
       {modules.map((module) => {
         const items = permissions.filter((p) => p.module === module);
         const checked = items.filter((p) => selected.has(p.code)).map((p) => p.code);
@@ -57,17 +59,19 @@ function PermissionPicker({
                 {PERMISSION_MODULE_LABELS[module] ?? module}
               </Checkbox>
             }
+            extra={<Typography.Text type="secondary" style={{ fontSize: 12 }}>{checked.length}/{items.length}</Typography.Text>}
           >
             <Checkbox.Group
               disabled={disabled}
               value={checked}
               onChange={(codes) => setModule(module, codes as string[])}
               options={items.map((p) => ({ value: p.code, label: p.description }))}
+              style={{ display: "grid", gap: 6 }}
             />
           </Card>
         );
       })}
-    </Space>
+    </div>
   );
 }
 
@@ -123,39 +127,51 @@ export default function RolesPage() {
 
   return (
     <Space orientation="vertical" style={{ width: "100%" }}>
-      {can("role.create") && (
-        <Button type="primary" onClick={() => open("new")}>
-          New role
-        </Button>
-      )}
+      <Toolbar
+        left={roles && <span className="wms-toolbar-meta">{roles.length} roles · permissions take effect immediately</span>}
+        right={
+          can("role.create") && (
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => open("new")}>
+              New role
+            </Button>
+          )
+        }
+      />
       <Table<Role>
         rowKey="id"
         loading={isLoading}
         dataSource={roles}
         pagination={false}
         columns={[
-          { title: "Code", dataIndex: "code" },
+          { title: "Code", dataIndex: "code", render: (v: string) => <span className="wms-mono">{v}</span> },
           {
             title: "Name",
             render: (_, r) => (
-              <Space>
-                {r.name}
-                {r.is_system && <Tag color="gold">System</Tag>}
+              <Space size={8}>
+                <span style={{ fontWeight: 500 }}>{r.name}</span>
+                {r.is_system && <Pill tone="amber" icon={<LockOutlined />}>System</Pill>}
               </Space>
             ),
           },
-          { title: "Permissions", render: (_, r) => r.permission_codes.length },
-          { title: "Users", dataIndex: "user_count" },
+          { title: "Permissions", align: "right", render: (_, r) => (r.is_system ? "All" : r.permission_codes.length) },
+          { title: "Users", dataIndex: "user_count", align: "right" },
           {
             title: "Actions",
             render: (_, r) => (
-              <Space>
-                <Button size="small" onClick={() => open(r)}>
+              <Space size={4}>
+                <Button size="small" type="text" onClick={() => open(r)} aria-label={`${can("role.update") ? "Edit" : "View"} role ${r.name}`}>
                   {can("role.update") ? "Edit" : "View"}
                 </Button>
                 {can("role.delete") && !r.is_system && (
                   <Popconfirm title={`Delete role ${r.name}?`} onConfirm={() => remove.mutate(r)}>
-                    <Button size="small" danger disabled={r.user_count > 0}>
+                    <Button
+                      size="small"
+                      type="text"
+                      danger
+                      disabled={r.user_count > 0}
+                      title={r.user_count > 0 ? "Remove the role from its users first" : undefined}
+                      aria-label={`Delete role ${r.name}`}
+                    >
                       Delete
                     </Button>
                   </Popconfirm>
@@ -167,7 +183,7 @@ export default function RolesPage() {
       />
       <Modal
         open={editing !== null}
-        width={860}
+        width={960}
         title={editing === "new" ? "New role" : `Role: ${editing?.name ?? ""}`}
         onCancel={() => setEditing(null)}
         onOk={() => form.submit()}
@@ -176,14 +192,18 @@ export default function RolesPage() {
         destroyOnHidden
       >
         <Form form={form} layout="vertical" onFinish={(v) => save.mutate(v)}>
-          <Space size="large">
-            <Form.Item name="code" label="Code" rules={[{ required: true }]}>
-              <Input disabled={editing !== "new"} maxLength={50} />
-            </Form.Item>
-            <Form.Item name="name" label="Name" rules={[{ required: true }]}>
-              <Input maxLength={100} />
-            </Form.Item>
-          </Space>
+          <Row gutter={16}>
+            <Col xs={24} sm={10}>
+              <Form.Item name="code" label="Code" rules={[{ required: true }]}>
+                <Input disabled={editing !== "new"} maxLength={50} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={14}>
+              <Form.Item name="name" label="Name" rules={[{ required: true }]}>
+                <Input maxLength={100} />
+              </Form.Item>
+            </Col>
+          </Row>
           {editingSystem && <p style={{ color: "var(--ant-color-text-tertiary)" }}>The system role always has every permission; its permissions cannot be changed.</p>}
           <Form.Item name="permission_codes" label="Permissions">
             <PermissionPicker permissions={permissions} disabled={editingSystem || !can("role.update")} />

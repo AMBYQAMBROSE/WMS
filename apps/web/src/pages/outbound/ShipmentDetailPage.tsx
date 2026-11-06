@@ -1,14 +1,14 @@
 import { useEffect, useRef } from "react";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Card, Descriptions, Form, Input, Space, Spin, message } from "antd";
+import { Button, Card, Descriptions, Form, Input, Space, message } from "antd";
 import { Link, useParams } from "react-router";
 
 import { apiClient } from "@/api/client";
 import { showError } from "@/api/errors";
 import { useCan } from "@/api/me";
 import type { Shipment, ShipmentInfo } from "@/api/types";
-import { DocTitle } from "@/components/ui";
+import { DESC_COLUMNS, DetailSkeleton, DocTitle, ErrorState, formatQty } from "@/components/ui";
 import { ActionButton, DocumentLinesTable, formatDateTime, preventEnterSubmit, useDocumentAction } from "@/components/documents";
 
 const INFO_FIELDS: [keyof ShipmentInfo, string, number][] = [
@@ -25,7 +25,7 @@ export default function ShipmentDetailPage() {
   const queryClient = useQueryClient();
   const [form] = Form.useForm<ShipmentInfo>();
   const queryKey = ["shipments", id];
-  const { data: ship, isLoading } = useQuery({
+  const { data: ship, isLoading, error, refetch } = useQuery({
     queryKey,
     queryFn: async () => (await apiClient.get<Shipment>(`/shipments/${id}`)).data,
   });
@@ -48,7 +48,8 @@ export default function ShipmentDetailPage() {
     onError: showError,
   });
 
-  if (isLoading || !ship) return <Spin />;
+  if (isLoading) return <DetailSkeleton />;
+  if (!ship) return <ErrorState title="Could not load this shipment" error={error} onRetry={() => refetch()} back={{ to: "/shipments", label: "Back to shipments" }} />;
   const draft = ship.status === "DRAFT";
   const editable = draft && can("shipment.create");
   const run = (name: string) => () => action.mutate(name);
@@ -59,7 +60,7 @@ export default function ShipmentDetailPage() {
         title={<DocTitle label={"Shipment"} no={ship.doc_no} status={ship.status} historyOf={ship.id} />}
         extra={
           draft && (
-            <Space>
+            <Space wrap>
               <ActionButton
                 perm="shipment.post"
                 type="primary"
@@ -73,36 +74,38 @@ export default function ShipmentDetailPage() {
           )
         }
       >
-        <Descriptions column={3}>
+        <Descriptions column={DESC_COLUMNS}>
           <Descriptions.Item label="Sales order">
-            {ship.ref_document && <Link to={`/sales-orders/${ship.ref_document.id}`}>{ship.ref_document.doc_no}</Link>}
+            {ship.ref_document && <Link className="wms-mono" to={`/sales-orders/${ship.ref_document.id}`}>{ship.ref_document.doc_no}</Link>}
           </Descriptions.Item>
           <Descriptions.Item label="Customer">{ship.partner?.name}</Descriptions.Item>
-          <Descriptions.Item label="Posted">{formatDateTime(ship.posted_at)}</Descriptions.Item>
+          <Descriptions.Item label="Posted">{formatDateTime(ship.posted_at) || <span className="wms-empty-value">Not yet</span>}</Descriptions.Item>
           {!editable &&
             INFO_FIELDS.map(([key, label]) => (
               <Descriptions.Item key={key} label={label}>
-                {ship.shipment_info?.[key]}
+                {ship.shipment_info?.[key] || <span className="wms-empty-value">—</span>}
               </Descriptions.Item>
             ))}
         </Descriptions>
       </Card>
 
       {editable && (
-        <Card title="Loading details">
+        <Card title="Loading details" extra={<span style={{ color: "var(--ant-color-text-tertiary)", fontSize: 13 }}>Carrier, vehicle and seal for the delivery note</span>}>
           {/* initialValues instead of setFieldsValue: after posting the form no longer renders, and calling methods on an unmounted form warns */}
           <Form
             form={form}
-            layout="inline"
+            layout="vertical"
             initialValues={ship.shipment_info ?? {}}
             onKeyDown={preventEnterSubmit}
             onFinish={(v) => saveInfo.mutate(v)}
           >
-            {INFO_FIELDS.map(([key, label, max]) => (
-              <Form.Item key={key} name={key} label={label}>
-                <Input maxLength={max} style={{ width: 150 }} />
-              </Form.Item>
-            ))}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0 12px" }}>
+              {INFO_FIELDS.map(([key, label, max]) => (
+                <Form.Item key={key} name={key} label={label}>
+                  <Input maxLength={max} />
+                </Form.Item>
+              ))}
+            </div>
             <Button htmlType="submit" loading={saveInfo.isPending}>
               Save loading details
             </Button>
@@ -110,14 +113,14 @@ export default function ShipmentDetailPage() {
         </Card>
       )}
 
-      <Card title="Shipment lines (base units)">
+      <Card title="Shipment lines" extra={<span style={{ color: "var(--ant-color-text-tertiary)", fontSize: 13 }}>Base units</span>}>
         <DocumentLinesTable
           lines={ship.lines}
           columns={[
-            { title: "Quantity", dataIndex: "qty_actual" },
+            { title: "Quantity", dataIndex: "qty_actual", align: "right", render: formatQty },
             { title: "Batch no.", dataIndex: "batch_no" },
             { title: "Expiry date", dataIndex: "expiry_date" },
-            { title: "Staging", render: (_, l) => l.from_location?.code },
+            { title: "Staging", render: (_, l) => <span className="wms-mono">{l.from_location?.code}</span> },
           ]}
         />
       </Card>

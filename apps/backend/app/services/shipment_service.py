@@ -7,7 +7,8 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import DomainError
 from app.models.document import DocumentHeader, DocumentLine, ShipmentInfo
-from app.schemas.outbound import ShipmentCreate, ShipmentInfoIn
+from app.repositories.base import check_version
+from app.schemas.outbound import ShipmentCreate, ShipmentInfoIn, ShipmentInfoUpdate
 from app.services.document_common import (
     DOC_PICK,
     DOC_SHIP,
@@ -103,11 +104,12 @@ class ShipmentService:
         self.db.flush()
         return self.get(ship.id)
 
-    def update_info(self, ship_id: uuid.UUID, data: ShipmentInfoIn) -> DocumentHeader:
+    def update_info(self, ship_id: uuid.UUID, data: ShipmentInfoUpdate) -> DocumentHeader:
         ship = self.get(ship_id, lock=True)
+        check_version(ship, data.row_version, f"Shipment {ship.doc_no}")
         require_status(ship, (SHIP_DRAFT,), "edit loading details")
         info = ship.shipment_info or ShipmentInfo()
-        for key, value in data.model_dump().items():
+        for key, value in data.model_dump(exclude={"row_version"}).items():
             setattr(info, key, value)
         ship.shipment_info = info
         self._touch(ship)

@@ -86,7 +86,7 @@ export default function DashboardPage() {
               {greeting()}{firstName ? `, ${firstName}` : ""}
             </div>
             <div style={{ fontSize: 13, opacity: 0.7, display: "flex", alignItems: "center", gap: 6 }}>
-              <SyncOutlined spin={isFetching} /> Quantities in base units · updates live as work is done
+              <SyncOutlined spin={isFetching} /> Quantities in base units · updates within about 10 seconds of any change
             </div>
           </div>
           <div style={{ display: "flex", gap: 40, flexWrap: "wrap" }}>

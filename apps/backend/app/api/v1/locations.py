@@ -4,10 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_db_session, require_permission
+from app.api.routing import TransactionalRoute
 from app.schemas.location import LocationCreate, LocationRead, LocationUpdate
 from app.services.location_service import LocationService
 
-router = APIRouter(prefix="/locations", tags=["locations"])
+router = APIRouter(route_class=TransactionalRoute, prefix="/locations", tags=["locations"])
 
 
 @router.get("", response_model=list[LocationRead])

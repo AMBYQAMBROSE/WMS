@@ -4,10 +4,11 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_db_session, require_permission
+from app.api.routing import TransactionalRoute
 from app.schemas.user import PasswordReset, UserCreate, UserRead, UserUpdate
 from app.services.user_service import UserService
 
-router = APIRouter(prefix="/users", tags=["users"])
+router = APIRouter(route_class=TransactionalRoute, prefix="/users", tags=["users"])
 
 
 def _service(db: Session, user: CurrentUser) -> UserService:

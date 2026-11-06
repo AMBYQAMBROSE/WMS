@@ -5,6 +5,8 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, PlainSerializer
 
+from app.schemas.versioning import ExpectedVersion
+
 # Quantities are Decimal in the database and JSON would serialize them as strings; convert them to numbers for the frontend
 Qty = Annotated[Decimal, PlainSerializer(float, return_type=float, when_used="json")]
 PositiveQty = Annotated[Decimal, Field(gt=0, max_digits=18, decimal_places=4)]
@@ -82,6 +84,7 @@ class DocumentSummary(_Orm):
     posted_at: datetime | None
     remark: str | None
     created_at: datetime
+    row_version: int
 
 
 class DocumentRead(DocumentSummary):
@@ -94,7 +97,7 @@ class PurchaseOrderLineIn(BaseModel):
     qty: PositiveQty
 
 
-class PurchaseOrderIn(BaseModel):
+class PurchaseOrderIn(ExpectedVersion):
     partner_id: uuid.UUID
     expected_date: date | None = None
     remark: str | None = Field(default=None, max_length=400)
@@ -168,7 +171,7 @@ class StockLedgerRead(_Orm):
 # ---------- reason codes ----------
 
 
-class ReasonCodeIn(BaseModel):
+class ReasonCodeIn(ExpectedVersion):
     category: str = Field(default="ADJUST", max_length=30)
     code: str = Field(min_length=1, max_length=30)
     name: str = Field(min_length=1, max_length=100)
@@ -183,6 +186,7 @@ class ReasonCodeRead(_Orm):
     name: str
     external_code: str | None
     is_active: bool
+    row_version: int
 
 
 # ---------- stock adjustments ----------

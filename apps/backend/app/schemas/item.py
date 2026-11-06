@@ -2,6 +2,8 @@ import uuid
 
 from pydantic import BaseModel, ConfigDict
 
+from app.schemas.versioning import ExpectedVersion
+
 
 class ItemBase(BaseModel):
     sku_code: str
@@ -20,7 +22,7 @@ class ItemCreate(ItemBase):
     pass
 
 
-class ItemUpdate(BaseModel):
+class ItemUpdate(ExpectedVersion):
     name: str | None = None
     barcode: str | None = None
     category: str | None = None
@@ -32,6 +34,7 @@ class ItemUpdate(BaseModel):
 
 
 class ItemRead(ItemBase):
+    row_version: int
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID

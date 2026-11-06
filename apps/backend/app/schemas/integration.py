@@ -5,6 +5,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.schemas.versioning import ExpectedVersion
+
 
 class ConnectorIn(BaseModel):
     code: str = Field(min_length=1, max_length=30)
@@ -17,7 +19,7 @@ class ConnectorIn(BaseModel):
     is_active: bool = True
 
 
-class ConnectorUpdate(ConnectorIn):
+class ConnectorUpdate(ConnectorIn, ExpectedVersion):
     code: str | None = None  # the code cannot change after creation; ignored on update
 
 
@@ -34,6 +36,7 @@ class ConnectorRead(BaseModel):
     timeout_seconds: int
     max_attempts: int
     is_active: bool
+    row_version: int
     # Lists show only the last 4 characters; the full secret is returned only on create and regenerate
     secret_hint: str
 

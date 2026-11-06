@@ -6,22 +6,13 @@ import { Button, Card, Checkbox, Form, Input, Modal, Popconfirm, Space, Table, T
 import { apiClient } from "@/api/client";
 import { showError } from "@/api/errors";
 import { useCan } from "@/api/me";
+import type { components } from "@/api/schema";
 import { PERMISSION_MODULE_LABELS } from "@/constants/labels";
 
-interface Permission {
-  code: string;
-  module: string;
-  description: string;
-}
+type Schemas = components["schemas"];
 
-interface Role {
-  id: string;
-  code: string;
-  name: string;
-  is_system: boolean;
-  permission_codes: string[];
-  user_count: number;
-}
+type Permission = Schemas["PermissionRead"];
+type Role = Schemas["RoleRead"];
 
 interface RoleForm {
   code: string;
@@ -106,7 +97,11 @@ export default function RolesPage() {
     mutationFn: async (values: RoleForm) =>
       editing === "new"
         ? apiClient.post("/roles", values)
-        : apiClient.put(`/roles/${(editing as Role).id}`, { name: values.name, permission_codes: values.permission_codes }),
+        : apiClient.put(`/roles/${(editing as Role).id}`, {
+            name: values.name,
+            permission_codes: values.permission_codes,
+            row_version: (editing as Role).row_version,
+          }),
     onSuccess: () => done("Saved; permissions take effect immediately"),
     onError: showError,
   });

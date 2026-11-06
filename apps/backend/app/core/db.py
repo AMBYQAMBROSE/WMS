@@ -2,6 +2,7 @@ from collections.abc import Generator
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
+from starlette.requests import Request
 
 from app.core.config import settings
 
@@ -20,8 +21,11 @@ numbering_engine = create_engine(settings.database_url, pool_pre_ping=True, pool
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 
-def get_db() -> Generator[Session]:
+def get_db(request: Request) -> Generator[Session]:
     db = SessionLocal()
+    # For TransactionalRoute (app/api/routing.py), which commits before the response is sent; the commit below is
+    # then a no-op that only matters outside those routes
+    request.state.db = db
     try:
         yield db
         db.commit()

@@ -8,9 +8,10 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_current_user, get_db_session
+from app.api.routing import TransactionalRoute
 from app.services.import_service import KINDS, ImportService, template
 
-router = APIRouter(prefix="/imports", tags=["imports"])
+router = APIRouter(route_class=TransactionalRoute, prefix="/imports", tags=["imports"])
 
 Kind = Literal["items", "locations", "partners", "opening_stock"]
 # Same as nginx client_max_body_size

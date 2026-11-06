@@ -1,3 +1,5 @@
+import { useEffect, useRef } from "react";
+
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Card, Descriptions, Form, Input, Space, Spin, message } from "antd";
 import { Link, useParams } from "react-router";
@@ -29,9 +31,17 @@ export default function ShipmentDetailPage() {
   });
   const action = useDocumentAction("shipments", id);
 
+  // Version the loading details form is based on: from page load, then from the user's own last save (see OrderForm)
+  const infoVersion = useRef<number>(undefined);
+  useEffect(() => {
+    if (ship && infoVersion.current === undefined) infoVersion.current = ship.row_version;
+  }, [ship]);
+
   const saveInfo = useMutation({
-    mutationFn: async (values: ShipmentInfo) => (await apiClient.put<Shipment>(`/shipments/${id}/info`, values)).data,
+    mutationFn: async (values: ShipmentInfo) =>
+      (await apiClient.put<Shipment>(`/shipments/${id}/info`, { ...values, row_version: infoVersion.current })).data,
     onSuccess: (updated) => {
+      infoVersion.current = updated.row_version;
       queryClient.setQueryData(queryKey, updated);
       message.success("Loading details saved");
     },

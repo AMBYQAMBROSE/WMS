@@ -5,10 +5,11 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_db_session, require_permission
 from app.api.filters import document_filters
+from app.api.routing import TransactionalRoute
 from app.schemas.document import DocumentRead, DocumentSummary, GrnIn
 from app.services.grn_service import GrnService
 
-router = APIRouter(prefix="/grns", tags=["grns"])
+router = APIRouter(route_class=TransactionalRoute, prefix="/grns", tags=["grns"])
 
 
 def _service(db: Session, user: CurrentUser) -> GrnService:

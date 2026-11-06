@@ -106,7 +106,7 @@ function ConnectorModal({
         extra_headers: Object.fromEntries((v.headers ?? []).filter((h) => h.name).map((h) => [h.name!, h.value ?? ""])),
       };
       return editing
-        ? (await apiClient.put<Connector>(`/integration/connectors/${editing.id}`, body)).data
+        ? (await apiClient.put<Connector>(`/integration/connectors/${editing.id}`, { ...body, row_version: editing.row_version })).data
         : (await apiClient.post<ConnectorWithSecret>("/integration/connectors", body)).data;
     },
     onSuccess: (c) => {

@@ -8,12 +8,13 @@ from sqlalchemy import false, select, true
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_db_session, require_permission
+from app.api.routing import TransactionalRoute
 from app.models.item import Item, ItemBarcode, ItemUomConversion, Uom
 from app.models.location import STOCK_LOCATION_TYPES, Location
 from app.schemas.document import Qty
 from app.services.document_common import utcnow
 
-router = APIRouter(prefix="/mobile", tags=["mobile"])
+router = APIRouter(route_class=TransactionalRoute, prefix="/mobile", tags=["mobile"])
 
 
 class _Orm(BaseModel):

@@ -4,6 +4,7 @@ from decimal import Decimal
 from sqlalchemy.orm import Session
 
 from app.models.document import DocumentHeader, DocumentLine
+from app.repositories.base import check_version
 from app.schemas.document import PurchaseOrderIn, PurchaseOrderLineIn
 from app.services.document_common import (
     DOC_PO,
@@ -59,6 +60,7 @@ class PurchaseOrderService:
 
     def update(self, po_id: uuid.UUID, data: PurchaseOrderIn) -> DocumentHeader:
         po = self.get(po_id, lock=True)
+        check_version(po, data.row_version, f"Purchase order {po.doc_no}")
         require_status(po, (PO_DRAFT,), "edit")
         get_supplier(self.db, self.tenant_id, data.partner_id)
         new_lines = self._build_lines(data.lines)

@@ -2136,6 +2136,8 @@ export interface components {
              * @default true
              */
             is_active: boolean;
+            /** Row Version */
+            row_version: number;
             /**
              * Id
              * Format: uuid
@@ -2144,6 +2146,11 @@ export interface components {
         };
         /** BusinessPartnerUpdate */
         BusinessPartnerUpdate: {
+            /**
+             * Row Version
+             * @description The row_version of the record as you loaded it. If someone changed the record since, the save is refused with 409 instead of silently overwriting their change. Omit to save without the check.
+             */
+            row_version?: number | null;
             /** Name */
             name?: string | null;
             /** Partner Type */
@@ -2214,11 +2221,18 @@ export interface components {
             max_attempts: number;
             /** Is Active */
             is_active: boolean;
+            /** Row Version */
+            row_version: number;
             /** Secret Hint */
             secret_hint: string;
         };
         /** ConnectorUpdate */
         ConnectorUpdate: {
+            /**
+             * Row Version
+             * @description The row_version of the record as you loaded it. If someone changed the record since, the save is refused with 409 instead of silently overwriting their change. Omit to save without the check.
+             */
+            row_version?: number | null;
             /** Code */
             code?: string | null;
             /** Name */
@@ -2274,6 +2288,8 @@ export interface components {
             max_attempts: number;
             /** Is Active */
             is_active: boolean;
+            /** Row Version */
+            row_version: number;
             /** Secret Hint */
             secret_hint: string;
             /** Secret */
@@ -2373,6 +2389,8 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Row Version */
+            row_version: number;
             /** Count Locations */
             count_locations: components["schemas"]["CountLocationRead"][];
             /** Lines */
@@ -2485,6 +2503,8 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Row Version */
+            row_version: number;
             /** Lines */
             lines: components["schemas"]["DocumentLineRead"][];
         };
@@ -2516,6 +2536,8 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Row Version */
+            row_version: number;
         };
         /** EventTypeRead */
         EventTypeRead: {
@@ -2781,6 +2803,8 @@ export interface components {
              * @default true
              */
             is_active: boolean;
+            /** Row Version */
+            row_version: number;
             /**
              * Id
              * Format: uuid
@@ -2789,6 +2813,11 @@ export interface components {
         };
         /** ItemUpdate */
         ItemUpdate: {
+            /**
+             * Row Version
+             * @description The row_version of the record as you loaded it. If someone changed the record since, the save is refused with 409 instead of silently overwriting their change. Omit to save without the check.
+             */
+            row_version?: number | null;
             /** Name */
             name?: string | null;
             /** Barcode */
@@ -2990,6 +3019,8 @@ export interface components {
              * @default true
              */
             is_active: boolean;
+            /** Row Version */
+            row_version: number;
             /**
              * Id
              * Format: uuid
@@ -3000,6 +3031,11 @@ export interface components {
         };
         /** LocationUpdate */
         LocationUpdate: {
+            /**
+             * Row Version
+             * @description The row_version of the record as you loaded it. If someone changed the record since, the save is refused with 409 instead of silently overwriting their change. Omit to save without the check.
+             */
+            row_version?: number | null;
             /** Name */
             name?: string | null;
             /** Is Pickable */
@@ -3167,6 +3203,8 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Row Version */
+            row_version: number;
             /** Lines */
             lines: components["schemas"]["PickLineRead"][];
         };
@@ -3224,6 +3262,11 @@ export interface components {
         /** PurchaseOrderIn */
         PurchaseOrderIn: {
             /**
+             * Row Version
+             * @description The row_version of the record as you loaded it. If someone changed the record since, the save is refused with 409 instead of silently overwriting their change. Omit to save without the check.
+             */
+            row_version?: number | null;
+            /**
              * Partner Id
              * Format: uuid
              */
@@ -3265,6 +3308,11 @@ export interface components {
         /** ReasonCodeIn */
         ReasonCodeIn: {
             /**
+             * Row Version
+             * @description The row_version of the record as you loaded it. If someone changed the record since, the save is refused with 409 instead of silently overwriting their change. Omit to save without the check.
+             */
+            row_version?: number | null;
+            /**
              * Category
              * @default ADJUST
              */
@@ -3298,6 +3346,8 @@ export interface components {
             external_code: string | null;
             /** Is Active */
             is_active: boolean;
+            /** Row Version */
+            row_version: number;
         };
         /** RecountIn */
         RecountIn: {
@@ -3474,9 +3524,16 @@ export interface components {
             permission_codes: string[];
             /** User Count */
             user_count: number;
+            /** Row Version */
+            row_version: number;
         };
         /** RoleUpdate */
         RoleUpdate: {
+            /**
+             * Row Version
+             * @description The row_version of the record as you loaded it. If someone changed the record since, the save is refused with 409 instead of silently overwriting their change. Omit to save without the check.
+             */
+            row_version?: number | null;
             /** Name */
             name: string;
             /**
@@ -3487,6 +3544,11 @@ export interface components {
         };
         /** SalesOrderIn */
         SalesOrderIn: {
+            /**
+             * Row Version
+             * @description The row_version of the record as you loaded it. If someone changed the record since, the save is refused with 409 instead of silently overwriting their change. Omit to save without the check.
+             */
+            row_version?: number | null;
             /**
              * Partner Id
              * Format: uuid
@@ -3571,6 +3633,8 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Row Version */
+            row_version: number;
             /** Lines */
             lines: components["schemas"]["SalesOrderLineRead"][];
         };
@@ -3594,19 +3658,6 @@ export interface components {
             /** Client Request Id */
             client_request_id?: string | null;
         };
-        /** ShipmentInfoIn */
-        ShipmentInfoIn: {
-            /** Carrier */
-            carrier?: string | null;
-            /** Vehicle No */
-            vehicle_no?: string | null;
-            /** Driver Name */
-            driver_name?: string | null;
-            /** Driver Phone */
-            driver_phone?: string | null;
-            /** Seal No */
-            seal_no?: string | null;
-        };
         /** ShipmentInfoRead */
         ShipmentInfoRead: {
             /** Carrier */
@@ -3619,6 +3670,24 @@ export interface components {
             driver_phone: string | null;
             /** Seal No */
             seal_no: string | null;
+        };
+        /** ShipmentInfoUpdate */
+        ShipmentInfoUpdate: {
+            /**
+             * Row Version
+             * @description The row_version of the record as you loaded it. If someone changed the record since, the save is refused with 409 instead of silently overwriting their change. Omit to save without the check.
+             */
+            row_version?: number | null;
+            /** Carrier */
+            carrier?: string | null;
+            /** Vehicle No */
+            vehicle_no?: string | null;
+            /** Driver Name */
+            driver_name?: string | null;
+            /** Driver Phone */
+            driver_phone?: string | null;
+            /** Seal No */
+            seal_no?: string | null;
         };
         /** ShipmentRead */
         ShipmentRead: {
@@ -3648,6 +3717,8 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Row Version */
+            row_version: number;
             /** Lines */
             lines: components["schemas"]["DocumentLineRead"][];
             shipment_info: components["schemas"]["ShipmentInfoRead"] | null;
@@ -3942,9 +4013,16 @@ export interface components {
              * @default []
              */
             roles: components["schemas"]["RoleBrief"][];
+            /** Row Version */
+            row_version: number;
         };
         /** UserUpdate */
         UserUpdate: {
+            /**
+             * Row Version
+             * @description The row_version of the record as you loaded it. If someone changed the record since, the save is refused with 409 instead of silently overwriting their change. Omit to save without the check.
+             */
+            row_version?: number | null;
             /** Display Name */
             display_name: string;
             /** Email */
@@ -6716,7 +6794,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ShipmentInfoIn"];
+                "application/json": components["schemas"]["ShipmentInfoUpdate"];
             };
         };
         responses: {

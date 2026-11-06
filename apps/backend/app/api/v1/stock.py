@@ -4,10 +4,11 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_db_session, require_permission
+from app.api.routing import TransactionalRoute
 from app.schemas.document import StockBalanceRead, StockLedgerRead
 from app.services import stock_service
 
-router = APIRouter(prefix="/stock", tags=["stock"])
+router = APIRouter(route_class=TransactionalRoute, prefix="/stock", tags=["stock"])
 
 
 @router.get("/balances", response_model=list[StockBalanceRead])

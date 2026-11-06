@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.errors import DomainError, NotFoundError
 from app.models.audit import record_change
 from app.models.user import Permission, Role, RolePermission, UserRole
+from app.repositories.base import check_version
 from app.schemas.user import RoleIn, RoleRead, RoleUpdate
 
 
@@ -45,6 +46,7 @@ class RoleService:
 
     def update(self, role_id: uuid.UUID, data: RoleUpdate) -> RoleRead:
         role = self._get(role_id)
+        check_version(role, data.row_version, f"Role {role.code}")
         codes = self._validate_permissions(data.permission_codes)
         if role.is_system and set(codes) != set(self._permission_codes(role.id)):
             # The system administrator role is maintained by the seed script and always has every permission, so it can never be broken and leave nobody able to manage the system
@@ -107,4 +109,5 @@ class RoleService:
             is_system=role.is_system,
             permission_codes=self._permission_codes(role.id),
             user_count=self._user_count(role.id),
+            row_version=role.row_version,
         )

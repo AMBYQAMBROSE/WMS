@@ -6,10 +6,11 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
+from app.api.routing import TransactionalRoute
 from app.core.config import settings
 from app.core.db import engine
 
-router = APIRouter(tags=["health"])
+router = APIRouter(route_class=TransactionalRoute, tags=["health"])
 
 _BACKEND_DIR = Path(__file__).resolve().parents[3]
 

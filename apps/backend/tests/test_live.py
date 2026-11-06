@@ -69,13 +69,45 @@ def test_events_carry_no_values(client, admin_headers, unique, feed, tenant_id):
     assert "Secret Name" not in str(events) and f"lv{unique}" not in str(events)
 
 
-def test_dashboard_reflects_a_change_immediately(client, admin_headers, unique):
-    """The dashboard is cached for 30 s, but never across a change"""
+def test_dashboard_cache_computes_once_for_concurrent_requests(monkeypatch):
+    """A burst of refetches (every open dashboard after a change) costs one computation, not one each"""
+    import threading
+    import time
+    import uuid
+
+    from app.services import report_service
+
+    calls = []
+
+    def slow_dashboard(self):
+        calls.append(1)
+        time.sleep(0.3)
+        return {"n": len(calls)}
+
+    monkeypatch.setattr(report_service.ReportService, "_dashboard", slow_dashboard)
+    service = report_service.ReportService(None, uuid.uuid4())
+    results = []
+    threads = [threading.Thread(target=lambda: results.append(service.dashboard())) for _ in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert len(calls) == 1
+    assert results == [{"n": 1}] * 8
+
+
+def test_dashboard_shows_a_change_once_the_cache_window_passes(client, admin_headers, unique, monkeypatch):
+    from app.services import report_service
+
+    monkeypatch.setattr(report_service, "REPORT_CACHE_SECONDS", 0.5)
     api = Api(client, admin_headers)
     wh = make_warehouse(api, unique)
     item = make_item(api, wh, f"DB{unique}")
     before = api.get("/reports/dashboard")
     receive(api, wh, item, 7)
+    import time
+
+    time.sleep(0.6)
     after = api.get("/reports/dashboard")
     assert after["today"]["grn_posted"] == before["today"]["grn_posted"] + 1
 

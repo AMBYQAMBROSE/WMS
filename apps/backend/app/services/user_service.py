@@ -7,7 +7,7 @@ from app.core.errors import DomainError, NotFoundError
 from app.core.security import hash_password
 from app.models.audit import record_change
 from app.models.user import Role, User, UserRole
-from app.repositories.base import BaseRepository
+from app.repositories.base import BaseRepository, check_version
 from app.schemas.user import UserCreate, UserUpdate
 from app.services.auth_service import load_permissions
 
@@ -48,6 +48,7 @@ class UserService:
 
     def update(self, user_id: uuid.UUID, data: UserUpdate) -> User:
         user = self.get(user_id)
+        check_version(user, data.row_version, f"User {user.username}")
         roles = self._resolve_roles(data.role_codes)
         if user.id == self.user_id and not data.is_active:
             raise DomainError("You cannot deactivate your own account")

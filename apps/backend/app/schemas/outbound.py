@@ -14,6 +14,7 @@ from app.schemas.document import (
     UomBrief,
     UserBrief,
 )
+from app.schemas.versioning import ExpectedVersion
 
 
 class _Orm(BaseModel):
@@ -29,7 +30,7 @@ class SalesOrderLineIn(BaseModel):
     qty: PositiveQty
 
 
-class SalesOrderIn(BaseModel):
+class SalesOrderIn(ExpectedVersion):
     partner_id: uuid.UUID
     expected_date: date | None = None
     remark: str | None = Field(default=None, max_length=400)
@@ -103,6 +104,10 @@ class ShipmentInfoIn(BaseModel):
     driver_name: str | None = Field(default=None, max_length=50)
     driver_phone: str | None = Field(default=None, max_length=30)
     seal_no: str | None = Field(default=None, max_length=50)
+
+
+class ShipmentInfoUpdate(ShipmentInfoIn, ExpectedVersion):
+    pass
 
 
 class ShipmentCreate(ShipmentInfoIn):

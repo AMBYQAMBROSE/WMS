@@ -5,10 +5,11 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_db_session, require_permission
 from app.api.filters import document_filters
+from app.api.routing import TransactionalRoute
 from app.schemas.document import AdjustmentIn, DocumentRead, DocumentSummary
 from app.services.adjustment_service import AdjustmentService
 
-router = APIRouter(prefix="/adjustments", tags=["adjustments"])
+router = APIRouter(route_class=TransactionalRoute, prefix="/adjustments", tags=["adjustments"])
 
 
 def _service(db: Session, user: CurrentUser) -> AdjustmentService:

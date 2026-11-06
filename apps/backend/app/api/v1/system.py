@@ -2,11 +2,12 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_db_session, require_permission
+from app.api.routing import TransactionalRoute
 from app.api.v1.health import CODE_REVISION
 from app.schemas.system import SystemStatus
 from app.services.system_service import system_status
 
-router = APIRouter(prefix="/system", tags=["system"])
+router = APIRouter(route_class=TransactionalRoute, prefix="/system", tags=["system"])
 
 
 @router.get("/status", response_model=SystemStatus)

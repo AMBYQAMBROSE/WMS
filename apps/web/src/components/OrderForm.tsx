@@ -42,9 +42,13 @@ export default function OrderForm({ kind }: { kind: keyof typeof KINDS }) {
 
   // Fill the form once per source document, not on every refetch (live updates, window focus): that would wipe the user's edits
   const filledFrom = useRef<string>(undefined);
+  // The version the form was filled from: live updates refresh `existing` while the user edits, and sending its
+  // current version would defeat the server's check for changes made by someone else in the meantime
+  const filledVersion = useRef<number>(undefined);
   useEffect(() => {
     if (existing && filledFrom.current !== existing.id) {
       filledFrom.current = existing.id;
+      filledVersion.current = existing.row_version;
       form.setFieldsValue({
         partner_id: existing.partner?.id,
         expected_date: existing.expected_date ? dayjs(existing.expected_date) : undefined,
@@ -58,7 +62,7 @@ export default function OrderForm({ kind }: { kind: keyof typeof KINDS }) {
     mutationFn: async (values: FormValues) => {
       const body = { ...values, expected_date: values.expected_date?.format("YYYY-MM-DD") ?? null };
       const response = id
-        ? await apiClient.put<Document>(`/${path}/${id}`, body)
+        ? await apiClient.put<Document>(`/${path}/${id}`, { ...body, row_version: filledVersion.current })
         : await apiClient.post<Document>(`/${path}`, body);
       return response.data;
     },

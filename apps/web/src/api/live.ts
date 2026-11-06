@@ -34,6 +34,11 @@ const LEASE_KEY = "wms-live-leader";
 const LEASE_MS = 10_000;
 const RENEW_MS = 3_000;
 const DEBOUNCE_MS = 400;
+// Report-type data (dashboard, reports, system health) is cached on the server for REPORT_CACHE_SECONDS = 10
+// (app/services/report_service.py). Refreshing it this long after a change guarantees numbers computed after the change,
+// and caps the cost at one refetch per window however busy the warehouse is. Must stay above the server's cache time.
+const REPORT_REFRESH_DELAY_MS = 11_000;
+const SLOW_KEYS = new Set(["reports", "system-status"]);
 const TAB_ID = Math.random().toString(36).slice(2);
 
 type Message = { kind: "events"; events: ChangeEvent[] } | { kind: "status"; status: LiveStatus };
@@ -86,6 +91,23 @@ export function keysFor(events: ChangeEvent[]): Set<string> | "all" {
 function createRefresher(queryClient: QueryClient) {
   let pending: ChangeEvent[] = [];
   let timer: ReturnType<typeof setTimeout> | undefined;
+
+  // Slow keys: one refresh REPORT_REFRESH_DELAY_MS after the first change; changes made while it waits get one more
+  // refresh after the last of them, so the final state always shows
+  const slowDue = new Set<string>();
+  let slowTimer: ReturnType<typeof setTimeout> | undefined;
+  let lastSlowChange = 0;
+  let slowScheduledAt = 0;
+  const scheduleSlow = (delay: number) => {
+    slowScheduledAt = Date.now();
+    slowTimer = setTimeout(() => {
+      slowTimer = undefined;
+      slowDue.forEach((key) => void queryClient.invalidateQueries({ queryKey: [key] }));
+      if (lastSlowChange > slowScheduledAt) scheduleSlow(lastSlowChange + REPORT_REFRESH_DELAY_MS - Date.now());
+      else slowDue.clear();
+    }, Math.max(0, delay));
+  };
+
   return (events: ChangeEvent[]) => {
     pending.push(...events);
     clearTimeout(timer);
@@ -93,8 +115,19 @@ function createRefresher(queryClient: QueryClient) {
     timer = setTimeout(() => {
       const keys = keysFor(pending);
       pending = [];
-      if (keys === "all") void queryClient.invalidateQueries();
-      else keys.forEach((key) => void queryClient.invalidateQueries({ queryKey: [key] }));
+      if (keys === "all") {
+        void queryClient.invalidateQueries();
+        return;
+      }
+      keys.forEach((key) => {
+        if (!SLOW_KEYS.has(key)) {
+          void queryClient.invalidateQueries({ queryKey: [key] });
+          return;
+        }
+        slowDue.add(key);
+        lastSlowChange = Date.now();
+      });
+      if (slowDue.size && !slowTimer) scheduleSlow(REPORT_REFRESH_DELAY_MS);
     }, DEBOUNCE_MS);
   };
 }

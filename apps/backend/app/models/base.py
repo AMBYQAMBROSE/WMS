@@ -1,8 +1,8 @@
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Uuid
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Uuid, event, inspect
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 
 
 class Base(DeclarativeBase):
@@ -33,3 +33,26 @@ class TenantScopedMixin(AuditMixin):
     tenant_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("tenant.id"), index=True, nullable=False
     )
+
+
+# Fields that do not by themselves make a new version of a record
+_NOT_A_CHANGE = {"row_version", "updated_at"}
+
+
+@event.listens_for(Session, "before_flush")
+def _bump_row_version(session: Session, _flush_context, _instances) -> None:
+    """Every change to an audited record bumps its row_version, so optimistic locking (check_version) sees every write,
+    whichever code path made it. Code that already bumped it in this flush (to mark a document changed when only its
+    lines changed) is left alone."""
+    for obj in session.dirty:
+        if not isinstance(obj, AuditMixin):
+            continue
+        state = inspect(obj)
+        if state.attrs.row_version.history.has_changes():
+            continue
+        if any(
+            state.attrs[attr.key].history.has_changes()
+            for attr in state.mapper.column_attrs
+            if attr.key not in _NOT_A_CHANGE
+        ):
+            obj.row_version = (obj.row_version or 0) + 1

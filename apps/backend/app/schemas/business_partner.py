@@ -3,6 +3,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
+from app.schemas.versioning import ExpectedVersion
+
 PartnerType = Literal["customer", "supplier", "both"]
 
 
@@ -20,7 +22,7 @@ class BusinessPartnerCreate(BusinessPartnerBase):
     pass
 
 
-class BusinessPartnerUpdate(BaseModel):
+class BusinessPartnerUpdate(ExpectedVersion):
     name: str | None = None
     partner_type: PartnerType | None = None
     contact_name: str | None = None
@@ -30,6 +32,7 @@ class BusinessPartnerUpdate(BaseModel):
 
 
 class BusinessPartnerRead(BusinessPartnerBase):
+    row_version: int
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID

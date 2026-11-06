@@ -2,8 +2,9 @@ import uuid
 from typing import Generic, TypeVar
 
 from sqlalchemy import false, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 
+from app.core.errors import ConflictError
 from app.models.base import Base
 
 ModelType = TypeVar("ModelType", bound=Base)
@@ -55,3 +56,19 @@ class BaseRepository(Generic[ModelType]):
     def soft_delete(self, obj: ModelType) -> None:
         obj.is_deleted = True
         self.db.flush()
+
+
+def check_version(obj, expected: int | None, what: str) -> None:
+    """Optimistic locking for an edit: refuse it if the record changed since the client loaded version `expected`.
+    The row is re-read under an update lock, so two saves of the same version cannot both pass."""
+    if expected is None:
+        return
+    model = type(obj)
+    # An explicit hint: SQLAlchemy's SQL Server dialect silently drops with_for_update(), which would take no lock
+    current = object_session(obj).execute(
+        select(model.row_version).where(model.id == obj.id).with_hint(model, "WITH (UPDLOCK, ROWLOCK)", "mssql")
+    ).scalar_one()
+    if current != expected:
+        raise ConflictError(
+            f"{what} was changed by someone else after you opened it. Reload to see their changes, then make yours again."
+        )

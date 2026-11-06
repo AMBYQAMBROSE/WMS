@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_db_session, require_permission
 from app.api.filters import document_filters
+from app.api.routing import TransactionalRoute
 from app.schemas.document import DocumentRead, DocumentSummary, TransferIn
 from app.services.transfer_service import MoveService, PutawayService, TransferService
 
@@ -15,7 +16,7 @@ def make_transfer_router(
     """Putaway and move share exactly the same API; only the service class and permission prefix differ.
     Lists can be filtered by source document with ref_document_id (a putaway's source is a goods receipt).
     """
-    router = APIRouter(prefix=prefix, tags=[tag])
+    router = APIRouter(route_class=TransactionalRoute, prefix=prefix, tags=[tag])
 
     def service(db: Session, user: CurrentUser) -> TransferService:
         return service_cls(db, user.tenant_id, user.id)

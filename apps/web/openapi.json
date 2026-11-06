@@ -5255,7 +5255,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ShipmentInfoIn"
+                "$ref": "#/components/schemas/ShipmentInfoUpdate"
               }
             }
           }
@@ -9249,6 +9249,10 @@
             "title": "Is Active",
             "default": true
           },
+          "row_version": {
+            "type": "integer",
+            "title": "Row Version"
+          },
           "id": {
             "type": "string",
             "format": "uuid",
@@ -9260,12 +9264,25 @@
           "code",
           "name",
           "partner_type",
+          "row_version",
           "id"
         ],
         "title": "BusinessPartnerRead"
       },
       "BusinessPartnerUpdate": {
         "properties": {
+          "row_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Row Version",
+            "description": "The row_version of the record as you loaded it. If someone changed the record since, the save is refused with 409 instead of silently overwriting their change. Omit to save without the check."
+          },
           "name": {
             "anyOf": [
               {
@@ -9459,6 +9476,10 @@
             "type": "boolean",
             "title": "Is Active"
           },
+          "row_version": {
+            "type": "integer",
+            "title": "Row Version"
+          },
           "secret_hint": {
             "type": "string",
             "title": "Secret Hint"
@@ -9476,12 +9497,25 @@
           "timeout_seconds",
           "max_attempts",
           "is_active",
+          "row_version",
           "secret_hint"
         ],
         "title": "ConnectorRead"
       },
       "ConnectorUpdate": {
         "properties": {
+          "row_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Row Version",
+            "description": "The row_version of the record as you loaded it. If someone changed the record since, the save is refused with 409 instead of silently overwriting their change. Omit to save without the check."
+          },
           "code": {
             "anyOf": [
               {
@@ -9602,6 +9636,10 @@
             "type": "boolean",
             "title": "Is Active"
           },
+          "row_version": {
+            "type": "integer",
+            "title": "Row Version"
+          },
           "secret_hint": {
             "type": "string",
             "title": "Secret Hint"
@@ -9623,6 +9661,7 @@
           "timeout_seconds",
           "max_attempts",
           "is_active",
+          "row_version",
           "secret_hint",
           "secret"
         ],
@@ -9938,6 +9977,10 @@
             "format": "date-time",
             "title": "Created At"
           },
+          "row_version": {
+            "type": "integer",
+            "title": "Row Version"
+          },
           "count_locations": {
             "items": {
               "$ref": "#/components/schemas/CountLocationRead"
@@ -9967,6 +10010,7 @@
           "posted_at",
           "remark",
           "created_at",
+          "row_version",
           "count_locations",
           "lines"
         ],
@@ -10323,6 +10367,10 @@
             "format": "date-time",
             "title": "Created At"
           },
+          "row_version": {
+            "type": "integer",
+            "title": "Row Version"
+          },
           "lines": {
             "items": {
               "$ref": "#/components/schemas/DocumentLineRead"
@@ -10345,6 +10393,7 @@
           "posted_at",
           "remark",
           "created_at",
+          "row_version",
           "lines"
         ],
         "title": "DocumentRead"
@@ -10447,6 +10496,10 @@
             "type": "string",
             "format": "date-time",
             "title": "Created At"
+          },
+          "row_version": {
+            "type": "integer",
+            "title": "Row Version"
           }
         },
         "type": "object",
@@ -10462,7 +10515,8 @@
           "expected_date",
           "posted_at",
           "remark",
-          "created_at"
+          "created_at",
+          "row_version"
         ],
         "title": "DocumentSummary"
       },
@@ -11165,6 +11219,10 @@
             "title": "Is Active",
             "default": true
           },
+          "row_version": {
+            "type": "integer",
+            "title": "Row Version"
+          },
           "id": {
             "type": "string",
             "format": "uuid",
@@ -11176,12 +11234,25 @@
           "sku_code",
           "name",
           "base_uom_id",
+          "row_version",
           "id"
         ],
         "title": "ItemRead"
       },
       "ItemUpdate": {
         "properties": {
+          "row_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Row Version",
+            "description": "The row_version of the record as you loaded it. If someone changed the record since, the save is refused with 409 instead of silently overwriting their change. Omit to save without the check."
+          },
           "name": {
             "anyOf": [
               {
@@ -11744,6 +11815,10 @@
             "title": "Is Active",
             "default": true
           },
+          "row_version": {
+            "type": "integer",
+            "title": "Row Version"
+          },
           "id": {
             "type": "string",
             "format": "uuid",
@@ -11759,6 +11834,7 @@
           "code",
           "name",
           "location_type",
+          "row_version",
           "id",
           "path"
         ],
@@ -11766,6 +11842,18 @@
       },
       "LocationUpdate": {
         "properties": {
+          "row_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Row Version",
+            "description": "The row_version of the record as you loaded it. If someone changed the record since, the save is refused with 409 instead of silently overwriting their change. Omit to save without the check."
+          },
           "name": {
             "anyOf": [
               {
@@ -12298,6 +12386,10 @@
             "format": "date-time",
             "title": "Created At"
           },
+          "row_version": {
+            "type": "integer",
+            "title": "Row Version"
+          },
           "lines": {
             "items": {
               "$ref": "#/components/schemas/PickLineRead"
@@ -12320,6 +12412,7 @@
           "posted_at",
           "remark",
           "created_at",
+          "row_version",
           "lines"
         ],
         "title": "PickRead"
@@ -12443,6 +12536,18 @@
       },
       "PurchaseOrderIn": {
         "properties": {
+          "row_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Row Version",
+            "description": "The row_version of the record as you loaded it. If someone changed the record since, the save is refused with 409 instead of silently overwriting their change. Omit to save without the check."
+          },
           "partner_id": {
             "type": "string",
             "format": "uuid",
@@ -12547,6 +12652,18 @@
       },
       "ReasonCodeIn": {
         "properties": {
+          "row_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Row Version",
+            "description": "The row_version of the record as you loaded it. If someone changed the record since, the save is refused with 409 instead of silently overwriting their change. Omit to save without the check."
+          },
           "category": {
             "type": "string",
             "maxLength": 30,
@@ -12623,6 +12740,10 @@
           "is_active": {
             "type": "boolean",
             "title": "Is Active"
+          },
+          "row_version": {
+            "type": "integer",
+            "title": "Row Version"
           }
         },
         "type": "object",
@@ -12632,7 +12753,8 @@
           "code",
           "name",
           "external_code",
-          "is_active"
+          "is_active",
+          "row_version"
         ],
         "title": "ReasonCodeRead"
       },
@@ -13136,6 +13258,10 @@
           "user_count": {
             "type": "integer",
             "title": "User Count"
+          },
+          "row_version": {
+            "type": "integer",
+            "title": "Row Version"
           }
         },
         "type": "object",
@@ -13145,12 +13271,25 @@
           "name",
           "is_system",
           "permission_codes",
-          "user_count"
+          "user_count",
+          "row_version"
         ],
         "title": "RoleRead"
       },
       "RoleUpdate": {
         "properties": {
+          "row_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Row Version",
+            "description": "The row_version of the record as you loaded it. If someone changed the record since, the save is refused with 409 instead of silently overwriting their change. Omit to save without the check."
+          },
           "name": {
             "type": "string",
             "maxLength": 100,
@@ -13174,6 +13313,18 @@
       },
       "SalesOrderIn": {
         "properties": {
+          "row_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Row Version",
+            "description": "The row_version of the record as you loaded it. If someone changed the record since, the save is refused with 409 instead of silently overwriting their change. Omit to save without the check."
+          },
           "partner_id": {
             "type": "string",
             "format": "uuid",
@@ -13414,6 +13565,10 @@
             "format": "date-time",
             "title": "Created At"
           },
+          "row_version": {
+            "type": "integer",
+            "title": "Row Version"
+          },
           "lines": {
             "items": {
               "$ref": "#/components/schemas/SalesOrderLineRead"
@@ -13436,6 +13591,7 @@
           "posted_at",
           "remark",
           "created_at",
+          "row_version",
           "lines"
         ],
         "title": "SalesOrderRead"
@@ -13527,72 +13683,6 @@
         ],
         "title": "ShipmentCreate"
       },
-      "ShipmentInfoIn": {
-        "properties": {
-          "carrier": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 100
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Carrier"
-          },
-          "vehicle_no": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 30
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Vehicle No"
-          },
-          "driver_name": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 50
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Driver Name"
-          },
-          "driver_phone": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 30
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Driver Phone"
-          },
-          "seal_no": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 50
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Seal No"
-          }
-        },
-        "type": "object",
-        "title": "ShipmentInfoIn"
-      },
       "ShipmentInfoRead": {
         "properties": {
           "carrier": {
@@ -13660,6 +13750,84 @@
           "seal_no"
         ],
         "title": "ShipmentInfoRead"
+      },
+      "ShipmentInfoUpdate": {
+        "properties": {
+          "row_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Row Version",
+            "description": "The row_version of the record as you loaded it. If someone changed the record since, the save is refused with 409 instead of silently overwriting their change. Omit to save without the check."
+          },
+          "carrier": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carrier"
+          },
+          "vehicle_no": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 30
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vehicle No"
+          },
+          "driver_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Driver Name"
+          },
+          "driver_phone": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 30
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Driver Phone"
+          },
+          "seal_no": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seal No"
+          }
+        },
+        "type": "object",
+        "title": "ShipmentInfoUpdate"
       },
       "ShipmentRead": {
         "properties": {
@@ -13760,6 +13928,10 @@
             "format": "date-time",
             "title": "Created At"
           },
+          "row_version": {
+            "type": "integer",
+            "title": "Row Version"
+          },
           "lines": {
             "items": {
               "$ref": "#/components/schemas/DocumentLineRead"
@@ -13792,6 +13964,7 @@
           "posted_at",
           "remark",
           "created_at",
+          "row_version",
           "lines",
           "shipment_info"
         ],
@@ -14571,6 +14744,10 @@
             "type": "array",
             "title": "Roles",
             "default": []
+          },
+          "row_version": {
+            "type": "integer",
+            "title": "Row Version"
           }
         },
         "type": "object",
@@ -14578,12 +14755,25 @@
           "id",
           "username",
           "display_name",
-          "is_active"
+          "is_active",
+          "row_version"
         ],
         "title": "UserRead"
       },
       "UserUpdate": {
         "properties": {
+          "row_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Row Version",
+            "description": "The row_version of the record as you loaded it. If someone changed the record since, the save is refused with 409 instead of silently overwriting their change. Omit to save without the check."
+          },
           "display_name": {
             "type": "string",
             "maxLength": 100,

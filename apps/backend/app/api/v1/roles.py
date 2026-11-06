@@ -5,11 +5,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_db_session, require_permission
+from app.api.routing import TransactionalRoute
 from app.models.user import Permission
 from app.schemas.user import PermissionRead, RoleIn, RoleRead, RoleUpdate
 from app.services.role_service import RoleService
 
-router = APIRouter(tags=["roles"])
+router = APIRouter(route_class=TransactionalRoute, tags=["roles"])
 
 
 def _service(db: Session, user: CurrentUser) -> RoleService:

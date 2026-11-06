@@ -4,11 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_db_session, require_permission
+from app.api.routing import TransactionalRoute
 from app.models.reason_code import ReasonCode
-from app.repositories.base import BaseRepository
+from app.repositories.base import BaseRepository, check_version
 from app.schemas.document import ReasonCodeIn, ReasonCodeRead
 
-router = APIRouter(prefix="/reason-codes", tags=["reason-codes"])
+router = APIRouter(route_class=TransactionalRoute, prefix="/reason-codes", tags=["reason-codes"])
 
 
 @router.get("", response_model=list[ReasonCodeRead])
@@ -34,7 +35,7 @@ def create_reason_code(
     user: CurrentUser = Depends(require_permission("reason_code.create")),
 ):
     reason = ReasonCode(
-        tenant_id=user.tenant_id, created_by=user.id, updated_by=user.id, **data.model_dump()
+        tenant_id=user.tenant_id, created_by=user.id, updated_by=user.id, **data.model_dump(exclude={"row_version"})
     )
     return BaseRepository(db, ReasonCode).create(reason)
 
@@ -50,4 +51,5 @@ def update_reason_code(
     reason = repo.get(user.tenant_id, reason_id)
     if reason is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reason code not found")
-    return repo.update(reason, {**data.model_dump(), "updated_by": user.id})
+    check_version(reason, data.row_version, f"Reason code {reason.code}")
+    return repo.update(reason, {**data.model_dump(exclude={"row_version"}), "updated_by": user.id})

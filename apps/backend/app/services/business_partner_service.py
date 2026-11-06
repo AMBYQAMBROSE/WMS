@@ -4,7 +4,7 @@ from sqlalchemy import or_, true
 from sqlalchemy.orm import Session
 
 from app.models.business_partner import BusinessPartner
-from app.repositories.base import BaseRepository
+from app.repositories.base import BaseRepository, check_version
 from app.schemas.business_partner import BusinessPartnerCreate, BusinessPartnerUpdate
 
 
@@ -56,7 +56,8 @@ class BusinessPartnerService:
         data: BusinessPartnerUpdate,
         updated_by: uuid.UUID,
     ) -> BusinessPartner:
-        fields = data.model_dump(exclude_unset=True)
+        check_version(partner, data.row_version, f"Business partner {partner.code}")
+        fields = data.model_dump(exclude_unset=True, exclude={"row_version"})
         fields["updated_by"] = updated_by
         return self.repo.update(partner, fields)
 

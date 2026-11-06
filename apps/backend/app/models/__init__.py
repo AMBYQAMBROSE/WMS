@@ -3,6 +3,7 @@ from app.models import (  # noqa: F401
     audit,
     business_partner,
     document,
+    idempotency,
     integration,
     item,
     location,

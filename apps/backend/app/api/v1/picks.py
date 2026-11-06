@@ -5,11 +5,12 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_db_session, require_permission
 from app.api.filters import document_filters
+from app.api.routing import TransactionalRoute
 from app.schemas.document import DocumentSummary
 from app.schemas.outbound import PickConfirmIn, PickRead
 from app.services.pick_service import PickService
 
-router = APIRouter(prefix="/picks", tags=["picks"])
+router = APIRouter(route_class=TransactionalRoute, prefix="/picks", tags=["picks"])
 
 
 def _service(db: Session, user: CurrentUser) -> PickService:

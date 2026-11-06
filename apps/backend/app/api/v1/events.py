@@ -6,10 +6,11 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
 from app.api.deps import CurrentUser, load_current_user, oauth2_scheme
+from app.api.routing import TransactionalRoute
 from app.core.db import SessionLocal
 from app.services.live_service import feed
 
-router = APIRouter(prefix="/events", tags=["events"])
+router = APIRouter(route_class=TransactionalRoute, prefix="/events", tags=["events"])
 
 HEARTBEAT_SECONDS = 15
 # Streams end after this long and the browser reconnects: tokens are re-checked, deactivated users drop off,

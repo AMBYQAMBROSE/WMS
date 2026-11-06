@@ -4,7 +4,7 @@ from sqlalchemy import or_, select, true
 from sqlalchemy.orm import Session
 
 from app.models.item import Item, ItemBarcode
-from app.repositories.base import BaseRepository
+from app.repositories.base import BaseRepository, check_version
 from app.schemas.item import ItemCreate, ItemUpdate
 
 
@@ -51,7 +51,8 @@ class ItemService:
         return self.repo.create(item)
 
     def update(self, item: Item, data: ItemUpdate, updated_by: uuid.UUID) -> Item:
-        fields = data.model_dump(exclude_unset=True)
+        check_version(item, data.row_version, f"Item {item.sku_code}")
+        fields = data.model_dump(exclude_unset=True, exclude={"row_version"})
         fields["updated_by"] = updated_by
         return self.repo.update(item, fields)
 

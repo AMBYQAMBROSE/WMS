@@ -4,7 +4,7 @@ from sqlalchemy import or_, true
 from sqlalchemy.orm import Session
 
 from app.models.location import Location
-from app.repositories.base import BaseRepository
+from app.repositories.base import BaseRepository, check_version
 from app.schemas.location import LocationCreate, LocationUpdate
 
 
@@ -56,7 +56,8 @@ class LocationService:
         return self.repo.create(location)
 
     def update(self, location: Location, data: LocationUpdate, updated_by: uuid.UUID) -> Location:
-        fields = data.model_dump(exclude_unset=True)
+        check_version(location, data.row_version, f"Location {location.code}")
+        fields = data.model_dump(exclude_unset=True, exclude={"row_version"})
         fields["updated_by"] = updated_by
         return self.repo.update(location, fields)
 

@@ -4,10 +4,11 @@ from sqlalchemy import false, select, true
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_current_user, get_db_session, require_permission
+from app.api.routing import TransactionalRoute
 from app.core.feature_catalog import FEATURE_CODES, FEATURES
 from app.models.tenant import TenantFeatureFlag
 
-router = APIRouter(prefix="/features", tags=["features"])
+router = APIRouter(route_class=TransactionalRoute, prefix="/features", tags=["features"])
 
 
 class FeatureRead(BaseModel):

@@ -5,10 +5,11 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_db_session, require_permission
 from app.api.filters import document_filters
+from app.api.routing import TransactionalRoute
 from app.schemas.document import DocumentRead, DocumentSummary, PurchaseOrderIn
 from app.services.purchase_order_service import PurchaseOrderService
 
-router = APIRouter(prefix="/purchase-orders", tags=["purchase-orders"])
+router = APIRouter(route_class=TransactionalRoute, prefix="/purchase-orders", tags=["purchase-orders"])
 
 
 def _service(db: Session, user: CurrentUser) -> PurchaseOrderService:

@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_db_session, require_permission
+from app.api.routing import TransactionalRoute
 from app.schemas.business_partner import (
     BusinessPartnerCreate,
     BusinessPartnerRead,
@@ -12,7 +13,7 @@ from app.schemas.business_partner import (
 )
 from app.services.business_partner_service import BusinessPartnerService
 
-router = APIRouter(prefix="/business-partners", tags=["business-partners"])
+router = APIRouter(route_class=TransactionalRoute, prefix="/business-partners", tags=["business-partners"])
 
 
 @router.get("", response_model=list[BusinessPartnerRead])

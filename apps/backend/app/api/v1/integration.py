@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_db_session, require_permission
+from app.api.routing import TransactionalRoute
 from app.core.event_catalog import EVENT_NAMES, EVENTS
 from app.schemas.integration import (
     ConnectorIn,
@@ -17,7 +18,7 @@ from app.schemas.integration import (
 )
 from app.services.integration_service import ConnectorService
 
-router = APIRouter(prefix="/integration", tags=["integration"])
+router = APIRouter(route_class=TransactionalRoute, prefix="/integration", tags=["integration"])
 
 
 def _service(db: Session, user: CurrentUser) -> ConnectorService:

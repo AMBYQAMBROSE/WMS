@@ -12,10 +12,11 @@ from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_db_session, require_permission
+from app.api.routing import TransactionalRoute
 from app.schemas.report import Dashboard, ExpiryPage, OccupancyArea, PartnerLedgerPage, PickerKpiPage, TurnoverPage
 from app.services.report_service import ReportService, today_local
 
-router = APIRouter(prefix="/reports", tags=["reports"])
+router = APIRouter(route_class=TransactionalRoute, prefix="/reports", tags=["reports"])
 
 # Maximum rows shown on screen; full data via format=csv (turnover/ledger in a large warehouse can have tens of thousands of rows)
 DEFAULT_LIMIT = 1000

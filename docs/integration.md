@@ -4,7 +4,7 @@ For developers of the receiving system (ERP, TMS, or the customer's own system).
 
 When a document changes status (for example, a goods receipt or shipment is posted), WMS sends the document as an HTTP POST to an address you provide. Your side only needs a receiving endpoint that verifies the signature, deduplicates as described here, and returns 2xx.
 
-> Currently only WMS → your system pushes are provided. To write data into WMS (for example, sending purchase orders or sales orders), call the WMS REST API directly (`/api/v1/purchase-orders` etc.; API docs at `http://<WMS address>/docs`). Sign in with a dedicated system account to get a token. Dedicated connectors for SAP and other ERPs will be built when a project needs them.
+> Currently only WMS → your system pushes are provided. To write data into WMS (for example, sending purchase orders or sales orders), call the WMS REST API directly (`/api/v1/purchase-orders` etc.; API docs at `http://<WMS address>/docs`). Sign in with a dedicated system account to get a token. Read section 7 for safe retries and edits. Dedicated connectors for SAP and other ERPs will be built when a project needs them.
 
 ## 1. Setup
 
@@ -162,3 +162,24 @@ Typical ERP subscriptions:
 In **Integrations → Push log**, WMS administrators can find every push by document no. or status. For each push they can see the payload, and for every call the status code, duration, error and the response body.
 
 The top of the page shows whether the push worker is running. Events created while the worker is stopped are not lost; they are sent once it recovers.
+
+## 7. Writing to WMS: retries and concurrent edits
+
+When your system calls the WMS REST API (for example to create purchase or sales orders), two headers and one field make retries and edits safe.
+
+**Retry without duplicates: `Idempotency-Key`.** A request can reach WMS while its response is lost (timeout, dropped connection). Retrying it would create a second order. To prevent that, send a unique key with every `POST`, and the *same* key when you retry it:
+
+```http
+POST /api/v1/purchase-orders
+Authorization: Bearer <token>
+Idempotency-Key: erp-po-4711-create
+Content-Type: application/json
+```
+
+- First call: WMS creates the order and remembers the key with its response, in the same transaction.
+- Retry with the same key and the same body: WMS returns the first response again (same status and body, same order id) with the header `Idempotent-Replayed: true`, and creates nothing. This also holds when the retry arrives while the first call is still running: it waits for it.
+- If the first call failed (any 4xx/5xx), nothing was saved and the key is free: the retry runs normally.
+- The same key with a *different* body is refused with 400: use a new key for a new request. A good key is derived from your own record, e.g. `erp-po-<your id>-create`.
+- Keys are per WMS account and kept for 24 hours. At most 100 characters.
+
+**Edit without overwriting someone else's change: `row_version`.** Records you can edit (items, locations, business partners, draft orders, ...) carry a `row_version` that increases with every change. Send back the `row_version` you read along with your `PUT`. If the record was changed in WMS since you read it, the save is refused with **409** and nothing is overwritten: read it again, reapply your change, and retry. Leaving `row_version` out saves without the check.

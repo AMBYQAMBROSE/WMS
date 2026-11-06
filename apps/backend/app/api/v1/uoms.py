@@ -2,11 +2,12 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_db_session, require_permission
+from app.api.routing import TransactionalRoute
 from app.models.item import Uom
 from app.repositories.base import BaseRepository
 from app.schemas.document import UomBrief
 
-router = APIRouter(prefix="/uoms", tags=["uoms"])
+router = APIRouter(route_class=TransactionalRoute, prefix="/uoms", tags=["uoms"])
 
 
 @router.get("", response_model=list[UomBrief])

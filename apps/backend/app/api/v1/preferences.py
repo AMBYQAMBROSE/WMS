@@ -6,10 +6,11 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_current_user, get_db_session
+from app.api.routing import TransactionalRoute
 from app.models.user import UserPreference
 from app.services.document_common import utcnow
 
-router = APIRouter(prefix="/me/preferences", tags=["preferences"])
+router = APIRouter(route_class=TransactionalRoute, prefix="/me/preferences", tags=["preferences"])
 
 MAX_BYTES = 32 * 1024
 Key = Path(pattern=r"^[a-z0-9:._-]{1,100}$", description="e.g. list:grns")

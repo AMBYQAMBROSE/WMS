@@ -4,6 +4,7 @@ Time: the database stores UTC; a report "day" is split by settings.business_time
 Quantities: always base units.
 """
 
+import threading
 import uuid
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
@@ -16,7 +17,6 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.errors import DomainError
-from app.models.audit import AuditLog
 from app.models.business_partner import BusinessPartner
 from app.models.document import DocumentHeader, DocumentLine
 from app.models.item import Item, Uom
@@ -42,8 +42,29 @@ SHIPPED_TYPES = (st.MOVE_SHIP_OUT, st.MOVE_RETURN_OUT)
 OTHER_TYPES = (st.MOVE_ADJUST_IN, st.MOVE_ADJUST_OUT, st.MOVE_COUNT_GAIN, st.MOVE_COUNT_LOSS,
                st.MOVE_REPACK_IN, st.MOVE_REPACK_OUT)
 MAX_REPORT_DAYS = 366
-DASHBOARD_TTL_SECONDS = 30
-_DASHBOARD_CACHE: dict = {}
+# Dashboard-type results are cached per tenant and process for this long. Live updates in the browser refetch them
+# REPORT_REFRESH_DELAY later than a change (src/api/live.ts, which must stay above this), so a refetch always gets
+# numbers computed after the change. At peak there are changes every second: without this, every open dashboard would
+# recompute 23 aggregates after each one (measured at 1.5 s per computation under load, docs/performance.md).
+REPORT_CACHE_SECONDS = 10
+_report_cache: dict[tuple, tuple[float, object]] = {}
+_report_locks: dict[tuple, threading.Lock] = {}
+
+
+def _cached(key: tuple, compute):
+    """Single-flight cache: concurrent misses wait for one computation instead of each running it.
+    Expiry counts from when the computation started, so a cached result is never older than REPORT_CACHE_SECONDS."""
+    entry = _report_cache.get(key)
+    if entry and entry[0] > monotonic():
+        return entry[1]
+    with _report_locks.setdefault(key, threading.Lock()):
+        entry = _report_cache.get(key)
+        if entry and entry[0] > monotonic():
+            return entry[1]  # computed by another request while this one waited
+        started = monotonic()
+        data = compute()
+        _report_cache[key] = (started + REPORT_CACHE_SECONDS, data)
+        return data
 
 ZERO = Decimal(0)
 
@@ -122,18 +143,14 @@ class ReportService:
     # ------------------------------------------------------------ dashboard
 
     def dashboard(self) -> dict:
-        """Dashboard data is cached per tenant for 30 s (per process), so dozens of open dashboards cost one computation.
-        The cache is also keyed on the tenant's latest change (an index seek on the audit log): live updates refetch
-        the dashboard right after a change, and must get the new numbers, not a cached copy from before it."""
-        marker = self.db.scalar(select(func.max(AuditLog.occurred_at)).where(AuditLog.tenant_id == self.tenant_id))
-        cached = _DASHBOARD_CACHE.get(self.tenant_id)
-        if cached and cached[0] > monotonic() and cached[1] == marker:
-            return cached[2]
-        data = self._dashboard()
-        _DASHBOARD_CACHE[self.tenant_id] = (monotonic() + DASHBOARD_TTL_SECONDS, marker, data)
-        return data
+        """Cached (see REPORT_CACHE_SECONDS): dozens of open dashboards cost one computation per 10 s per process"""
+        return _cached(("dashboard", self.tenant_id), self._dashboard)
 
     def occupancy(self) -> list[dict]:
+        """Cached like the dashboard: it reads every bin, which is tens of thousands at large sites"""
+        return _cached(("occupancy", self.tenant_id), self._occupancy)
+
+    def _occupancy(self) -> list[dict]:
         """Bin occupancy per zone, for the dashboard heatmap. Bins are grouped under their nearest ZONE ancestor,
         or under their warehouse when there is no zone in between (found from the materialized location path)."""
         active = and_(Location.tenant_id == self.tenant_id, Location.is_active == true(), Location.is_deleted == false())

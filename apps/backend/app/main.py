@@ -4,6 +4,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
 
+from app.api.idempotency import IdempotentReplay, replay_response
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.db import engine, numbering_engine
@@ -56,6 +57,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.add_exception_handler(IdempotentReplay, replay_response)
 # Added last so it is the outermost middleware: the request id covers everything, including CORS and gzip
 app.add_middleware(RequestContextMiddleware)
 

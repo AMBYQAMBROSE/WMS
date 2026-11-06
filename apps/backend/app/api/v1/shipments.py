@@ -5,11 +5,12 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_db_session, require_permission
 from app.api.filters import document_filters
+from app.api.routing import TransactionalRoute
 from app.schemas.document import DocumentSummary
-from app.schemas.outbound import ShipmentCreate, ShipmentInfoIn, ShipmentRead
+from app.schemas.outbound import ShipmentCreate, ShipmentInfoUpdate, ShipmentRead
 from app.services.shipment_service import ShipmentService
 
-router = APIRouter(prefix="/shipments", tags=["shipments"])
+router = APIRouter(route_class=TransactionalRoute, prefix="/shipments", tags=["shipments"])
 
 
 def _service(db: Session, user: CurrentUser) -> ShipmentService:
@@ -47,7 +48,7 @@ def get_shipment(
 @router.put("/{ship_id}/info", response_model=ShipmentRead)
 def update_shipment_info(
     ship_id: uuid.UUID,
-    data: ShipmentInfoIn,
+    data: ShipmentInfoUpdate,
     db: Session = Depends(get_db_session),
     user: CurrentUser = Depends(require_permission("shipment.create")),
 ):

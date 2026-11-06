@@ -5,11 +5,12 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_db_session, require_permission
 from app.api.filters import document_filters
+from app.api.routing import TransactionalRoute
 from app.models.document import DocumentHeader
 from app.schemas.document import CountEntryIn, CountRead, CycleCountCreate, DocumentSummary, RecountIn
 from app.services.cycle_count_service import CycleCountService
 
-router = APIRouter(prefix="/cycle-counts", tags=["cycle-counts"])
+router = APIRouter(route_class=TransactionalRoute, prefix="/cycle-counts", tags=["cycle-counts"])
 
 VIEW_EXPECTED = "cycle_count.view_expected"
 

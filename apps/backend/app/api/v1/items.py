@@ -4,10 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_db_session, require_permission
+from app.api.routing import TransactionalRoute
 from app.schemas.item import ItemCreate, ItemRead, ItemUpdate
 from app.services.item_service import ItemService
 
-router = APIRouter(prefix="/items", tags=["items"])
+router = APIRouter(route_class=TransactionalRoute, prefix="/items", tags=["items"])
 
 
 @router.get("", response_model=list[ItemRead])

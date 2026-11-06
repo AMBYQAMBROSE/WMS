@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_db_session, require_feature, require_permission
 from app.api.filters import document_filters
+from app.api.routing import TransactionalRoute
 from app.core.feature_catalog import FEATURE_REPACK, FEATURE_RETURNABLE_ASSET, FEATURE_RETURNS
 from app.schemas.document import DocumentRead, DocumentSummary
 from app.schemas.extension import (
@@ -26,7 +27,7 @@ from app.services.returnable_asset_service import ReturnableAssetService
 
 def _document_router(prefix: str, tag: str, feature: str, permission: str, service_cls, payload_cls) -> APIRouter:
     """Customer returns, returns to supplier and repacks share the same API shape: list/create/detail/post/cancel"""
-    router = APIRouter(prefix=prefix, tags=[tag], dependencies=[Depends(require_feature(feature))])
+    router = APIRouter(route_class=TransactionalRoute, prefix=prefix, tags=[tag], dependencies=[Depends(require_feature(feature))])
 
     def service(db: Session, user: CurrentUser):
         return service_cls(db, user.tenant_id, user.id)
@@ -81,6 +82,7 @@ repack_router = _document_router("/repacks", "repacks", FEATURE_REPACK, "repack"
 
 
 asset_router = APIRouter(
+    route_class=TransactionalRoute,
     prefix="/returnable-assets",
     tags=["returnable-assets"],
     dependencies=[Depends(require_feature(FEATURE_RETURNABLE_ASSET))],

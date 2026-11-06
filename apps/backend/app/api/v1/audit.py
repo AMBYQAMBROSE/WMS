@@ -6,10 +6,11 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_db_session, require_permission
+from app.api.routing import TransactionalRoute
 from app.schemas.audit import AuditLogRead
 from app.services.audit_service import AuditService
 
-router = APIRouter(prefix="/audit-logs", tags=["audit"])
+router = APIRouter(route_class=TransactionalRoute, prefix="/audit-logs", tags=["audit"])
 
 
 @router.get("", response_model=list[AuditLogRead])

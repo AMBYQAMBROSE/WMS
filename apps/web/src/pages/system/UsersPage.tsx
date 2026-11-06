@@ -6,21 +6,9 @@ import { Button, Form, Input, Modal, Select, Space, Switch, Table, Tag, message 
 import { apiClient } from "@/api/client";
 import { showError } from "@/api/errors";
 import { useCan, useMe } from "@/api/me";
+import type { components } from "@/api/schema";
 
-interface RoleBrief {
-  id: string;
-  code: string;
-  name: string;
-}
-
-interface User {
-  id: string;
-  username: string;
-  display_name: string;
-  email: string | null;
-  is_active: boolean;
-  roles: RoleBrief[];
-}
+type User = components["schemas"]["UserRead"];
 
 interface UserForm {
   username?: string;
@@ -47,7 +35,7 @@ export default function UsersPage() {
   });
   const { data: roles = [] } = useQuery({
     queryKey: ["roles"],
-    queryFn: async () => (await apiClient.get<RoleBrief[]>("/roles")).data,
+    queryFn: async () => (await apiClient.get<components["schemas"]["RoleRead"][]>("/roles")).data,
     enabled: can("role.read"),
   });
 
@@ -60,6 +48,7 @@ export default function UsersPage() {
             email: v.email || null,
             is_active: v.is_active,
             role_codes: v.role_codes,
+            row_version: (editing as User).row_version,
           }),
     onSuccess: () => {
       message.success("Saved; takes effect immediately");

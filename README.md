@@ -261,6 +261,14 @@ Pitfalls already hit during development; keep them in mind when writing new mode
 - A form that copies fetched data into its fields must do it once per source document (see the `filledFrom` ref in `OrderForm.tsx`), or a live refetch wipes what the user is typing.
 - One stream per browser: tabs elect a leader through a localStorage lease and share events over a `BroadcastChannel`.
 
+## Transactions, retries and concurrent edits
+
+- Every router is created with `APIRouter(route_class=TransactionalRoute, ...)` (`app/api/routing.py`): the request's transaction commits after the endpoint but **before** the response is sent. FastAPI itself would commit only after sending, so a failing commit followed a 2xx for data that was never saved. New routers must use it too.
+- `Idempotency-Key` on any POST (`app/api/idempotency.py`, client guide in `docs/integration.md` section 7): the key, its stored response and the business change commit together. The PDA keeps its body field `client_request_id`.
+- Optimistic locking: every change to a record bumps its `row_version` (flush hook in `app/models/base.py`). Edit endpoints take the version the client loaded (`ExpectedVersion` in `app/schemas/versioning.py`) and call `check_version` (`app/repositories/base.py`), which re-reads the row under `UPDLOCK`. Note that SQLAlchemy's SQL Server dialect silently ignores `with_for_update()`: use the `WITH (UPDLOCK, ROWLOCK)` hint, as everywhere else in the code.
+- Web edit forms send the version they were **opened** with, not the latest one: live updates refresh the record while the user edits, and sending its current version would defeat the check.
+- Dashboard-type reports are cached 10 s per process with single-flight (`REPORT_CACHE_SECONDS`); the browser refreshes them 11 s after a change (`REPORT_REFRESH_DELAY_MS` in `src/api/live.ts`). Keep the browser delay above the server cache time.
+
 ## List page notes
 
 - Document lists take the shared filters of `app/api/filters.py` (status, keyword, created-date range in the business time zone, paging); a new document list endpoint should use `Depends(document_filters)` too.

@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_db_session, require_permission
 from app.api.filters import document_filters
+from app.api.routing import TransactionalRoute
 from app.core.feature_catalog import FEATURE_CROSS_DOCK
 from app.schemas.document import DocumentSummary
 from app.schemas.outbound import (
@@ -18,7 +19,7 @@ from app.schemas.outbound import (
 from app.services.document_common import is_feature_enabled
 from app.services.sales_order_service import SalesOrderService
 
-router = APIRouter(prefix="/sales-orders", tags=["sales-orders"])
+router = APIRouter(route_class=TransactionalRoute, prefix="/sales-orders", tags=["sales-orders"])
 
 
 def _service(db: Session, user: CurrentUser) -> SalesOrderService:

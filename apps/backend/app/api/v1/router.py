@@ -1,5 +1,7 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from app.api.idempotency import idempotency_guard
+from app.api.routing import TransactionalRoute
 from app.api.v1 import (
     adjustments,
     audit,
@@ -31,7 +33,8 @@ from app.api.v1 import (
     users,
 )
 
-api_router = APIRouter()
+# Every POST may carry an Idempotency-Key (app/api/idempotency.py)
+api_router = APIRouter(route_class=TransactionalRoute, dependencies=[Depends(idempotency_guard)])
 api_router.include_router(health.router)
 api_router.include_router(auth.router)
 api_router.include_router(users.router)

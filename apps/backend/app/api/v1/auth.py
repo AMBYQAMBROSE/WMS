@@ -6,11 +6,12 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_current_user, get_db_session
+from app.api.routing import TransactionalRoute
 from app.api.v1.features import enabled_features
 from app.schemas.auth import TokenResponse
 from app.services.auth_service import AuthService
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(route_class=TransactionalRoute, prefix="/auth", tags=["auth"])
 
 
 class MeResponse(BaseModel):

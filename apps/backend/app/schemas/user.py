@@ -2,6 +2,8 @@ import uuid
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.versioning import ExpectedVersion
+
 Password = Field(min_length=6, max_length=100)
 
 
@@ -21,7 +23,7 @@ class UserCreate(BaseModel):
     role_codes: list[str] = []
 
 
-class UserUpdate(BaseModel):
+class UserUpdate(ExpectedVersion):
     display_name: str = Field(min_length=1, max_length=100)
     email: str | None = Field(default=None, max_length=200)
     is_active: bool = True
@@ -41,6 +43,7 @@ class UserRead(BaseModel):
     email: str | None = None
     is_active: bool
     roles: list[RoleBrief] = []
+    row_version: int
 
 
 class PermissionRead(BaseModel):
@@ -57,7 +60,7 @@ class RoleIn(BaseModel):
     permission_codes: list[str] = []
 
 
-class RoleUpdate(BaseModel):
+class RoleUpdate(ExpectedVersion):
     name: str = Field(min_length=1, max_length=100)
     permission_codes: list[str] = []
 
@@ -69,3 +72,4 @@ class RoleRead(BaseModel):
     is_system: bool
     permission_codes: list[str]
     user_count: int
+    row_version: int

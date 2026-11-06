@@ -41,6 +41,7 @@ from app.models.integration import (
     WorkerHeartbeat,
 )
 from app.models.tenant import Tenant
+from app.repositories.base import check_version
 from app.services.document_common import utcnow
 
 # How long to wait before retrying after the nth failure (seconds); beyond the list the last value applies
@@ -127,6 +128,7 @@ class ConnectorService:
 
     def update(self, connector_id: uuid.UUID, data) -> IntegrationConnector:
         connector = self.get(connector_id)
+        check_version(connector, data.row_version, f"Connector {connector.code}")
         self._validate(data.endpoint_url, data.event_types)
         connector.name = data.name
         connector.endpoint_url = data.endpoint_url

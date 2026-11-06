@@ -11,6 +11,7 @@ import sys
 import time
 from datetime import timedelta
 
+from app.api import idempotency
 from app.core.config import settings
 from app.core.db import SessionLocal
 from app.core.observability import configure_logging
@@ -67,6 +68,11 @@ def main() -> None:
                     removed = svc.purge(db, settings.integration_retention_days)
                 if removed:
                     log.info("Purged %s expired delivery records", removed)
+                with SessionLocal() as db:
+                    keys = idempotency.purge(db)
+                    db.commit()
+                if keys:
+                    log.info("Purged %s expired idempotency keys", keys)
                 last_purge = time.monotonic()
         except Exception:  # noqa: BLE001 - e.g. database briefly unavailable; log and retry next round
             log.exception("Error in this round")

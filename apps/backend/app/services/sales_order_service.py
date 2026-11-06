@@ -10,6 +10,7 @@ from app.core.formatting import qty_text
 from app.models.document import DocumentHeader, DocumentLine
 from app.models.location import Location
 from app.models.stock import StockBalance
+from app.repositories.base import check_version
 from app.schemas.document import DocumentSummary
 from app.schemas.outbound import (
     SalesOrderIn,
@@ -139,6 +140,7 @@ class SalesOrderService:
 
     def update(self, so_id: uuid.UUID, data: SalesOrderIn) -> DocumentHeader:
         so = self.get(so_id, lock=True)
+        check_version(so, data.row_version, f"Sales order {so.doc_no}")
         require_status(so, (SO_DRAFT,), "edit")
         get_customer(self.db, self.tenant_id, data.partner_id)
         new_lines = self._build_lines(data.lines)

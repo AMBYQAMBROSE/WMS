@@ -8,6 +8,7 @@ import { errorText } from "@/lib/api";
 import { useMasterData } from "@/stores/masterData";
 import { useQueue } from "@/stores/queue";
 import { useSession } from "@/stores/session";
+import { useTasks } from "@/stores/tasks";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -15,6 +16,7 @@ export default function HomeScreen() {
   const data = useMasterData((s) => s.data);
   const needsLogin = useQueue((s) => s.needsLogin);
   const pending = useQueue((s) => s.ops.length);
+  const fresh = useTasks((s) => s.fresh);
   const [refreshing, setRefreshing] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
 
@@ -44,12 +46,25 @@ export default function HomeScreen() {
       )}
       {!data && <Banner notice={{ kind: "warning", text: "No master data yet, so barcodes cannot be recognized. Update master data first" }} />}
       <Banner notice={notice} />
+      {fresh.pick + fresh.count > 0 && (
+        <Banner
+          notice={{
+            kind: "info",
+            text: `New work: ${[
+              fresh.pick && `${fresh.pick} pick list${fresh.pick > 1 ? "s" : ""}`,
+              fresh.count && `${fresh.count} cycle count${fresh.count > 1 ? "s" : ""}`,
+            ]
+              .filter(Boolean)
+              .join(", ")}`,
+          }}
+        />
+      )}
 
       <Button title="Receive" onPress={() => router.push("/receive")} disabled={!data} testID="menu-receive" />
       <Button title="Put away" onPress={() => router.push("/putaway")} disabled={!data} testID="menu-putaway" />
       <Button title="Move" onPress={() => router.push("/move")} disabled={!data} testID="menu-move" />
-      <Button title="Count" onPress={() => router.push("/count")} disabled={!data} testID="menu-count" />
-      <Button title="Pick" onPress={() => router.push("/pick")} disabled={!data} testID="menu-pick" />
+      <Button title={`Count${fresh.count ? ` · ${fresh.count} new` : ""}`} onPress={() => router.push("/count")} disabled={!data} testID="menu-count" />
+      <Button title={`Pick${fresh.pick ? ` · ${fresh.pick} new` : ""}`} onPress={() => router.push("/pick")} disabled={!data} testID="menu-pick" />
       <Button title={`Submit queue${pending ? ` (${pending})` : ""}`} variant="default" onPress={() => router.push("/queue")} />
 
       <Card>

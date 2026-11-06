@@ -91,3 +91,23 @@ def test_document_history_and_audit_log(page: Page, errors, client, admin_header
     page.goto("/system-health")
     expect(page.get_by_text("Background worker")).to_be_visible()
     assert not errors
+
+
+def test_document_photos_in_the_console(page: Page, errors, client, admin_headers, unique):
+    import base64
+
+    from tests.helpers import Api, make_item, make_warehouse, receive
+
+    api = Api(client, admin_headers)
+    wh = make_warehouse(api, unique)
+    grn = receive(api, wh, make_item(api, wh, f"PH{unique}"), 1)
+    jpeg = page.screenshot(type="jpeg")
+    api.post(f"/documents/{grn['id']}/attachments", {"content_base64": base64.b64encode(jpeg).decode(), "caption": "Wet pallet"})
+
+    sign_in(page)
+    page.goto(f"/grns/{grn['id']}")
+    page.get_by_role("button", name="Photos (1)").click()
+    photos = page.get_by_test_id("document-photos")
+    expect(photos.get_by_text("Wet pallet")).to_be_visible()
+    expect(photos.locator("img")).to_have_count(1)
+    assert not errors

@@ -5,6 +5,7 @@ import { Typography } from "antd";
 import { Link } from "react-router";
 
 import { HistoryButton } from "@/components/AuditTrail";
+import { PhotosButton } from "@/components/DocumentPhotos";
 import StatusTag from "@/components/StatusTag";
 import { ACCENTS, type Accent } from "@/theme";
 
@@ -132,6 +133,7 @@ export function DocTitle({ label, no, status, historyOf }: { label: string; no: 
       </div>
       {status && <StatusTag status={status} />}
       {historyOf && <HistoryButton entityId={historyOf} title={`${label} ${no}`} />}
+      {historyOf && <PhotosButton documentId={historyOf} title={`${label} ${no}`} />}
     </div>
   );
 }

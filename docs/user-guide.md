@@ -22,6 +22,11 @@ For warehouse operators, warehouse supervisors and system administrators. Everyo
 - **Master data**: items, locations and so on are downloaded after sign-in and used to recognize barcodes. The home screen shows when it was last updated; tap "Update master data" when items change.
 - **Scanning**: the scanner sends Enter after each scan and the cursor always stays in the scan field, so there is no need to tap the screen.
 - **Offline**: keep working when the signal is poor. Records go to the "Submit queue" and are submitted automatically once the signal returns, without duplicates (you can also tap "Sync now" in the queue). The home screen shows how many are pending; **make sure the queue is empty before the end of your shift**.
+- **Shared PDAs**: records you made offline are only submitted while **you** are signed in, so they are recorded as your work. If you sign out with records still waiting, sign in on that PDA again later to send them. The queue shows other people's waiting records separately.
+- **Failed records**: if the server refuses a record (e.g. the location was locked meanwhile), the queue shows what it contained and why. Fix the cause and tap **Retry**; delete it only if you redid the work another way.
+- **Each scan counts 1**: for goods labelled per piece, switch this on in Receive or Count and scan every piece instead of typing the quantity.
+- **Photos**: in Receive and Count, tap "Take photo" (add a note first if useful) to record damage or what you found. Photos are sent with the record, also when you were offline, and the office sees them on the document.
+- **New work**: when new pick lists or counts arrive, the PDA vibrates and the home screen shows them (e.g. "Pick · 2 new") until you open that screen.
 
 ## 3. Receiving clerk
 

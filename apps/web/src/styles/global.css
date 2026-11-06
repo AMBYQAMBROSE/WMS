@@ -744,3 +744,28 @@ a.wms-stat:hover .wms-stat-arrow {
   width: 16px;
   color: var(--ant-color-primary);
 }
+
+/* ---- Document photos (components/DocumentPhotos.tsx) ---- */
+.wms-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+.wms-photo {
+  position: relative;
+  display: grid;
+  gap: 4px;
+}
+.wms-photo .ant-image-img {
+  border-radius: 8px;
+}
+.wms-photo-meta {
+  display: grid;
+}
+.wms-photo > .ant-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: var(--ant-color-bg-container);
+}

@@ -1,9 +1,11 @@
-"""Browser tests: the built web app and the API served from one in-process server on the test database.
+"""Browser tests: a built front end and the API served from one in-process server on the test database.
 
-Build the web app first (cd apps/web && npm run build), or point WEB_DIST at another build, e.g. a development
-build so React and antd runtime warnings show up as console errors:
-    npx vite build --mode development --outDir <dir>
-Skipped when the build or Playwright is missing; run only these with: pytest tests/e2e
+- Web console (base_url): build it first (cd apps/web && npm run build), or point WEB_DIST at another build, e.g. a
+  development build so React and antd runtime warnings show up as console errors:
+      npx vite build --mode development --outDir <dir>
+- PDA app in its browser build (pda_url): cd apps/mobile && npx expo export --platform web, or point PDA_DIST at it.
+  The camera, scanner hardware and vibration are not available there; screens, the offline queue and uploads are.
+Tests whose build is missing are skipped; run only these with: pytest tests/e2e
 """
 
 import os
@@ -16,7 +18,9 @@ import pytest
 
 pytest.importorskip("playwright")
 
-WEB_DIST = Path(os.environ.get("WEB_DIST") or Path(__file__).resolve().parents[4] / "apps" / "web" / "dist")
+APPS = Path(__file__).resolve().parents[4] / "apps"
+WEB_DIST = Path(os.environ.get("WEB_DIST") or APPS / "web" / "dist")
+PDA_DIST = Path(os.environ.get("PDA_DIST") or APPS / "mobile" / "dist")
 
 
 def _free_port() -> int:
@@ -25,36 +29,44 @@ def _free_port() -> int:
         return s.getsockname()[1]
 
 
-@pytest.fixture(scope="session")
-def base_url(database) -> str:
-    """Overrides pytest-playwright's base_url, so page.goto("/login") hits this server"""
-    if not (WEB_DIST / "index.html").exists():
-        pytest.skip(f"web build not found at {WEB_DIST}")
-
-    import uvicorn
+def _spa(dist: Path):
+    """Static files where unknown paths fall back to index.html, like nginx try_files in production"""
     from starlette.exceptions import HTTPException
     from starlette.responses import FileResponse
     from starlette.staticfiles import StaticFiles
 
-    from app.main import app
-
     class SpaFiles(StaticFiles):
-        """Unknown paths fall back to index.html, like nginx try_files in production"""
-
         async def get_response(self, path, scope):
             try:
                 return await super().get_response(path, scope)
             except HTTPException as exc:
                 if exc.status_code != 404:
                     raise
-                return FileResponse(WEB_DIST / "index.html")
+                return FileResponse(dist / "index.html")
 
-    # Mounted last so every /api route registered on the app wins
-    if not any(getattr(route, "name", None) == "web" for route in app.routes):
-        app.mount("/", SpaFiles(directory=WEB_DIST, html=True), name="web")
+    return SpaFiles(directory=dist, html=True)
+
+
+def _with_front_end(dist: Path):
+    """/api goes to the backend, everything else to the front end's files"""
+    from app.main import app
+
+    files = _spa(dist)
+
+    async def asgi(scope, receive, send):
+        if scope["type"] == "http" and not scope["path"].startswith("/api/"):
+            await files(scope, receive, send)
+        else:
+            await app(scope, receive, send)
+
+    return asgi
+
+
+def _serve(asgi):
+    import uvicorn
 
     port = _free_port()
-    server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning"))
+    server = uvicorn.Server(uvicorn.Config(asgi, host="127.0.0.1", port=port, log_level="warning", lifespan="off"))
     thread = threading.Thread(target=server.run, daemon=True)
     thread.start()
     deadline = time.time() + 20
@@ -62,6 +74,26 @@ def base_url(database) -> str:
         if time.time() > deadline:
             raise RuntimeError("test server did not start")
         time.sleep(0.05)
-    yield f"http://127.0.0.1:{port}"
+    return server, thread, f"http://127.0.0.1:{port}"
+
+
+@pytest.fixture(scope="session")
+def base_url(database) -> str:
+    """Web console. Overrides pytest-playwright's base_url, so page.goto("/login") hits this server"""
+    if not (WEB_DIST / "index.html").exists():
+        pytest.skip(f"web build not found at {WEB_DIST}")
+    server, thread, url = _serve(_with_front_end(WEB_DIST))
+    yield url
+    server.should_exit = True
+    thread.join(timeout=10)
+
+
+@pytest.fixture(scope="session")
+def pda_url(database) -> str:
+    """PDA app (browser build) with the API on the same origin, so its server URL is <pda_url>/api/v1"""
+    if not (PDA_DIST / "index.html").exists():
+        pytest.skip(f"PDA web build not found at {PDA_DIST}")
+    server, thread, url = _serve(_with_front_end(PDA_DIST))
+    yield url
     server.should_exit = True
     thread.join(timeout=10)

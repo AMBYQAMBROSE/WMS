@@ -3,6 +3,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 import { ApiError, errorText, request } from "@/lib/api";
+import { loadPhoto, removePhoto, type PhotoRef } from "@/lib/photos";
 import { zustandStorage } from "@/lib/storage";
 import type { Document } from "@/lib/types";
 import { useSession } from "@/stores/session";
@@ -11,8 +12,10 @@ import { useSession } from "@/stores/session";
  * receive/putaway/move: create + post the document (request IDs prevent duplicates)
  * count / pick_confirm: record counted / picked quantities ("set" semantics, safe to resubmit)
  * pick_post: post the pick list (an "already posted" response on resend counts as success)
+ * attach: photos for a document that already exists (payload.document_id), e.g. what a count found
+ * Any operation may carry photos: they are uploaded to its document once that exists.
  */
-export type OpType = "receive" | "putaway" | "move" | "count" | "pick_confirm" | "pick_post";
+export type OpType = "receive" | "putaway" | "move" | "count" | "pick_confirm" | "pick_post" | "attach";
 
 type DocumentOp = "receive" | "putaway" | "move";
 
@@ -25,6 +28,10 @@ export interface QueuedOp {
   createdBy: string | null;
   status: "pending" | "failed";
   error?: string;
+  /** What the operation contains, for people (item, quantity, locations): the payload only holds ids */
+  details?: string[];
+  /** Images are in file storage (lib/photos.ts); removed from there once uploaded */
+  photos?: PhotoRef[];
 }
 
 export interface CompletedOp {
@@ -32,6 +39,8 @@ export interface CompletedOp {
   title: string;
   docNo: string;
   completedAt: string;
+  /** E.g. a photo the server refused: the work itself was saved */
+  warning?: string;
 }
 
 export type SubmitOutcome =
@@ -46,10 +55,25 @@ interface QueueState {
   online: boolean | null;
   needsLogin: boolean;
   lastError: string | null;
-  submit: (type: OpType, title: string, payload: Record<string, unknown>) => Promise<SubmitOutcome>;
+  submit: (
+    type: OpType,
+    title: string,
+    payload: Record<string, unknown>,
+    details?: string[],
+    photos?: PhotoRef[],
+  ) => Promise<SubmitOutcome>;
   sync: () => Promise<void>;
+  /** Submit a failed operation again, e.g. after the stock problem it ran into was fixed */
+  retry: (id: string) => Promise<void>;
   remove: (id: string) => void;
 }
+
+/**
+ * Operations are submitted only under the account that created them: whoever signs in next on a shared PDA must not
+ * post the previous person's work as their own (the server records the signed-in user as the one who did it).
+ * Operations from before this rule (no creator) count as the current user's.
+ */
+export const isMine = (op: QueuedOp, username: string | null) => !op.createdBy || op.createdBy === username;
 
 const DOCUMENT_PATHS: Record<DocumentOp, string> = {
   receive: "/grns",
@@ -86,28 +110,62 @@ async function postPick(pickId: string): Promise<string> {
   }
 }
 
-async function process(op: QueuedOp): Promise<string> {
+interface Processed {
+  docNo: string;
+  docId: string;
+}
+
+/**
+ * Each photo is sent with its own Idempotency-Key, so repeating this after a lost response or an interruption never
+ * stores a photo twice. A photo the server refuses (no permission, not an image) is dropped with a warning: the work it
+ * belongs to was saved, and marking that as failed would be wrong.
+ */
+async function uploadPhotos(docId: string, photos: PhotoRef[] = []): Promise<string | undefined> {
+  const refused: string[] = [];
+  for (const photo of photos) {
+    const content = await loadPhoto(photo.id);
+    if (content) {
+      try {
+        await request("POST", `/documents/${docId}/attachments`, { content_base64: content, caption: photo.caption }, {
+          headers: { "Idempotency-Key": `photo-${photo.id}` },
+        });
+      } catch (error) {
+        if (!(error instanceof ApiError && error.kind === "business")) throw error; // offline etc.: try again later
+        refused.push(errorText(error));
+      }
+    }
+    await removePhoto(photo.id);
+  }
+  return refused.length ? `${refused.length} photo(s) not saved: ${refused[0]}` : undefined;
+}
+
+async function process(op: QueuedOp): Promise<Processed> {
+  if (op.type === "attach") {
+    const { document_id, doc_no } = op.payload as { document_id: string; doc_no: string };
+    return { docNo: doc_no, docId: document_id };
+  }
   if (op.type === "count") {
     const { count_id, entry } = op.payload as { count_id: string; entry: Record<string, unknown> };
     const doc = await request<Document>("POST", `/cycle-counts/${count_id}/counts`, entry);
-    return doc.doc_no;
+    return { docNo: doc.doc_no, docId: doc.id };
   }
   if (op.type === "pick_confirm") {
     const { pick_id, line_id, qty } = op.payload as { pick_id: string; line_id: string; qty: number };
     const doc = await request<Document>("POST", `/picks/${pick_id}/lines/${line_id}/confirm`, { qty });
-    return doc.doc_no;
+    return { docNo: doc.doc_no, docId: doc.id };
   }
   if (op.type === "pick_post") {
-    return postPick((op.payload as { pick_id: string }).pick_id);
+    const pickId = (op.payload as { pick_id: string }).pick_id;
+    return { docNo: await postPick(pickId), docId: pickId };
   }
   const path = DOCUMENT_PATHS[op.type];
   // Request ID = queue item id, so resending never creates a duplicate document
   const doc = await createIdempotent(path, { ...op.payload, client_request_id: op.id });
-  if (doc.status === "POSTED") return doc.doc_no;
+  if (doc.status === "POSTED") return { docNo: doc.doc_no, docId: doc.id };
   if (doc.status !== "DRAFT") throw new ApiError("business", `Document ${doc.doc_no} has been cancelled`);
   try {
     const posted = await request<Document>("POST", `${path}/${doc.id}/post`);
-    return posted.doc_no;
+    return { docNo: posted.doc_no, docId: posted.id };
   } catch (error) {
     if (error instanceof ApiError && error.kind === "business") {
       // Posting rejected (e.g. over-receipt, insufficient stock): cancel the draft just created so orphan drafts do not pile up
@@ -131,14 +189,16 @@ export const useQueue = create<QueueState>()(
         try {
           // Re-read the queue every round so submits added during a sync are processed too; strictly in order, never skip a failed one
           for (;;) {
-            const op = get().ops.find((o) => o.status === "pending");
+            const me = useSession.getState().username;
+            const op = get().ops.find((o) => o.status === "pending" && isMine(o, me));
             if (!op) break;
             try {
-              const docNo = await process(op);
+              const { docNo, docId } = await process(op);
+              const warning = await uploadPhotos(docId, op.photos);
               set({
                 ops: get().ops.filter((o) => o.id !== op.id),
                 completed: [
-                  { id: op.id, title: op.title, docNo, completedAt: new Date().toISOString() },
+                  { id: op.id, title: op.title, docNo, completedAt: new Date().toISOString(), warning },
                   ...get().completed,
                 ].slice(0, MAX_COMPLETED),
                 online: true,
@@ -181,7 +241,7 @@ export const useQueue = create<QueueState>()(
           return running;
         },
 
-        submit: async (type, title, payload) => {
+        submit: async (type, title, payload, details, photos) => {
           const id = Crypto.randomUUID();
           const op: QueuedOp = {
             id,
@@ -191,6 +251,8 @@ export const useQueue = create<QueueState>()(
             createdAt: new Date().toISOString(),
             createdBy: useSession.getState().username,
             status: "pending",
+            details,
+            photos,
           };
           set({ ops: [...get().ops, op] });
           // If a sync round is already running it may finish before the new submit was added, so wait for it and run one more round;
@@ -210,7 +272,21 @@ export const useQueue = create<QueueState>()(
           return { status: "queued", reason: get().lastError ?? "Earlier records are still waiting to submit" };
         },
 
-        remove: (id) => set({ ops: get().ops.filter((o) => o.id !== id) }),
+        retry: async (id) => {
+          const op = get().ops.find((o) => o.id === id);
+          if (!op || op.status !== "failed") return;
+          // A new id is a new request id: the failed attempt's draft was cancelled on the server, and resending its id
+          // would only find that cancelled draft again. Moved to the end, behind whatever was queued since.
+          const again: QueuedOp = { ...op, id: Crypto.randomUUID(), status: "pending", error: undefined };
+          set({ ops: [...get().ops.filter((o) => o.id !== id), again] });
+          await get().sync();
+        },
+
+        remove: (id) => {
+          const op = get().ops.find((o) => o.id === id);
+          for (const photo of op?.photos ?? []) void removePhoto(photo.id);
+          set({ ops: get().ops.filter((o) => o.id !== id) });
+        },
       };
     },
     {

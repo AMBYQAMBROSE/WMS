@@ -45,7 +45,7 @@ export async function request<T>(
   method: string,
   path: string,
   body?: unknown,
-  options: { form?: boolean } = {},
+  options: { form?: boolean; headers?: Record<string, string> } = {},
 ): Promise<T> {
   const { serverUrl, token } = useSession.getState();
   const headers: Record<string, string> = {};
@@ -60,6 +60,7 @@ export async function request<T>(
     }
   }
   if (token) headers.Authorization = `Bearer ${token}`;
+  Object.assign(headers, options.headers);
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);

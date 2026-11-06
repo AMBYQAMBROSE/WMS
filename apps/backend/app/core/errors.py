@@ -16,3 +16,9 @@ class ConflictError(DomainError):
     """State conflict, e.g. posting an already posted document."""
 
     status_code = 409
+
+
+class ForbiddenError(DomainError):
+    """The user lacks a permission that depends on the record (e.g. the document type), so a route-level check cannot cover it."""
+
+    status_code = 403

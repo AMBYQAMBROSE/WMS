@@ -4,6 +4,7 @@ from app.api.idempotency import idempotency_guard
 from app.api.routing import TransactionalRoute
 from app.api.v1 import (
     adjustments,
+    attachments,
     audit,
     auth,
     business_partners,
@@ -67,3 +68,4 @@ api_router.include_router(audit.router)
 api_router.include_router(system.router)
 api_router.include_router(events.router)
 api_router.include_router(preferences.router)
+api_router.include_router(attachments.router)

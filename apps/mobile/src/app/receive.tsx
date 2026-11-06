@@ -1,14 +1,18 @@
 import { useState } from "react";
 
+import * as Haptics from "expo-haptics";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
+import PhotoCapture from "@/components/PhotoCapture";
 import ScanInput from "@/components/ScanInput";
-import { Banner, Button, Card, Field, Row, colors, styles, type Notice } from "@/components/ui";
+import { Banner, Button, Card, EachScanToggle, Field, Row, colors, styles, type Notice } from "@/components/ui";
 import { errorText } from "@/lib/api";
 import { fetchPurchaseOrder, fmtQty, parseDate, parseQty } from "@/lib/inbound";
+import { removePhoto, type PhotoRef } from "@/lib/photos";
 import type { Document, DocumentLine, MobileLocation } from "@/lib/types";
 import { useMasterData } from "@/stores/masterData";
 import { useQueue } from "@/stores/queue";
+import { useSettings } from "@/stores/settings";
 
 interface Entry {
   key: number;
@@ -24,6 +28,7 @@ export default function ReceiveScreen() {
   const findItem = useMasterData((s) => s.findItem);
   const findLocation = useMasterData((s) => s.findLocation);
   const submitOp = useQueue((s) => s.submit);
+  const eachScan = useSettings((s) => s.eachScanCountsOne);
 
   const [po, setPo] = useState<Document | null>(null);
   const [location, setLocation] = useState<MobileLocation | null>(null);
@@ -33,12 +38,16 @@ export default function ReceiveScreen() {
   const [batchText, setBatchText] = useState("");
   const [expiryText, setExpiryText] = useState("");
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [photos, setPhotos] = useState<PhotoRef[]>([]);
   const [busy, setBusy] = useState(false);
 
   const entered = (lineId: string) => entries.filter((e) => e.line.id === lineId).reduce((s, e) => s + e.qty, 0);
   const left = (line: DocumentLine) => line.qty_planned - line.qty_actual - entered(line.id);
 
-  const reset = () => {
+  /** submitted: the photos now belong to the queued receipt; otherwise they are discarded with the entry */
+  const reset = (submitted = false) => {
+    if (!submitted) photos.forEach((p) => void removePhoto(p.id));
+    setPhotos([]);
     setPo(null);
     setLocation(null);
     setEntries([]);
@@ -84,11 +93,25 @@ export default function ReceiveScreen() {
     if (!lines.length) return setNotice({ kind: "error", text: `${match.item.sku_code} ${match.item.name} is not on this purchase order` });
     const line = lines.find((l) => left(l) > 0) ?? lines[0];
     if (left(line) <= 0) return setNotice({ kind: "warning", text: `${line.item.sku_code} is fully received` });
+    if (eachScan && !line.item.is_batch_managed && !line.item.is_expiry_managed) return addOne(line);
     setNotice(null);
     setEditing(line);
     setQtyText(fmtQty(left(line)));
     setBatchText("");
     setExpiryText("");
+  };
+
+  /** Continuous scanning: one more piece on the line, consecutive scans of it add up in one entry */
+  const addOne = (line: DocumentLine) => {
+    const last = entries[entries.length - 1];
+    const next =
+      last && last.line.id === line.id && !last.batchNo && !last.expiryDate
+        ? [...entries.slice(0, -1), { ...last, qty: last.qty + 1 }]
+        : [...entries, { key: Date.now(), line, qty: 1, batchNo: null, expiryDate: null }];
+    setEntries(next);
+    const now = next.filter((e) => e.line.id === line.id).reduce((s, e) => s + e.qty, 0);
+    setNotice({ kind: "success", text: `${line.item.sku_code} +1, now ${fmtQty(now)} ${line.uom.code}` });
+    void Haptics.selectionAsync().catch(() => undefined);
   };
 
   const confirmEntry = () => {
@@ -123,7 +146,13 @@ export default function ReceiveScreen() {
         batch_no: e.batchNo,
         expiry_date: e.expiryDate,
       })),
-    });
+    }, [
+      `Into ${location.code}`,
+      ...entries.map(
+        (e) => `${e.line.item.sku_code} × ${fmtQty(e.qty)} ${e.line.uom.code}${e.batchNo ? ` batch ${e.batchNo}` : ""}`,
+      ),
+      ...(photos.length ? [`${photos.length} photo(s)`] : []),
+    ], photos);
     setBusy(false);
     if (outcome.status === "failed") {
       setNotice({ kind: "error", text: `Rejected: ${outcome.error}` });
@@ -134,7 +163,7 @@ export default function ReceiveScreen() {
         ? { kind: "success", text: `Received, document no. ${outcome.docNo}` }
         : { kind: "warning", text: `Saved on this device; it will be submitted when back online (${outcome.reason})` },
     );
-    reset();
+    reset(true);
   };
 
   return (
@@ -155,6 +184,7 @@ export default function ReceiveScreen() {
 
       {po && location && (
         <>
+          <EachScanToggle />
           <ScanInput label="③ Scan item barcode" onScan={scanItem} active={!editing && !busy} testID="scan-item" />
 
           {editing && (
@@ -219,6 +249,10 @@ export default function ReceiveScreen() {
             </Card>
           )}
 
+          <Card>
+            <PhotoCapture photos={photos} onChange={setPhotos} />
+          </Card>
+
           <Button
             title={`Submit receipt (${entries.length} lines)`}
             onPress={submit}
@@ -229,7 +263,7 @@ export default function ReceiveScreen() {
         </>
       )}
 
-      {po && <Button title="Change purchase order" variant="default" onPress={reset} />}
+      {po && <Button title="Change purchase order" variant="default" onPress={() => reset()} />}
     </ScrollView>
   );
 }

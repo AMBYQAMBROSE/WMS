@@ -8,6 +8,7 @@ import SyncIndicator from "@/components/SyncIndicator";
 import { useHydrated } from "@/lib/useHydrated";
 import { useQueue } from "@/stores/queue";
 import { useSession } from "@/stores/session";
+import { TASK_CHECK_MS, useTasks } from "@/stores/tasks";
 
 const SYNC_INTERVAL_MS = 20000;
 
@@ -25,6 +26,22 @@ export default function RootLayout() {
     }, SYNC_INTERVAL_MS);
     const subscription = AppState.addEventListener("change", (state) => {
       if (state === "active") void sync();
+    });
+    return () => {
+      clearInterval(timer);
+      subscription.remove();
+    };
+  }, [hydrated, token]);
+
+  // New-work alerts (stores/tasks.ts); a new sign-in starts from a fresh baseline
+  useEffect(() => {
+    if (!hydrated || !token) return;
+    const { reset, check } = useTasks.getState();
+    reset();
+    void check();
+    const timer = setInterval(() => void useTasks.getState().check(), TASK_CHECK_MS);
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") void useTasks.getState().check();
     });
     return () => {
       clearInterval(timer);

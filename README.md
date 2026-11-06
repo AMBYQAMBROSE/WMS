@@ -130,7 +130,9 @@ cd apps/mobile
 npm install
 npm run web          # preview in the browser: http://localhost:19006 (the backend's CORS allows this origin)
 npm run typecheck    # type check
+npm run lint         # ESLint (Expo config)
 npx expo-doctor      # dependency/config check
+npx expo export --platform web   # browser build into dist/, used by the PDA browser tests (tests/e2e/test_pda.py)
 ```
 
 Install dependencies with `npx expo install <package>`, which picks versions compatible with SDK 58. Don't use `npm install <package>` directly.
@@ -144,6 +146,9 @@ Install dependencies with `npx expo install <package>`, which picks versions com
 - Receive, put away and move.
 - Count: cycle counts are started in the web console. On the PDA, choose a count, then scan locations and items. The quantity field is not prefilled with the book quantity.
 - Pick: guided in bin order (scan bin → scan item → confirm quantity). Short picks are allowed, and a line can be skipped and picked later. The pick list is posted once every line is confirmed.
+- **Each scan counts 1** (switch on the Receive and Count screens, a device setting): for goods labelled per unit, every scan adds one instead of typing a quantity. Items that need a batch or expiry date still open the quantity panel.
+- **Photos** (Receive, Count): evidence such as damaged goods. Downscaled to at most 1600 px JPEG on the device, queued with the work (they work offline too) and stored on the document; visible under **Photos** on document pages in the web console. Each photo is uploaded with its own `Idempotency-Key`, so retries never duplicate it.
+- **New work alerts**: while the app is open, new pick lists and cycle counts are checked every 20 seconds; new ones vibrate the PDA and show on the home screen until that screen is opened. Not system push notifications: those go through Google's servers (FCM), which on-prem networks usually cannot reach.
 
 **Scanner setup**: set the PDA to keyboard wedge mode (Keystroke/DataWedge keyboard output) with the barcode suffix set to **Enter**. The app's scan field keeps focus and hides the soft keyboard by default; tap "Keyboard" to type by hand.
 
@@ -153,13 +158,14 @@ Install dependencies with `npx expo install <package>`, which picks versions com
 - Submits go to a local queue and are sent to the server in order:
   - **Offline or server error**: kept and retried every 20 seconds.
   - **Session expired**: paused until the user signs in again.
-  - **Rejected under business rules** (over-receipt, insufficient stock, ...): moved to the "Failed" list for manual handling. A draft already created on the server is cancelled automatically.
+  - **Rejected under business rules** (over-receipt, insufficient stock, a locked location, ...): moved to the "Failed" list, which shows what the record contained (items, quantities, locations). Fix the cause and tap **Retry**, or delete it. A draft already created on the server is cancelled automatically.
+  - **Recorded by another user**: queued work is only submitted while the person who did it is signed in, so it is recorded under their name (and in the audit log). On a shared PDA, other people's waiting records are listed separately until they sign in again.
 - Every submit carries a unique `client_request_id`. If the same ID is submitted again (for example, the request reached the server but the response was lost), the server returns the existing document instead of posting twice.
 - Count entries have "set" semantics (resubmitting gives the same result), so they need no request ID.
 
 **Known limitations**:
 - On native, PDA master data is stored as a file (expo-file-system). This is verified in the browser preview; file I/O on a real device still needs testing once an Android device is available.
-- The submit queue belongs to the device, not the user. If user A submits offline and user B later signs in on the same device, A's records are submitted as B.
+- The camera, vibration and scanner hardware are only covered by the browser build's tests (where the camera is a file chooser); they still need testing on a real Android device.
 - Sign-in tokens expire after 60 minutes (`ACCESS_TOKEN_EXPIRE_MINUTES`), so users must sign in again during a full shift. A refresh token can be added later.
 
 ## Deploying to a customer site

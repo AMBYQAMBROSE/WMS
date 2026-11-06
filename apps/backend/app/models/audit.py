@@ -17,6 +17,7 @@ from sqlalchemy import DateTime, Index, Unicode, UnicodeText, Uuid, event, inser
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from app.core.request_context import current_context
+from app.models.attachment import DocumentAttachment
 from app.models.base import Base
 from app.models.business_partner import BusinessPartner
 from app.models.document import CountEntry, DocNumberRule, DocumentHeader, DocumentLine, ShipmentInfo
@@ -84,12 +85,15 @@ _AUDITED: dict[type, tuple[str, tuple[str, ...]]] = {
     DocumentLine: ("document_line", ("line_no",)),
     ShipmentInfo: ("shipment_info", ()),
     CountEntry: ("count_entry", ("round",)),
+    DocumentAttachment: ("document_attachment", ("file_name",)),
 }
 
 # Bookkeeping columns: they change on every write and say nothing the log row itself does not
 _IGNORED = {"id", "tenant_id", "created_at", "created_by", "updated_at", "updated_by", "row_version", "last_login_at",
             # Document numbering counters move with every new document; rule changes (prefix, pattern) are still recorded
-            "current_period", "current_seq"}
+            "current_period", "current_seq",
+            # Photo bytes: the log records that a photo was added or removed, not the image
+            "content"}
 # Recorded as changed, never with their values
 _SECRETS = {"password_hash", "secret", "extra_headers"}
 
@@ -122,7 +126,7 @@ def _label(session: Session, obj, fields: tuple[str, ...]) -> str | None:
 
 
 def _parent_id(session: Session, obj) -> uuid.UUID | None:
-    if isinstance(obj, DocumentLine | ShipmentInfo):
+    if isinstance(obj, DocumentLine | ShipmentInfo | DocumentAttachment):
         return obj.document_id
     if isinstance(obj, CountEntry):
         line = session.get(DocumentLine, obj.line_id)

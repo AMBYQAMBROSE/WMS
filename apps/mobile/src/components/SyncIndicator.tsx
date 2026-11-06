@@ -2,11 +2,15 @@ import { useRouter } from "expo-router";
 import { Pressable, Text } from "react-native";
 
 import { colors } from "@/components/ui";
-import { useQueue } from "@/stores/queue";
+import { isMine, useQueue } from "@/stores/queue";
+import { useSession } from "@/stores/session";
 
 export default function SyncIndicator() {
   const router = useRouter();
-  const pending = useQueue((s) => s.ops.filter((o) => o.status === "pending").length);
+  const username = useSession((s) => s.username);
+  const pending = useQueue((s) => s.ops.filter((o) => o.status === "pending" && isMine(o, username)).length);
+  // Recorded by someone else on this PDA: waits for them to sign in
+  const held = useQueue((s) => s.ops.filter((o) => o.status === "pending" && !isMine(o, username)).length);
   const failed = useQueue((s) => s.ops.filter((o) => o.status === "failed").length);
   const online = useQueue((s) => s.online);
   const syncing = useQueue((s) => s.syncing);
@@ -19,6 +23,7 @@ export default function SyncIndicator() {
         <Text style={{ color: dot }}>● </Text>
         {label}
         {pending > 0 && ` · Pending ${pending}`}
+        {held > 0 && ` · Others' ${held}`}
         {failed > 0 && <Text style={{ color: colors.danger }}>{` · Failed ${failed}`}</Text>}
       </Text>
     </Pressable>

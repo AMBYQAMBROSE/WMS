@@ -76,6 +76,7 @@ export function keysFor(events: ChangeEvent[]): Set<string> | "all" {
   const keys = new Set<string>(["audit-logs", "system-status"]);
   for (const e of events) {
     if (e.type === "resync") return "all";
+    if (e.type === "document_attachment") keys.add("documents"); // a document's photos (DocumentPhotos.tsx)
     if (DOCUMENT_TYPES.has(e.type)) {
       const path = e.doc_type ? DOC_PATHS[e.doc_type] : undefined;
       if (path) keys.add(path);

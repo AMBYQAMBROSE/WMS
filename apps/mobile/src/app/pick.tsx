@@ -9,6 +9,7 @@ import { fetchOpenPicks, fetchPick, fmtQty } from "@/lib/inbound";
 import type { DocumentSummary, Pick, PickLine } from "@/lib/types";
 import { useMasterData } from "@/stores/masterData";
 import { useQueue } from "@/stores/queue";
+import { useTasks } from "@/stores/tasks";
 
 type Step = "bin" | "item" | "qty";
 
@@ -27,23 +28,32 @@ export default function PickScreen() {
   const [step, setStep] = useState<Step>("bin");
   const [qtyText, setQtyText] = useState("");
   const [notice, setNotice] = useState<Notice | null>(null);
-  const [busy, setBusy] = useState(false);
+  // Starts busy: the list loads on mount
+  const [busy, setBusy] = useState(true);
+
+  const applyList = ({ data, cachedAt }: Awaited<ReturnType<typeof fetchOpenPicks>>) => {
+    setPicks(data);
+    if (cachedAt) setNotice({ kind: "warning", text: "Offline: showing the cached pick list" });
+  };
+  const failList = (error: unknown) => setNotice({ kind: "error", text: errorText(error) });
 
   const loadList = async () => {
     setBusy(true);
     try {
-      const { data, cachedAt } = await fetchOpenPicks();
-      setPicks(data);
-      if (cachedAt) setNotice({ kind: "warning", text: "Offline: showing the cached pick list" });
+      applyList(await fetchOpenPicks());
     } catch (error) {
-      setNotice({ kind: "error", text: errorText(error) });
+      failList(error);
     } finally {
       setBusy(false);
     }
   };
 
+  // On mount, state is set from the promise callbacks rather than synchronously in the effect
   useEffect(() => {
-    void loadList();
+    useTasks.getState().seen("pick");
+    fetchOpenPicks()
+      .then(applyList, failList)
+      .finally(() => setBusy(false));
   }, []);
 
   const openPick = async (summary: DocumentSummary) => {
@@ -103,7 +113,7 @@ export default function PickScreen() {
       pick_id: pick.id,
       line_id: line.id,
       qty,
-    });
+    }, [`${line.item.sku_code} × ${fmtQty(qty)} of ${fmtQty(line.qty_planned)} from ${line.from_location?.code ?? ""}`]);
     setBusy(false);
     if (outcome.status === "failed") return setNotice({ kind: "error", text: `Rejected: ${outcome.error}` });
     setLocal((m) => ({ ...m, [line.id]: qty }));

@@ -1,14 +1,18 @@
 import { useEffect, useState } from "react";
 
+import * as Haptics from "expo-haptics";
 import { ScrollView, Text, View } from "react-native";
 
+import PhotoCapture from "@/components/PhotoCapture";
 import ScanInput from "@/components/ScanInput";
-import { Banner, Button, Card, Field, Row, colors, styles, type Notice } from "@/components/ui";
+import { Banner, Button, Card, EachScanToggle, Field, Row, colors, styles, type Notice } from "@/components/ui";
 import { errorText } from "@/lib/api";
 import { fetchActiveCounts, fetchCount, fmtQty, parseDate } from "@/lib/inbound";
 import type { CountLine, CycleCount, DocumentSummary, MobileItem, MobileLocation } from "@/lib/types";
 import { useMasterData } from "@/stores/masterData";
 import { useQueue } from "@/stores/queue";
+import { useSettings } from "@/stores/settings";
+import { useTasks } from "@/stores/tasks";
 
 interface Editing {
   item: MobileItem;
@@ -25,6 +29,7 @@ export default function CountScreen() {
   const findItem = useMasterData((s) => s.findItem);
   const findLocation = useMasterData((s) => s.findLocation);
   const submitOp = useQueue((s) => s.submit);
+  const eachScan = useSettings((s) => s.eachScanCountsOne);
 
   const [counts, setCounts] = useState<DocumentSummary[] | null>(null);
   const [count, setCount] = useState<CycleCount | null>(null);
@@ -36,23 +41,32 @@ export default function CountScreen() {
   // Show entries that were submitted but are still in the local queue
   const [queued, setQueued] = useState<Record<string, number>>({});
   const [notice, setNotice] = useState<Notice | null>(null);
-  const [busy, setBusy] = useState(false);
+  // Starts busy: the list loads on mount
+  const [busy, setBusy] = useState(true);
+
+  const applyList = ({ data, cachedAt }: Awaited<ReturnType<typeof fetchActiveCounts>>) => {
+    setCounts(data);
+    if (cachedAt) setNotice({ kind: "warning", text: "Offline: showing the cached cycle count list" });
+  };
+  const failList = (error: unknown) => setNotice({ kind: "error", text: errorText(error) });
 
   const loadList = async () => {
     setBusy(true);
     try {
-      const { data, cachedAt } = await fetchActiveCounts();
-      setCounts(data);
-      if (cachedAt) setNotice({ kind: "warning", text: "Offline: showing the cached cycle count list" });
+      applyList(await fetchActiveCounts());
     } catch (error) {
-      setNotice({ kind: "error", text: errorText(error) });
+      failList(error);
     } finally {
       setBusy(false);
     }
   };
 
+  // On mount, state is set from the promise callbacks rather than synchronously in the effect
   useEffect(() => {
-    void loadList();
+    useTasks.getState().seen("count");
+    fetchActiveCounts()
+      .then(applyList, failList)
+      .finally(() => setBusy(false));
   }, []);
 
   const openCount = async (summary: DocumentSummary, keepNotice = false) => {
@@ -84,14 +98,28 @@ export default function CountScreen() {
     setChoices([]);
     setChoiceItem(null);
     setEditing({ item, batchNo: line?.batch_no ?? "", expiryDate: line?.expiry_date ?? "", fixed: !!line });
-    setQtyText("");
+    setQtyText(eachScan ? "1" : "");
     setNotice(null);
   };
+
+  const scanCounting =
+    eachScan && !!editing && (editing.fixed || !(editing.item.is_batch_managed || editing.item.is_expiry_managed));
 
   const scanItem = (code: string) => {
     const match = findItem(code);
     if (!match) return setNotice({ kind: "error", text: `Unknown barcode ${code} (for new items, update master data on the home screen first)` });
     const item = match.item;
+    if (editing) {
+      // Continuous scanning with the panel open: every scan of the same item is one more piece
+      if (item.id !== editing.item.id) {
+        return setNotice({ kind: "error", text: `Finish counting ${editing.item.sku_code} first: press OK, then scan the next item` });
+      }
+      const counted = (Number(qtyText.trim()) || 0) + 1;
+      setQtyText(String(counted));
+      setNotice({ kind: "info", text: `${item.sku_code}: ${counted}` });
+      void Haptics.selectionAsync().catch(() => undefined);
+      return;
+    }
     const candidates = linesHere.filter((l) => l.item.id === item.id);
     const tracked = item.is_batch_managed || item.is_expiry_managed;
     if (!tracked) return startEdit(item, candidates[0] ?? null);
@@ -121,7 +149,7 @@ export default function CountScreen() {
     const outcome = await submitOp("count", `Count ${count.doc_no} ${location.code} ${editing.item.sku_code}`, {
       count_id: count.id,
       entry,
-    });
+    }, [`${editing.item.sku_code} counted ${fmtQty(qty)} at ${location.code}${batchNo ? ` batch ${batchNo}` : ""}`]);
     setBusy(false);
     if (outcome.status === "failed") return setNotice({ kind: "error", text: `Rejected: ${outcome.error}` });
 
@@ -176,10 +204,11 @@ export default function CountScreen() {
         <ScanInput label="① Scan the location to count" onScan={scanLocation} active={!busy} testID="scan-count-location" />
       ) : (
         <>
+          <EachScanToggle />
           <ScanInput
             label="② Scan item barcode"
             onScan={scanItem}
-            active={!editing && !choices.length && !busy}
+            active={(!editing || scanCounting) && !choices.length && !busy}
             testID="scan-item"
           />
 
@@ -229,7 +258,8 @@ export default function CountScreen() {
                 value={qtyText}
                 onChangeText={setQtyText}
                 keyboardType="decimal-pad"
-                autoFocus={editing.fixed || !(editing.item.is_batch_managed || editing.item.is_expiry_managed)}
+                // Not while scanning each piece: the scanner would type the next barcode into the quantity
+                autoFocus={!scanCounting && (editing.fixed || !(editing.item.is_batch_managed || editing.item.is_expiry_managed))}
                 onSubmitEditing={() => void submitEntry()}
                 testID="qty"
               />
@@ -243,6 +273,29 @@ export default function CountScreen() {
               </View>
             </Card>
           )}
+
+          <Card>
+            <PhotoCapture
+              label="Photo of what you found"
+              onTaken={(photo) =>
+                void submitOp(
+                  "attach",
+                  `Photo ${count.doc_no} ${location.code}`,
+                  { document_id: count.id, doc_no: count.doc_no },
+                  [photo.caption ? `${location.code}: ${photo.caption}` : location.code],
+                  [{ ...photo, caption: [location.code, photo.caption].filter(Boolean).join(": ") }],
+                ).then((outcome) =>
+                  setNotice(
+                    outcome.status === "done"
+                      ? { kind: "success", text: "Photo saved" }
+                      : outcome.status === "queued"
+                        ? { kind: "warning", text: "Photo saved on this device; it will be sent when back online" }
+                        : { kind: "error", text: `Photo not saved: ${outcome.error}` },
+                  ),
+                )
+              }
+            />
+          </Card>
 
           <Card>
             <Text style={styles.title}>Lines at this location ({linesHere.length})</Text>

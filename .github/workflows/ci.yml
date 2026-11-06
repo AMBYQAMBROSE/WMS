@@ -36,7 +36,7 @@ jobs:
           retention-days: 3
 
   mobile:
-    name: Mobile (typecheck)
+    name: Mobile (typecheck + lint + web build)
     runs-on: ubuntu-24.04
     defaults:
       run:
@@ -50,11 +50,20 @@ jobs:
           cache-dependency-path: apps/mobile/package-lock.json
       - run: npm ci
       - run: npm run typecheck
+      - run: npm run lint
+      - run: npx expo-doctor
+      # Browser build of the PDA app, for the PDA browser tests in the backend job
+      - run: npx expo export --platform web --output-dir dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pda-dist
+          path: apps/mobile/dist
+          retention-days: 3
 
   backend:
     name: Backend (lint + tests)
     runs-on: ubuntu-24.04
-    needs: web
+    needs: [web, mobile]
     services:
       # Same image and collation as infra/docker for local development
       mssql:
@@ -106,7 +115,11 @@ jobs:
           name: web-dist
           path: apps/web/dist
       - run: python -m playwright install --with-deps chromium
-      - name: Browser smoke tests
+      - uses: actions/download-artifact@v4
+        with:
+          name: pda-dist
+          path: apps/mobile/dist
+      - name: Browser tests (web console and PDA)
         run: pytest tests/e2e --tracing retain-on-failure
       - uses: actions/upload-artifact@v4
         if: failure()

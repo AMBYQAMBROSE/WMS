@@ -3,12 +3,15 @@ import {
   ActivityIndicator,
   Pressable,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
   type KeyboardTypeOptions,
   type TextInputProps,
 } from "react-native";
+
+import { useSettings } from "@/stores/settings";
 
 export const colors = {
   primary: "#1677ff",
@@ -105,8 +108,12 @@ export function Field({
   );
 }
 
-export function Card({ children }: { children: ReactNode }) {
-  return <View style={styles.card}>{children}</View>;
+export function Card({ children, testID }: { children: ReactNode; testID?: string }) {
+  return (
+    <View style={styles.card} testID={testID}>
+      {children}
+    </View>
+  );
 }
 
 export function Row({ label, value }: { label: string; value: ReactNode }) {
@@ -149,3 +156,18 @@ export const styles = StyleSheet.create({
   title: { fontSize: 18, fontWeight: "700", color: colors.text },
   hint: { fontSize: 13, color: colors.subtle },
 });
+
+/** Device setting shown on scanning screens: "Each scan counts 1" (stores/settings.ts) */
+export function EachScanToggle() {
+  const on = useSettings((s) => s.eachScanCountsOne);
+  const setOn = useSettings((s) => s.setEachScanCountsOne);
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+      <View style={{ flex: 1, paddingRight: 8 }}>
+        <Text style={{ fontSize: 15, fontWeight: "600", color: colors.text }}>Each scan counts 1</Text>
+        <Text style={{ fontSize: 12, color: colors.subtle }}>For goods labelled per unit: scan every piece instead of typing a quantity</Text>
+      </View>
+      <Switch value={on} onValueChange={setOn} testID="each-scan" accessibilityLabel="Each scan counts 1" />
+    </View>
+  );
+}

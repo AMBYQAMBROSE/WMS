@@ -32,6 +32,13 @@
             "usesCleartextTraffic": true
           }
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Take photos of goods as evidence, e.g. damage on receipt or what a count found",
+          "microphonePermission": false
+        }
       ]
     ],
     "experiments": {

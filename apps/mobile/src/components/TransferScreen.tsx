@@ -134,7 +134,9 @@ export default function TransferScreen({ kind }: { kind: keyof typeof CONFIG }) 
         from_location_id: from.id,
         to_location_id: e.to.id,
       })),
-    });
+    }, entries.map(
+      (e) => `${e.balance.item.sku_code} × ${fmtQty(e.qty)} → ${e.to.code}${e.balance.batch_no ? ` batch ${e.balance.batch_no}` : ""}`,
+    ));
     setBusy(false);
     if (outcome.status === "failed") {
       setNotice({ kind: "error", text: `Rejected: ${outcome.error}` });

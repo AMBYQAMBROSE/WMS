@@ -19,6 +19,7 @@ import { HistoryButton } from "@/components/AuditTrail";
 import { PhotosButton } from "@/components/DocumentPhotos";
 import StatusTag from "@/components/StatusTag";
 import { ACCENTS, type Accent } from "@/theme";
+import { useCountUp } from "@/theme/motion";
 
 export { ACCENTS, type Accent };
 
@@ -86,6 +87,12 @@ export function Toolbar({ left, right, style }: { left?: ReactNode; right?: Reac
 
 const fmt = (v: number) => v.toLocaleString(undefined, { maximumFractionDigits: 2 });
 
+/** A number that counts up to its value when it first shows and when it changes */
+export function AnimatedNumber({ value }: { value: number }) {
+  const shown = useCountUp(value);
+  return <>{fmt(Number.isInteger(value) ? Math.round(shown) : shown)}</>;
+}
+
 export function StatCard({
   label,
   value,
@@ -117,7 +124,7 @@ export function StatCard({
           </span>
         )}
       </div>
-      <div className="wms-stat-value">{typeof value === "number" ? fmt(value) : value}</div>
+      <div className="wms-stat-value">{typeof value === "number" ? <AnimatedNumber value={value} /> : value}</div>
       {(hint || to) && (
         <div className="wms-stat-hint">
           {hint}
@@ -161,7 +168,7 @@ export function Kpi({
         {icon}
         {label}
       </div>
-      <div className="wms-kpi-value">{fmt(value)}</div>
+      <div className="wms-kpi-value"><AnimatedNumber value={value} /></div>
       {hint && <div className="wms-kpi-hint">{hint}</div>}
     </>
   );
@@ -444,8 +451,14 @@ export function WorkflowSteps({
         const state = isStop ? "stopped" : finished || done ? "done" : isCurrent ? "current" : "todo";
         return (
           <li key={step.key} style={{ display: "contents" }}>
-            {i > 0 && <span className={`wms-step-line${done || isCurrent || finished ? " wms-step-line-done" : ""}`} aria-hidden />}
-            <span className={`wms-step wms-step-${state}`} aria-current={isCurrent && !finished ? "step" : undefined}>
+            {i > 0 && (
+              <span
+                className={`wms-step-line${done || isCurrent || finished ? " wms-step-line-done" : ""}`}
+                style={{ "--i": i } as CSSProperties}
+                aria-hidden
+              />
+            )}
+            <span className={`wms-step wms-step-${state}`} style={{ "--i": i } as CSSProperties} aria-current={isCurrent && !finished ? "step" : undefined}>
               <span className="wms-step-marker" aria-hidden>
                 {state === "done" ? <CheckOutlined /> : state === "stopped" ? <CloseOutlined /> : i + 1}
               </span>

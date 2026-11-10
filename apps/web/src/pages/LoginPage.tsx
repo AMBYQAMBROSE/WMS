@@ -8,6 +8,7 @@ import { apiClient } from "@/api/client";
 import { BrandMark } from "@/components/ui";
 import { useAuthStore } from "@/stores/authStore";
 import { useUiStore } from "@/stores/uiStore";
+import { withThemeReveal } from "@/theme/motion";
 
 interface LoginFormValues {
   username: string;
@@ -88,7 +89,7 @@ export default function LoginPage() {
           shape="circle"
           type="text"
           icon={mode === "dark" ? <SunOutlined /> : <MoonOutlined />}
-          onClick={toggleMode}
+          onClick={(e) => withThemeReveal(toggleMode, e)}
           aria-label="Toggle color mode"
           style={{ position: "absolute", top: 24, right: 24 }}
         />

@@ -11,9 +11,11 @@ import App from "./App";
 import { EmptyState } from "@/components/ui";
 import { useUiStore } from "@/stores/uiStore";
 import { buildTheme } from "@/theme";
+import { themeRevealRunning } from "@/theme/motion";
 
 import "@fontsource-variable/inter";
 import "./styles/global.css";
+import "./styles/motion.css";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -36,6 +38,7 @@ function ThemedApp() {
   const mode = useUiStore((s) => s.mode);
   const density = useUiStore((s) => s.density);
   const syncSystemMode = useUiStore((s) => s.syncSystemMode);
+  const animations = useUiStore((s) => s.animations);
   const first = useRef(true);
 
   // Follow the operating system while the preference is "system"
@@ -48,7 +51,8 @@ function ThemedApp() {
   useEffect(() => {
     const root = document.documentElement;
     // Cross-fade colors when the user switches mode (not on first paint); global.css skips it under reduced motion
-    if (!first.current) {
+    // (skipped while the circular reveal is drawing the change)
+    if (!first.current && !themeRevealRunning) {
       root.classList.add("wms-theme-switching");
       window.setTimeout(() => root.classList.remove("wms-theme-switching"), 320);
     }
@@ -61,6 +65,10 @@ function ThemedApp() {
   useEffect(() => {
     document.documentElement.dataset.density = density;
   }, [density]);
+
+  useEffect(() => {
+    document.documentElement.dataset.motion = animations ? "on" : "off";
+  }, [animations]);
 
   const themeConfig = useMemo(() => buildTheme(mode, density), [mode, density]);
 

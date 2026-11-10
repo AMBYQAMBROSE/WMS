@@ -21,17 +21,20 @@ import {
   SearchOutlined,
   SettingOutlined,
   SunOutlined,
+  ThunderboltOutlined,
 } from "@ant-design/icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { Avatar, Breadcrumb, Button, Drawer, Dropdown, Grid, Input, Layout, Menu, Modal, Skeleton, Tooltip, Typography, type InputRef, type MenuProps } from "antd";
 import { Link, Navigate, Outlet, useLocation, useNavigate } from "react-router";
 
 import { useCan, useFeature, useMe } from "@/api/me";
+import TopLoader from "@/components/TopLoader";
 import { BackLink, BrandMark, EmptyState, PageHeader } from "@/components/ui";
 import { useLiveStore, useLiveUpdates, type LiveStatus } from "@/api/live";
 import { useAuthStore } from "@/stores/authStore";
 import { useUiStore } from "@/stores/uiStore";
 import { SHELL, type ThemePreference } from "@/theme";
+import { withThemeReveal } from "@/theme/motion";
 
 const { Header, Sider, Content } = Layout;
 
@@ -384,7 +387,7 @@ function ThemeMenu() {
               {preference === o.key && <CheckOutlined style={{ fontSize: 12 }} />}
             </span>
           ),
-          onClick: () => setPreference(o.key),
+          onClick: ({ domEvent }) => withThemeReveal(() => setPreference(o.key), "clientX" in domEvent ? domEvent : null),
         })),
       }}
     >
@@ -439,7 +442,7 @@ export default function MainLayout() {
   const mobile = screens.lg === false;
   const narrow = screens.md === false;
   const logout = useAuthStore((state) => state.logout);
-  const { siderCollapsed, setSiderCollapsed, density, setDensity } = useUiStore();
+  const { siderCollapsed, setSiderCollapsed, density, setDensity, animations, setAnimations } = useUiStore();
   const { data: me } = useMe();
   const menu = useVisibleMenu();
   const meta = useRouteMeta(pathname);
@@ -561,6 +564,7 @@ export default function MainLayout() {
       )}
 
       <Layout>
+        <TopLoader />
         <Header className="wms-header">
           {mobile && <Button type="text" icon={<MenuOutlined />} onClick={() => setDrawerOpen(true)} aria-label="Open navigation" />}
           <Breadcrumb
@@ -619,6 +623,21 @@ export default function MainLayout() {
                         </span>
                       ),
                       onClick: () => setDensity(d),
+                    })),
+                  },
+                  {
+                    key: "animations",
+                    icon: <ThunderboltOutlined />,
+                    label: "Animations",
+                    children: ([true, false] as const).map((on) => ({
+                      key: `animations-${on ? "on" : "off"}`,
+                      label: (
+                        <span style={{ display: "flex", justifyContent: "space-between", gap: 24, minWidth: 120 }}>
+                          {on ? "On" : "Off"}
+                          {animations === on && <CheckOutlined style={{ fontSize: 12 }} />}
+                        </span>
+                      ),
+                      onClick: () => setAnimations(on),
                     })),
                   },
                   { type: "divider" },

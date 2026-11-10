@@ -10,6 +10,9 @@ interface UiState {
   mode: ColorMode;
   density: Density;
   siderCollapsed: boolean;
+  /** Decorative animations (entrances, count-ups, theme reveal); the OS "reduce motion" setting overrides it */
+  animations: boolean;
+  setAnimations: (animations: boolean) => void;
   setPreference: (preference: ThemePreference) => void;
   /** Flip between light and dark (leaves "system") */
   toggleMode: () => void;
@@ -32,6 +35,8 @@ export const useUiStore = create<UiState>()(
       mode: systemMode(),
       density: "comfortable",
       siderCollapsed: false,
+      animations: true,
+      setAnimations: (animations) => set({ animations }),
       setPreference: (preference) => set({ preference, mode: resolve(preference) }),
       toggleMode: () => {
         const preference = get().mode === "dark" ? "light" : "dark";

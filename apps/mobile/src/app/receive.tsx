@@ -1,18 +1,21 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import * as Haptics from "expo-haptics";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { useNavigation, usePreventRemove } from "expo-router";
+import { StyleSheet, Text, View } from "react-native";
 
 import PhotoCapture from "@/components/PhotoCapture";
 import ScanInput from "@/components/ScanInput";
-import { Banner, Button, Card, EachScanToggle, Field, Row, colors, styles, type Notice } from "@/components/ui";
+import Screen, { ContextBar } from "@/components/Screen";
+import { Button, Card, Divider, EachScanToggle, Field, IconButton, Pill, ProgressBar, QtyField, Stat } from "@/components/ui";
 import { errorText } from "@/lib/api";
+import { confirm, haptic, useNotice } from "@/lib/feedback";
 import { fetchPurchaseOrder, fmtQty, parseDate, parseQty } from "@/lib/inbound";
 import { removePhoto, type PhotoRef } from "@/lib/photos";
 import type { Document, DocumentLine, MobileLocation } from "@/lib/types";
 import { useMasterData } from "@/stores/masterData";
 import { useQueue } from "@/stores/queue";
 import { useSettings } from "@/stores/settings";
+import { radius, space, useStyles, type Palette } from "@/theme";
 
 interface Entry {
   key: number;
@@ -23,12 +26,15 @@ interface Entry {
 }
 
 const RECEIVABLE = ["CONFIRMED", "PARTIALLY_RECEIVED"];
+let nextKey = 1;
 
 export default function ReceiveScreen() {
-  const findItem = useMasterData((s) => s.findItem);
-  const findLocation = useMasterData((s) => s.findLocation);
-  const submitOp = useQueue((s) => s.submit);
-  const eachScan = useSettings((s) => s.eachScanCountsOne);
+  const s = useStyles(makeStyles);
+  const navigation = useNavigation();
+  const findItem = useMasterData((st) => st.findItem);
+  const findLocation = useMasterData((st) => st.findLocation);
+  const submitOp = useQueue((st) => st.submit);
+  const eachScan = useSettings((st) => st.eachScanCountsOne);
 
   const [po, setPo] = useState<Document | null>(null);
   const [location, setLocation] = useState<MobileLocation | null>(null);
@@ -37,11 +43,26 @@ export default function ReceiveScreen() {
   const [qtyText, setQtyText] = useState("");
   const [batchText, setBatchText] = useState("");
   const [expiryText, setExpiryText] = useState("");
-  const [notice, setNotice] = useState<Notice | null>(null);
+  const [notice, setNotice] = useNotice();
   const [photos, setPhotos] = useState<PhotoRef[]>([]);
   const [busy, setBusy] = useState(false);
+  const [cachedAt, setCachedAt] = useState<string | null>(null);
 
-  const entered = (lineId: string) => entries.filter((e) => e.line.id === lineId).reduce((s, e) => s + e.qty, 0);
+  // Photos not handed to a submitted receipt are deleted when the screen goes away, so no files are orphaned
+  const photosRef = useRef(photos);
+  useEffect(() => {
+    photosRef.current = photos;
+  }, [photos]);
+  useEffect(() => () => photosRef.current.forEach((p) => void removePhoto(p.id)), []);
+
+  // Leaving with scanned but unsubmitted lines asks first
+  usePreventRemove(entries.length > 0, ({ data }) =>
+    confirm("Discard this receipt?", `${entries.length} scanned line(s) have not been submitted.`, "Discard", () =>
+      navigation.dispatch(data.action),
+    ),
+  );
+
+  const entered = (lineId: string) => entries.filter((e) => e.line.id === lineId).reduce((sum, e) => sum + e.qty, 0);
   const left = (line: DocumentLine) => line.qty_planned - line.qty_actual - entered(line.id);
 
   /** submitted: the photos now belong to the queued receipt; otherwise they are discarded with the entry */
@@ -52,22 +73,32 @@ export default function ReceiveScreen() {
     setLocation(null);
     setEntries([]);
     setEditing(null);
+    setCachedAt(null);
+  };
+
+  const changePo = () => {
+    if (!entries.length && !photos.length) return reset();
+    confirm("Change purchase order?", "The lines and photos entered here will be discarded.", "Discard", () => {
+      reset();
+      setNotice(null);
+    });
   };
 
   const scanPo = async (code: string) => {
     setBusy(true);
     setNotice(null);
     try {
-      const { data, cachedAt } = await fetchPurchaseOrder(code);
+      const { data, cachedAt: cached } = await fetchPurchaseOrder(code);
       if (!RECEIVABLE.includes(data.status)) {
         setNotice({ kind: "error", text: `Purchase order ${data.doc_no} is ${data.status}; cannot receive` });
         return;
       }
       setPo(data);
-      if (cachedAt) {
+      setCachedAt(cached ?? null);
+      if (cached) {
         setNotice({
           kind: "warning",
-          text: `Offline: using the purchase order cached at ${new Date(cachedAt).toLocaleString()}; received quantities may be out of date, the server decides on submit`,
+          text: `Offline: using the purchase order cached at ${new Date(cached).toLocaleString()}; received quantities may be out of date, the server decides on submit`,
         });
       }
     } catch (error) {
@@ -82,6 +113,7 @@ export default function ReceiveScreen() {
     if (!loc) return setNotice({ kind: "error", text: `Location ${code} not found (for new locations, update master data on the home screen first)` });
     if (loc.is_locked) return setNotice({ kind: "error", text: `Location ${loc.code} is locked` });
     setNotice(null);
+    haptic("tick");
     setLocation(loc);
   };
 
@@ -95,6 +127,7 @@ export default function ReceiveScreen() {
     if (left(line) <= 0) return setNotice({ kind: "warning", text: `${line.item.sku_code} is fully received` });
     if (eachScan && !line.item.is_batch_managed && !line.item.is_expiry_managed) return addOne(line);
     setNotice(null);
+    haptic("tick");
     setEditing(line);
     setQtyText(fmtQty(left(line)));
     setBatchText("");
@@ -107,11 +140,11 @@ export default function ReceiveScreen() {
     const next =
       last && last.line.id === line.id && !last.batchNo && !last.expiryDate
         ? [...entries.slice(0, -1), { ...last, qty: last.qty + 1 }]
-        : [...entries, { key: Date.now(), line, qty: 1, batchNo: null, expiryDate: null }];
+        : [...entries, { key: nextKey++, line, qty: 1, batchNo: null, expiryDate: null }];
     setEntries(next);
-    const now = next.filter((e) => e.line.id === line.id).reduce((s, e) => s + e.qty, 0);
-    setNotice({ kind: "success", text: `${line.item.sku_code} +1, now ${fmtQty(now)} ${line.uom.code}` });
-    void Haptics.selectionAsync().catch(() => undefined);
+    const now = next.filter((e) => e.line.id === line.id).reduce((sum, e) => sum + e.qty, 0);
+    setNotice({ kind: "success", text: `${line.item.sku_code} +1, now ${fmtQty(now)} ${line.uom.code}` }, { silent: true });
+    haptic("tick");
   };
 
   const confirmEntry = () => {
@@ -128,9 +161,10 @@ export default function ReceiveScreen() {
     if (qty > left(editing)) {
       setNotice({ kind: "warning", text: `Note: exceeds the open quantity ${fmtQty(left(editing))}; the server rejects over-receipt by default` });
     } else {
-      setNotice(null);
+      setNotice({ kind: "success", text: `${editing.item.sku_code} × ${fmtQty(qty)} ${editing.uom.code} added` }, { silent: true });
+      haptic("tick");
     }
-    setEntries([...entries, { key: Date.now(), line: editing, qty, batchNo, expiryDate }]);
+    setEntries([...entries, { key: nextKey++, line: editing, qty, batchNo, expiryDate }]);
     setEditing(null);
   };
 
@@ -166,104 +200,148 @@ export default function ReceiveScreen() {
     reset(true);
   };
 
+  const step = !po ? 0 : !location ? 1 : 2;
+
   return (
-    <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
-      <Banner notice={notice} />
-
-      {!po && <ScanInput label="① Scan purchase order no." onScan={scanPo} active={!busy} testID="scan-po" />}
-
-      {po && (
-        <Card>
-          <Row label="Purchase order" value={po.doc_no} />
-          <Row label="Supplier" value={po.partner?.name ?? ""} />
-          {location && <Row label="Receiving location" value={`${location.code} ${location.name}`} />}
-        </Card>
+    <Screen
+      notice={notice}
+      onDismiss={() => setNotice(null)}
+      steps={["Order", "Location", "Items"]}
+      step={step}
+      footer={
+        po && location ? (
+          <Button
+            title={`Submit receipt (${entries.length} lines)`}
+            icon="check-circle-outline"
+            onPress={() => void submit()}
+            disabled={!entries.length || !!editing}
+            loading={busy}
+            testID="submit-receive"
+          />
+        ) : undefined
+      }
+    >
+      {!po && (
+        <ScanInput label="Scan purchase order no." icon="file-document-outline" onScan={(c) => void scanPo(c)} active={!busy} testID="scan-po" />
       )}
 
-      {po && !location && <ScanInput label="② Scan receiving location" onScan={scanLocation} testID="scan-location" />}
+      {po && (
+        <ContextBar
+          items={[
+            { icon: "file-document-outline", label: "Purchase order", value: po.doc_no, sub: po.partner?.name ?? "" },
+            ...(location ? [{ icon: "map-marker-radius" as const, label: "Receiving location", value: location.code, sub: location.name }] : []),
+          ]}
+          onChange={changePo}
+          changeLabel="Change"
+          badge={cachedAt ? <Pill tone="warning" icon="cloud-off-outline" text={`Cached ${new Date(cachedAt).toLocaleTimeString()}`} /> : undefined}
+        />
+      )}
+
+      {po && !location && <ScanInput label="Scan receiving location" icon="map-marker-radius" onScan={scanLocation} testID="scan-location" />}
 
       {po && location && (
         <>
-          <EachScanToggle />
-          <ScanInput label="③ Scan item barcode" onScan={scanItem} active={!editing && !busy} testID="scan-item" />
+          <ScanInput label="Scan item barcode" onScan={scanItem} active={!editing && !busy} testID="scan-item" />
+          {/* Out of the way while a quantity is entered, so the panel sits right under the scan field */}
+          {!editing && <EachScanToggle />}
 
           {editing && (
-            <Card>
-              <Text style={styles.title}>
-                {editing.item.sku_code} {editing.item.name}
-              </Text>
-              <Row label="Open" value={`${fmtQty(left(editing))} ${editing.uom.code}`} />
+            <Card style={s.panel}>
+              <View>
+                <Text style={s.sku}>{editing.item.sku_code}</Text>
+                <Text style={s.name}>{editing.item.name}</Text>
+              </View>
+              <View style={{ flexDirection: "row" }}>
+                <Stat label="Open" value={`${fmtQty(left(editing))} ${editing.uom.code}`} />
+                <Stat label="Ordered" value={`${fmtQty(editing.qty_planned)} ${editing.uom.code}`} />
+              </View>
               {editing.item.is_batch_managed && (
                 <Field label="Batch no. (scannable)" value={batchText} onChangeText={setBatchText} autoFocus testID="batch" />
               )}
               {editing.item.is_expiry_managed && (
-                <Field label="Expiry date YYYY-MM-DD" value={expiryText} onChangeText={setExpiryText} testID="expiry" />
+                <Field label="Expiry date" placeholder="YYYY-MM-DD" value={expiryText} onChangeText={setExpiryText} testID="expiry" />
               )}
-              <Field
-                label={`Received now (${editing.uom.code})`}
+              <QtyField
+                label="Received now"
+                unit={editing.uom.code}
                 value={qtyText}
                 onChangeText={setQtyText}
-                keyboardType="decimal-pad"
-                selectTextOnFocus
+                min={0}
                 autoFocus={!editing.item.is_batch_managed}
                 onSubmitEditing={confirmEntry}
                 testID="qty"
               />
-              <View style={{ flexDirection: "row", gap: 8 }}>
-                <View style={{ flex: 1 }}>
-                  <Button title="OK" onPress={confirmEntry} testID="confirm-entry" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Button title="Cancel" variant="default" onPress={() => setEditing(null)} />
-                </View>
+              <View style={{ flexDirection: "row", gap: space.sm }}>
+                <Button title="Cancel" variant="secondary" onPress={() => setEditing(null)} style={{ flex: 1 }} />
+                <Button title="Add" icon="plus" onPress={confirmEntry} testID="confirm-entry" style={{ flex: 2 }} />
               </View>
             </Card>
           )}
 
-          <Card>
-            <Text style={styles.title}>Order lines</Text>
-            {po.lines.map((line) => (
-              <Row
-                key={line.id}
-                label={`${line.item.sku_code} ${line.item.name}`}
-                value={`Now ${fmtQty(entered(line.id))} / open ${fmtQty(line.qty_planned - line.qty_actual)} ${line.uom.code}`}
-              />
-            ))}
-          </Card>
-
           {entries.length > 0 && (
-            <Card>
-              <Text style={styles.title}>This receipt ({entries.length} lines)</Text>
-              {entries.map((e) => (
-                <View key={e.key} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  <Text style={{ flex: 1, fontSize: 15 }}>
-                    {e.line.item.sku_code} × {fmtQty(e.qty)} {e.line.uom.code}
-                    {e.batchNo ? `  Batch ${e.batchNo}` : ""}
-                    {e.expiryDate ? `  Exp ${e.expiryDate}` : ""}
-                  </Text>
-                  <Pressable onPress={() => setEntries(entries.filter((x) => x.key !== e.key))}>
-                    <Text style={{ color: colors.danger, fontSize: 15 }}>Delete</Text>
-                  </Pressable>
+            <Card title={`This receipt (${entries.length} lines)`} icon="playlist-check">
+              {entries.map((e, i) => (
+                <View key={e.key}>
+                  {i > 0 && <Divider />}
+                  <View style={s.entry}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.entryTitle}>
+                        {e.line.item.sku_code} × {fmtQty(e.qty)} {e.line.uom.code}
+                      </Text>
+                      {(e.batchNo || e.expiryDate) && (
+                        <Text style={s.entrySub}>
+                          {[e.batchNo && `Batch ${e.batchNo}`, e.expiryDate && `Exp ${e.expiryDate}`].filter(Boolean).join("  ·  ")}
+                        </Text>
+                      )}
+                    </View>
+                    <IconButton icon="trash-can-outline" tone="danger" label={`Delete ${e.line.item.sku_code}`} onPress={() => setEntries(entries.filter((x) => x.key !== e.key))} />
+                  </View>
                 </View>
               ))}
             </Card>
           )}
 
-          <Card>
-            <PhotoCapture photos={photos} onChange={setPhotos} />
+          <Card title="Order lines" icon="format-list-bulleted">
+            {po.lines.map((line, i) => {
+              const now = entered(line.id);
+              const open = line.qty_planned - line.qty_actual;
+              const done = line.qty_actual + now;
+              const full = now >= open && open > 0;
+              return (
+                <View key={line.id} style={{ gap: 6 }}>
+                  {i > 0 && <Divider />}
+                  <View style={s.lineHead}>
+                    <Text style={s.lineTitle} numberOfLines={1}>
+                      {line.item.sku_code} <Text style={s.lineName}>{line.item.name}</Text>
+                    </Text>
+                    <Text style={[s.lineQty, full && s.lineDone]}>
+                      {`Now ${fmtQty(now)} / open ${fmtQty(open)} ${line.uom.code}`}
+                    </Text>
+                  </View>
+                  <ProgressBar value={line.qty_planned ? done / line.qty_planned : 0} tone={full || open <= 0 ? "success" : "primary"} />
+                </View>
+              );
+            })}
           </Card>
 
-          <Button
-            title={`Submit receipt (${entries.length} lines)`}
-            onPress={submit}
-            disabled={!entries.length || !!editing}
-            loading={busy}
-            testID="submit-receive"
-          />
+          <PhotoCapture photos={photos} onChange={setPhotos} />
         </>
       )}
-
-      {po && <Button title="Change purchase order" variant="default" onPress={() => reset()} />}
-    </ScrollView>
+    </Screen>
   );
 }
+
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+    panel: { borderColor: c.primary, borderWidth: 2, borderRadius: radius.lg },
+    sku: { fontSize: 22, fontWeight: "800", color: c.text },
+    name: { fontSize: 15, color: c.textSecondary },
+    entry: { flexDirection: "row", alignItems: "center", gap: space.sm, paddingVertical: 2 },
+    entryTitle: { fontSize: 16, fontWeight: "600", color: c.text, fontVariant: ["tabular-nums"] },
+    entrySub: { fontSize: 13, color: c.textMuted },
+    lineHead: { gap: 2, paddingTop: 4 },
+    lineTitle: { fontSize: 15, fontWeight: "700", color: c.text },
+    lineName: { fontWeight: "400", color: c.textSecondary },
+    lineQty: { fontSize: 13, color: c.textMuted, fontVariant: ["tabular-nums"] },
+    lineDone: { color: c.successText, fontWeight: "600" },
+  });

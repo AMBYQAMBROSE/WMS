@@ -1,18 +1,20 @@
 import { useEffect, useState } from "react";
 
-import * as Haptics from "expo-haptics";
-import { ScrollView, Text, View } from "react-native";
+import { RefreshControl, StyleSheet, Text, View } from "react-native";
 
 import PhotoCapture from "@/components/PhotoCapture";
 import ScanInput from "@/components/ScanInput";
-import { Banner, Button, Card, EachScanToggle, Field, Row, colors, styles, type Notice } from "@/components/ui";
+import Screen, { ContextBar } from "@/components/Screen";
+import { Button, Card, Divider, EachScanToggle, EmptyState, Field, ListRow, Pill, QtyField, Row } from "@/components/ui";
 import { errorText } from "@/lib/api";
+import { confirm, haptic, useNotice } from "@/lib/feedback";
 import { fetchActiveCounts, fetchCount, fmtQty, parseDate } from "@/lib/inbound";
 import type { CountLine, CycleCount, DocumentSummary, MobileItem, MobileLocation } from "@/lib/types";
 import { useMasterData } from "@/stores/masterData";
 import { useQueue } from "@/stores/queue";
 import { useSettings } from "@/stores/settings";
 import { useTasks } from "@/stores/tasks";
+import { radius, space, useStyles, useTheme, type Palette, type Tone } from "@/theme";
 
 interface Editing {
   item: MobileItem;
@@ -26,10 +28,12 @@ const keyOf = (locationId: string, itemId: string, batch: string | null, expiry:
   `${locationId}|${itemId}|${batch ?? ""}|${expiry ?? ""}`;
 
 export default function CountScreen() {
-  const findItem = useMasterData((s) => s.findItem);
-  const findLocation = useMasterData((s) => s.findLocation);
-  const submitOp = useQueue((s) => s.submit);
-  const eachScan = useSettings((s) => s.eachScanCountsOne);
+  const { c } = useTheme();
+  const s = useStyles(makeStyles);
+  const findItem = useMasterData((st) => st.findItem);
+  const findLocation = useMasterData((st) => st.findLocation);
+  const submitOp = useQueue((st) => st.submit);
+  const eachScan = useSettings((st) => st.eachScanCountsOne);
 
   const [counts, setCounts] = useState<DocumentSummary[] | null>(null);
   const [count, setCount] = useState<CycleCount | null>(null);
@@ -40,13 +44,13 @@ export default function CountScreen() {
   const [qtyText, setQtyText] = useState("");
   // Show entries that were submitted but are still in the local queue
   const [queued, setQueued] = useState<Record<string, number>>({});
-  const [notice, setNotice] = useState<Notice | null>(null);
+  const [notice, setNotice] = useNotice();
   // Starts busy: the list loads on mount
   const [busy, setBusy] = useState(true);
 
   const applyList = ({ data, cachedAt }: Awaited<ReturnType<typeof fetchActiveCounts>>) => {
     setCounts(data);
-    if (cachedAt) setNotice({ kind: "warning", text: "Offline: showing the cached cycle count list" });
+    if (cachedAt) setNotice({ kind: "warning", text: "Offline: showing the cached cycle count list" }, { silent: true });
   };
   const failList = (error: unknown) => setNotice({ kind: "error", text: errorText(error) });
 
@@ -67,6 +71,7 @@ export default function CountScreen() {
     fetchActiveCounts()
       .then(applyList, failList)
       .finally(() => setBusy(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once on mount
   }, []);
 
   const openCount = async (summary: DocumentSummary, keepNotice = false) => {
@@ -74,8 +79,9 @@ export default function CountScreen() {
     try {
       const { data, cachedAt } = await fetchCount(summary.id, summary.doc_no);
       setCount(data);
-      if (cachedAt) setNotice({ kind: "warning", text: "Offline: using the cached cycle count; entries are saved on this device and submitted when back online" });
-      else if (!keepNotice) setNotice(null);
+      if (cachedAt) {
+        setNotice({ kind: "warning", text: "Offline: using the cached cycle count; entries are saved on this device and submitted when back online" });
+      } else if (!keepNotice) setNotice(null);
     } catch (error) {
       setNotice({ kind: "error", text: errorText(error) });
     } finally {
@@ -89,6 +95,7 @@ export default function CountScreen() {
     const inCount = loc && count.count_locations.some((cl) => cl.location.id === loc.id);
     if (!loc || !inCount) return setNotice({ kind: "error", text: `Location ${code} is not part of cycle count ${count.doc_no}` });
     setNotice(null);
+    haptic("tick");
     setLocation(loc);
   };
 
@@ -116,10 +123,11 @@ export default function CountScreen() {
       }
       const counted = (Number(qtyText.trim()) || 0) + 1;
       setQtyText(String(counted));
-      setNotice({ kind: "info", text: `${item.sku_code}: ${counted}` });
-      void Haptics.selectionAsync().catch(() => undefined);
+      setNotice({ kind: "info", text: `${item.sku_code}: ${counted}` }, { silent: true });
+      haptic("tick");
       return;
     }
+    haptic("tick");
     const candidates = linesHere.filter((l) => l.item.id === item.id);
     const tracked = item.is_batch_managed || item.is_expiry_managed;
     if (!tracked) return startEdit(item, candidates[0] ?? null);
@@ -127,11 +135,11 @@ export default function CountScreen() {
     if (candidates.length === 1) return startEdit(item, candidates[0]);
     setChoiceItem(item);
     setChoices(candidates);
-    setNotice({ kind: "info", text: "This item has several batches at this location; choose the batch on the goods" });
+    setNotice({ kind: "info", text: "This item has several batches at this location; choose the batch on the goods" }, { silent: true });
   };
 
   const submitEntry = async () => {
-    if (!count || !location || !editing) return;
+    if (!count || !location || !editing || busy) return;
     const qty = Number(qtyText.trim());
     if (qtyText.trim() === "" || !Number.isFinite(qty) || qty < 0) {
       return setNotice({ kind: "error", text: "Enter the counted quantity (0 if none)" });
@@ -164,73 +172,128 @@ export default function CountScreen() {
     }
   };
 
-  const lineStatus = (l: CountLine) => {
+  const lineStatus = (l: CountLine): { text: string; tone: Tone } => {
     const pending = queued[keyOf(l.to_location!.id, l.item.id, l.batch_no, l.expiry_date)];
-    if (pending !== undefined) return { text: `Pending sync ${fmtQty(pending)}`, color: colors.warning };
-    if (l.counted_at) return { text: `Counted ${fmtQty(l.qty_actual)}`, color: colors.success };
-    return { text: "To count", color: colors.subtle };
+    if (pending !== undefined) return { text: `Pending sync ${fmtQty(pending)}`, tone: "warning" };
+    if (l.counted_at) return { text: `Counted ${fmtQty(l.qty_actual)}`, tone: "success" };
+    return { text: "To count", tone: "neutral" };
+  };
+
+  const leaveLocation = () => {
+    const go = () => {
+      setLocation(null);
+      setEditing(null);
+      setChoices([]);
+    };
+    if (!editing) return go();
+    confirm("Change location?", `The count for ${editing.item.sku_code} has not been recorded yet.`, "Discard", go);
+  };
+
+  const leaveCount = () => {
+    const go = () => {
+      setCount(null);
+      setLocation(null);
+      setEditing(null);
+      setQueued({});
+    };
+    if (!editing) return go();
+    confirm("Change cycle count?", `The count for ${editing.item.sku_code} has not been recorded yet.`, "Discard", go);
   };
 
   if (!count) {
     return (
-      <ScrollView contentContainerStyle={styles.screen}>
-        <Banner notice={notice} />
-        <Text style={styles.title}>Choose a cycle count</Text>
-        {counts?.length === 0 && <Text style={styles.hint}>No cycle counts in progress (start one in the web console)</Text>}
-        {counts?.map((c) => (
-          <Button
-            key={c.id}
-            variant="default"
-            title={`${c.doc_no}${c.remark ? ` · ${c.remark}` : ""}`}
-            onPress={() => void openCount(c)}
-            testID={`count-${c.doc_no}`}
+      <Screen
+        notice={notice}
+        onDismiss={() => setNotice(null)}
+        refreshControl={<RefreshControl refreshing={busy && counts !== null} onRefresh={() => void loadList()} colors={[c.primary]} tintColor={c.primary} />}
+        footer={<Button title="Refresh" variant="secondary" icon="refresh" onPress={() => void loadList()} loading={busy} />}
+      >
+        {counts === null ? (
+          <EmptyState icon="clipboard-text-outline" title="Loading cycle counts…" />
+        ) : counts.length === 0 ? (
+          <EmptyState
+            icon="clipboard-check-outline"
+            title="No cycle counts in progress"
+            text="Start a cycle count in the web console; it appears here. Pull down to check again."
           />
-        ))}
-        <Button title="Refresh" variant="default" onPress={() => void loadList()} loading={busy} />
-      </ScrollView>
+        ) : (
+          <>
+            <Text style={s.listHeader}>Choose a cycle count</Text>
+            {counts.map((cc) => (
+              <ListRow
+                key={cc.id}
+                icon="clipboard-list-outline"
+                title={
+                  <>
+                    {cc.doc_no}
+                    {cc.remark ? <Text style={s.remark}>{` · ${cc.remark}`}</Text> : null}
+                  </>
+                }
+                onPress={() => void openCount(cc)}
+                disabled={busy}
+                testID={`count-${cc.doc_no}`}
+              />
+            ))}
+          </>
+        )}
+      </Screen>
     );
   }
 
+  const countedHere = linesHere.filter((l) => l.counted_at || queued[keyOf(l.to_location!.id, l.item.id, l.batch_no, l.expiry_date)] !== undefined).length;
+  const step = !location ? 0 : editing ? 2 : 1;
+
   return (
-    <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
-      <Banner notice={notice} />
-      <Card>
-        <Row label="Cycle count" value={count.doc_no} />
-        <Row label="Scope" value={count.count_locations.map((cl) => cl.location.code).join(", ")} />
-        {location && <Row label="Location" value={`${location.code} ${location.name}`} />}
-      </Card>
+    <Screen
+      notice={notice}
+      onDismiss={() => setNotice(null)}
+      steps={["Location", "Item", "Count"]}
+      step={step}
+      footer={
+        editing ? (
+          <View style={{ flexDirection: "row", gap: space.sm }}>
+            <Button title="Cancel" variant="secondary" onPress={() => setEditing(null)} style={{ flex: 1 }} />
+            <Button title="OK, record" icon="check" onPress={() => void submitEntry()} loading={busy} testID="confirm-count" style={{ flex: 2 }} />
+          </View>
+        ) : undefined
+      }
+    >
+      <ContextBar
+        items={[
+          { icon: "clipboard-list-outline", label: "Cycle count", value: count.doc_no, sub: count.count_locations.map((cl) => cl.location.code).join(", ") },
+          ...(location ? [{ icon: "map-marker-radius" as const, label: "Location", value: location.code, sub: location.name }] : []),
+        ]}
+        onChange={location ? leaveLocation : leaveCount}
+        changeLabel={location ? "Change location" : "Change count"}
+      />
 
       {!location ? (
-        <ScanInput label="① Scan the location to count" onScan={scanLocation} active={!busy} testID="scan-count-location" />
+        <ScanInput label="Scan the location to count" icon="map-marker-radius" onScan={scanLocation} active={!busy} testID="scan-count-location" />
       ) : (
         <>
-          <EachScanToggle />
           <ScanInput
-            label="② Scan item barcode"
+            label={scanCounting ? `Scan each ${editing?.item.sku_code ?? "item"}` : "Scan item barcode"}
             onScan={scanItem}
             active={(!editing || scanCounting) && !choices.length && !busy}
             testID="scan-item"
           />
+          {!editing && <EachScanToggle />}
 
           {choices.length > 0 && choiceItem && (
-            <Card>
+            <Card title="Choose the batch on the goods" icon="layers-outline">
               {choices.map((l) => (
-                <Button
-                  key={l.id}
-                  variant="default"
-                  title={`Batch ${l.batch_no ?? "-"}  Exp ${l.expiry_date ?? "-"}`}
-                  onPress={() => startEdit(choiceItem, l)}
-                />
+                <ListRow key={l.id} title={`Batch ${l.batch_no ?? "-"}`} subtitle={`Exp ${l.expiry_date ?? "-"}`} onPress={() => startEdit(choiceItem, l)} />
               ))}
-              <Button title="Other batch (not on book)" variant="default" onPress={() => startEdit(choiceItem, null)} />
+              <ListRow title="Other batch" subtitle="Not on the book" icon="plus" onPress={() => startEdit(choiceItem, null)} />
             </Card>
           )}
 
           {editing && (
-            <Card>
-              <Text style={styles.title}>
-                {editing.item.sku_code} {editing.item.name}
-              </Text>
+            <Card style={s.panel}>
+              <View>
+                <Text style={s.sku}>{editing.item.sku_code}</Text>
+                <Text style={s.name}>{editing.item.name}</Text>
+              </View>
               {editing.item.is_batch_managed &&
                 (editing.fixed ? (
                   <Row label="Batch" value={editing.batchNo} />
@@ -247,86 +310,85 @@ export default function CountScreen() {
                   <Row label="Expiry" value={editing.expiryDate} />
                 ) : (
                   <Field
-                    label="Expiry date YYYY-MM-DD"
+                    label="Expiry date"
+                    placeholder="YYYY-MM-DD"
                     value={editing.expiryDate}
                     onChangeText={(v) => setEditing({ ...editing, expiryDate: v })}
                     testID="expiry"
                   />
                 ))}
-              <Field
+              <QtyField
                 label="Counted quantity (base unit, 0 if none)"
                 value={qtyText}
                 onChangeText={setQtyText}
-                keyboardType="decimal-pad"
                 // Not while scanning each piece: the scanner would type the next barcode into the quantity
                 autoFocus={!scanCounting && (editing.fixed || !(editing.item.is_batch_managed || editing.item.is_expiry_managed))}
                 onSubmitEditing={() => void submitEntry()}
                 testID="qty"
               />
-              <View style={{ flexDirection: "row", gap: 8 }}>
-                <View style={{ flex: 1 }}>
-                  <Button title="OK" onPress={() => void submitEntry()} loading={busy} testID="confirm-count" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Button title="Cancel" variant="default" onPress={() => setEditing(null)} />
-                </View>
-              </View>
             </Card>
           )}
 
-          <Card>
-            <PhotoCapture
-              label="Photo of what you found"
-              onTaken={(photo) =>
-                void submitOp(
-                  "attach",
-                  `Photo ${count.doc_no} ${location.code}`,
-                  { document_id: count.id, doc_no: count.doc_no },
-                  [photo.caption ? `${location.code}: ${photo.caption}` : location.code],
-                  [{ ...photo, caption: [location.code, photo.caption].filter(Boolean).join(": ") }],
-                ).then((outcome) =>
-                  setNotice(
-                    outcome.status === "done"
-                      ? { kind: "success", text: "Photo saved" }
-                      : outcome.status === "queued"
-                        ? { kind: "warning", text: "Photo saved on this device; it will be sent when back online" }
-                        : { kind: "error", text: `Photo not saved: ${outcome.error}` },
-                  ),
-                )
-              }
-            />
-          </Card>
-
-          <Card>
-            <Text style={styles.title}>Lines at this location ({linesHere.length})</Text>
-            {linesHere.length === 0 && <Text style={styles.hint}>No stock on book; record whatever goods you find</Text>}
-            {linesHere.map((l) => {
+          <Card
+            title={`Lines at this location (${linesHere.length})`}
+            icon="format-list-checks"
+            right={linesHere.length > 0 ? <Pill tone={countedHere === linesHere.length ? "success" : "neutral"} text={`${countedHere}/${linesHere.length}`} /> : undefined}
+          >
+            {linesHere.length === 0 && <Text style={s.muted}>No stock on book; record whatever goods you find</Text>}
+            {linesHere.map((l, i) => {
               const status = lineStatus(l);
               return (
-                <View key={l.id} style={{ flexDirection: "row", gap: 8 }}>
-                  <Text style={{ flex: 1, fontSize: 15 }}>
-                    {l.item.sku_code} {l.batch_no ? `Batch ${l.batch_no}` : ""}
-                    {l.qty_planned !== null ? `  Book ${fmtQty(l.qty_planned)}` : ""}
-                  </Text>
-                  <Text style={{ fontSize: 15, color: status.color }}>{status.text}</Text>
+                <View key={l.id}>
+                  {i > 0 && <Divider />}
+                  <View style={s.lineRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.lineTitle}>{l.item.sku_code}</Text>
+                      <Text style={s.muted}>
+                        {[l.batch_no && `Batch ${l.batch_no}`, l.qty_planned !== null && `Book ${fmtQty(l.qty_planned)}`].filter(Boolean).join("  ·  ") || l.item.name}
+                      </Text>
+                    </View>
+                    <Pill tone={status.tone} text={status.text} />
+                  </View>
                 </View>
               );
             })}
           </Card>
 
-          <Button title="Change location" variant="default" onPress={() => { setLocation(null); setEditing(null); setChoices([]); }} />
+          <PhotoCapture
+            label="Photo of what you found"
+            hint="Sent right away with the count, tagged with this location"
+            onTaken={(photo) =>
+              void submitOp(
+                "attach",
+                `Photo ${count.doc_no} ${location.code}`,
+                { document_id: count.id, doc_no: count.doc_no },
+                [photo.caption ? `${location.code}: ${photo.caption}` : location.code],
+                [{ ...photo, caption: [location.code, photo.caption].filter(Boolean).join(": ") }],
+              ).then((outcome) =>
+                setNotice(
+                  outcome.status === "done"
+                    ? { kind: "success", text: "Photo saved" }
+                    : outcome.status === "queued"
+                      ? { kind: "warning", text: "Photo saved on this device; it will be sent when back online" }
+                      : { kind: "error", text: `Photo not saved: ${outcome.error}` },
+                ),
+              )
+            }
+          />
         </>
       )}
-      <Button
-        title="Change cycle count"
-        variant="default"
-        onPress={() => {
-          setCount(null);
-          setLocation(null);
-          setEditing(null);
-          setQueued({});
-        }}
-      />
-    </ScrollView>
+    </Screen>
   );
 }
+
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+    listHeader: { fontSize: 13, fontWeight: "600", color: c.textSecondary, textTransform: "uppercase", letterSpacing: 0.6 },
+    remark: { fontWeight: "400", color: c.textSecondary },
+    panel: { borderColor: c.primary, borderWidth: 2, borderRadius: radius.lg },
+    sku: { fontSize: 22, fontWeight: "800", color: c.text },
+    name: { fontSize: 15, color: c.textSecondary },
+    muted: { fontSize: 13, color: c.textMuted },
+    lineRow: { flexDirection: "row", alignItems: "center", gap: space.sm, paddingVertical: 8 },
+    lineTitle: { fontSize: 16, fontWeight: "600", color: c.text },
+  });

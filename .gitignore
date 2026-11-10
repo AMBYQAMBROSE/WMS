@@ -26,3 +26,6 @@ Thumbs.db
 
 # Offline install package output
 deploy/dist/
+
+# Recorded flow test videos and issue list (tests/e2e/flows)
+test-recordings/

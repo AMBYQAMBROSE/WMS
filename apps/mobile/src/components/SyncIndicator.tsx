@@ -1,11 +1,12 @@
 import { useRouter } from "expo-router";
 import { Pressable, Text } from "react-native";
 
-import { colors } from "@/components/ui";
 import { isMine, useQueue } from "@/stores/queue";
 import { useSession } from "@/stores/session";
+import { useTheme } from "@/theme";
 
 export default function SyncIndicator() {
+  const { c } = useTheme();
   const router = useRouter();
   const username = useSession((s) => s.username);
   const pending = useQueue((s) => s.ops.filter((o) => o.status === "pending" && isMine(o, username)).length);
@@ -15,16 +16,35 @@ export default function SyncIndicator() {
   const online = useQueue((s) => s.online);
   const syncing = useQueue((s) => s.syncing);
 
-  const dot = online === false ? colors.danger : colors.success;
-  const label = syncing ? "Syncing" : online === false ? "Offline" : "Online";
+  const offline = online === false;
+  const dot = failed > 0 || offline ? c.danger : pending > 0 ? c.warning : c.success;
+  // online stays null until the queue has sent something: nothing is known to be wrong, so "Ready"
+  const label = syncing ? "Syncing" : offline ? "Offline" : online === null ? "Ready" : "Online";
   return (
-    <Pressable testID="sync-indicator" onPress={() => router.push("/queue")} style={{ paddingHorizontal: 8 }}>
-      <Text style={{ fontSize: 13, color: colors.text }}>
+    <Pressable
+      testID="sync-indicator"
+      accessibilityRole="button"
+      accessibilityHint="Opens the submit queue"
+      onPress={() => router.push("/queue")}
+      hitSlop={8}
+      style={({ pressed }) => ({
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 999,
+        backgroundColor: pressed ? c.border : c.surfaceAlt,
+        borderWidth: 1,
+        borderColor: c.border,
+        marginRight: 4,
+      })}
+    >
+      <Text style={{ fontSize: 13, fontWeight: "600", color: c.textSecondary, fontVariant: ["tabular-nums"] }}>
         <Text style={{ color: dot }}>● </Text>
         {label}
-        {pending > 0 && ` · Pending ${pending}`}
+        {pending > 0 && <Text style={{ color: c.warningText }}>{` · Pending ${pending}`}</Text>}
         {held > 0 && ` · Others' ${held}`}
-        {failed > 0 && <Text style={{ color: colors.danger }}>{` · Failed ${failed}`}</Text>}
+        {failed > 0 && <Text style={{ color: c.dangerText }}>{` · Failed ${failed}`}</Text>}
       </Text>
     </Pressable>
   );

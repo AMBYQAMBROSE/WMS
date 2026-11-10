@@ -254,15 +254,15 @@ Each row is one reviewable commit. Testing for every row: `tsc` + `eslint` + `ex
 |---|---|---|---|---|---|---|
 | **B1** | P1 | Abort covers the whole request incl. body read; settle `sync()` on any throw | lib/api.ts | — | Low | Pending |
 | **B2** | P1 | Scope read caches by server and user (key prefix); clear on sign-out and on user/server change | lib/inbound.ts, stores/session.ts | — | Low | Pending |
-| **B3** | P1 | Confirm before discarding unsubmitted lines (back, change PO/location); remove photos on unmount | receive.tsx, TransferScreen.tsx, count.tsx | C (ConfirmDialog) or `Alert` | Med | Pending |
-| **B4** | P1 | Error haptic on rejected scans | all scan screens | — | Low | Pending |
-| **B5** | P2 | Guarded login submit; shared quantity validation (`parseQty` with a zero-allowed variant for count/pick) | login.tsx, inbound.ts, count.tsx, pick.tsx | — | Low | Pending |
-| **C1** | P1/P2 | Theme tokens, light/dark palettes with AA contrast, `useTheme`, theme setting, `app.json` automatic | src/theme/*, ui.tsx, settings.ts, app.json, _layout.tsx | — | Med | Pending |
-| **C2** | P2 | New shared components (§5); restyle existing `ui.tsx` components to tokens, same exports | components/* | C1 | Med | Pending |
-| **D1** | P1 | Scan screen skeleton: context bar, step indicator, fixed feedback toast, bottom action bar | Receive first, then Transfer, Count | C2 | Med | Pending |
-| **D2** | P2 | Pick hero layout and progress | pick.tsx | C2 | Med | Pending |
-| **D3** | P2 | Home tile grid, settings section; Login polish | index.tsx, login.tsx | C2 | Low | Pending |
-| **D4** | P2 | Selection lists with pull-to-refresh and empty states; Queue sections and delete confirm | count.tsx, pick.tsx, queue.tsx | C2 | Low | Pending |
+| **B3** | P1 | Confirm before discarding unsubmitted lines (back, change PO/location); remove photos on unmount | receive.tsx, TransferScreen.tsx, count.tsx | C (ConfirmDialog) or `Alert` | Med | Done (2026-11-10) |
+| **B4** | P1 | Error haptic on rejected scans | all scan screens | — | Low | Done (2026-11-10) |
+| **B5** | P2 | Guarded login submit; shared quantity validation (`parseQty` with a zero-allowed variant for count/pick) | login.tsx, inbound.ts, count.tsx, pick.tsx | — | Low | Partly: login guard done; shared qty validation pending |
+| **C1** | P1/P2 | Theme tokens, light/dark palettes with AA contrast, `useTheme`, theme setting, `app.json` automatic | src/theme/*, ui.tsx, settings.ts, app.json, _layout.tsx | — | Med | Done (2026-11-10) |
+| **C2** | P2 | New shared components (§5); restyle existing `ui.tsx` components to tokens, same exports | components/* | C1 | Med | Done (2026-11-10) |
+| **D1** | P1 | Scan screen skeleton: context bar, step indicator, fixed feedback toast, bottom action bar | Receive first, then Transfer, Count | C2 | Med | Done (2026-11-10) |
+| **D2** | P2 | Pick hero layout and progress | pick.tsx | C2 | Med | Done (2026-11-10) |
+| **D3** | P2 | Home tile grid, settings section; Login polish | index.tsx, login.tsx | C2 | Low | Done (2026-11-10) |
+| **D4** | P2 | Selection lists with pull-to-refresh and empty states; Queue sections and delete confirm | count.tsx, pick.tsx, queue.tsx | C2 | Low | Done (2026-11-10) |
 | **E1** | P2 | Measure cold start and master-data hydrate on a real PDA; optimize only if > 1 s | masterData.ts | device | Low | Blocked (device) |
 | **E2** | P2 | Virtualize long line lists (FlatList) if measured jank | receive.tsx, pick.tsx | device | Low | Blocked (device) |
 | **E3** | P2 | Persist pick/count "done on this device" markers per document | pick.tsx, count.tsx | — | Low | Pending |

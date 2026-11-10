@@ -1,12 +1,16 @@
 import { useEffect, useState } from "react";
 
-import { Image, Pressable, Text, View } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { Button, Field, colors, styles } from "@/components/ui";
+import { Button, Card, Field } from "@/components/ui";
 import { errorText } from "@/lib/api";
 import { loadPhoto, removePhoto, takePhoto, type PhotoRef } from "@/lib/photos";
+import { radius, space, useStyles, useTheme, type Palette } from "@/theme";
 
 function Thumbnail({ photo, onRemove }: { photo: PhotoRef; onRemove?: () => void }) {
+  const { c } = useTheme();
+  const s = useStyles(makeStyles);
   const [uri, setUri] = useState<string | null>(null);
   useEffect(() => {
     let alive = true;
@@ -16,16 +20,22 @@ function Thumbnail({ photo, onRemove }: { photo: PhotoRef; onRemove?: () => void
     };
   }, [photo.id]);
   return (
-    <View style={{ width: 96, gap: 2 }} testID="photo-thumb">
+    <View style={s.thumb} testID="photo-thumb">
       {uri ? (
-        <Image source={{ uri }} style={{ width: 96, height: 96, borderRadius: 6 }} accessibilityLabel={photo.caption ?? "Photo"} />
+        <Image source={{ uri }} style={s.thumbImage} accessibilityLabel={photo.caption ?? "Photo"} />
       ) : (
-        <View style={{ width: 96, height: 96, borderRadius: 6, backgroundColor: colors.muted }} />
+        <View style={[s.thumbImage, { alignItems: "center", justifyContent: "center" }]}>
+          <MaterialCommunityIcons name="image-outline" size={28} color={c.textMuted} />
+        </View>
       )}
-      {photo.caption && <Text style={styles.hint} numberOfLines={2}>{photo.caption}</Text>}
+      {photo.caption && (
+        <Text style={s.caption} numberOfLines={2}>
+          {photo.caption}
+        </Text>
+      )}
       {onRemove && (
-        <Pressable onPress={onRemove}>
-          <Text style={{ color: colors.danger }}>Remove</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel="Remove photo" onPress={onRemove} hitSlop={6} style={s.remove}>
+          <MaterialCommunityIcons name="close" size={18} color="#ffffff" />
         </Pressable>
       )}
     </View>
@@ -40,13 +50,17 @@ export default function PhotoCapture({
   photos = [],
   onChange,
   onTaken,
-  label = "Photos (damage, labels, ...)",
+  label = "Photos",
+  hint = "Damage, labels, anything worth showing",
 }: {
   photos?: PhotoRef[];
   onChange?: (photos: PhotoRef[]) => void;
   onTaken?: (photo: PhotoRef) => void;
   label?: string;
+  hint?: string;
 }) {
+  const { c } = useTheme();
+  const s = useStyles(makeStyles);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,18 +87,38 @@ export default function PhotoCapture({
   };
 
   return (
-    <View style={{ gap: 6 }}>
-      <Text style={styles.title}>{label}</Text>
-      <Field label="Note for the next photo (optional)" value={note} onChangeText={setNote} testID="photo-note" />
-      <Button title="Take photo" variant="default" onPress={() => void take()} loading={busy} testID="take-photo" />
-      {error && <Text style={{ color: colors.danger }}>{error}</Text>}
+    <Card title={photos.length ? `${label} (${photos.length})` : label} icon="camera-outline">
+      <Text style={s.hint}>{hint}</Text>
+      <Field label="Note for the next photo (optional)" value={note} onChangeText={setNote} testID="photo-note" placeholder="e.g. Torn box" />
+      <Button title="Take photo" variant="secondary" icon="camera" onPress={() => void take()} loading={busy} testID="take-photo" />
+      {error && <Text style={{ color: c.dangerText }}>{error}</Text>}
       {photos.length > 0 && (
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+        <View style={s.grid}>
           {photos.map((p) => (
             <Thumbnail key={p.id} photo={p} onRemove={onChange ? () => remove(p) : undefined} />
           ))}
         </View>
       )}
-    </View>
+    </Card>
   );
 }
+
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+    hint: { fontSize: 13, color: c.textMuted, marginTop: -space.sm },
+    grid: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
+    thumb: { width: 96, gap: 4 },
+    thumbImage: { width: 96, height: 96, borderRadius: radius.md, backgroundColor: c.surfaceAlt },
+    caption: { fontSize: 12, color: c.textMuted },
+    remove: {
+      position: "absolute",
+      top: 4,
+      right: 4,
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: "rgba(0,0,0,0.6)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+  });

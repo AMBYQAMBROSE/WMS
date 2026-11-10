@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState, type ComponentRef } from "react";
+
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useIsFocused } from "expo-router";
 import { Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { colors } from "@/components/ui";
+import { noWebOutline, radius, size, space, useStyles, useTheme, type Palette } from "@/theme";
 
 interface Props {
   label: string;
@@ -10,15 +12,19 @@ interface Props {
   onScan: (code: string) => void;
   /** When false, do not grab focus (e.g. while a quantity panel is open) */
   active?: boolean;
+  /** Icon in the field, matching what is scanned (bin, item, document) */
+  icon?: "barcode-scan" | "map-marker-radius" | "file-document-outline" | "package-variant-closed";
   testID?: string;
 }
 
 /**
  * Scanners work as keyboard wedges: the barcode arrives as typed text followed by Enter.
- * The input keeps focus, clears and refocuses after each scan, and does not show the soft keyboard by default (it would cover the screen); tap "Keyboard" to type by hand.
+ * The input keeps focus, clears and refocuses after each scan, and does not show the soft keyboard by default (it would cover the screen); tap the keyboard button to type by hand.
  * Uncontrolled input read via ref: scanners type very fast and a controlled input re-renders per character, which can drop characters on low-end PDAs.
  */
-export default function ScanInput({ label, placeholder, onScan, active = true, testID }: Props) {
+export default function ScanInput({ label, placeholder, onScan, active = true, icon = "barcode-scan", testID }: Props) {
+  const { c } = useTheme();
+  const s = useStyles(makeStyles);
   const inputRef = useRef<ComponentRef<typeof TextInput>>(null);
   const valueRef = useRef("");
   const [keyboard, setKeyboard] = useState(false);
@@ -63,14 +69,25 @@ export default function ScanInput({ label, placeholder, onScan, active = true, t
   };
 
   return (
-    <View style={styles.wrap}>
-      <Text style={styles.label}>{label}</Text>
-      <View style={styles.row}>
+    <View style={s.wrap}>
+      <View style={s.labelRow}>
+        <Text style={s.label}>{label}</Text>
+        {active && (
+          <View style={s.ready}>
+            <View style={[s.readyDot, { backgroundColor: c.success }]} />
+            <Text style={s.readyText}>Ready</Text>
+          </View>
+        )}
+      </View>
+      <View style={[s.box, active ? s.boxActive : s.boxInactive]}>
+        <MaterialCommunityIcons name={icon} size={26} color={active ? c.primaryText : c.textMuted} style={{ marginLeft: space.md }} />
         <TextInput
           ref={inputRef}
           testID={testID}
-          style={[styles.input, !active && styles.inactive]}
-          placeholder={placeholder ?? "Scan or type, then Enter"}
+          accessibilityLabel={label}
+          style={s.input}
+          placeholder={placeholder ?? (active ? "Scan or type + Enter" : "Waiting…")}
+          placeholderTextColor={c.textMuted}
           autoCapitalize="none"
           autoCorrect={false}
           autoFocus={active}
@@ -84,8 +101,14 @@ export default function ScanInput({ label, placeholder, onScan, active = true, t
           onSubmitEditing={submit}
           onBlur={handleBlur}
         />
-        <Pressable style={styles.kb} onPress={toggleKeyboard}>
-          <Text style={styles.kbText}>{keyboard ? "Hide" : "Keyboard"}</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={keyboard ? "Hide keyboard" : "Type with keyboard"}
+          onPress={toggleKeyboard}
+          disabled={!active}
+          style={({ pressed }) => [s.kb, keyboard && { backgroundColor: c.primaryTint }, pressed && { backgroundColor: c.border }]}
+        >
+          <MaterialCommunityIcons name={keyboard ? "keyboard-off-outline" : "keyboard-outline"} size={24} color={keyboard ? c.primaryText : c.textSecondary} />
         </Pressable>
       </View>
     </View>
@@ -107,27 +130,39 @@ function isAnyInputFocused(): boolean {
 const keepFocusOnSubmit =
   Platform.OS === "web" ? { blurOnSubmit: false } : ({ submitBehavior: "submit" } as const);
 
-const styles = StyleSheet.create({
-  wrap: { marginBottom: 12 },
-  label: { fontSize: 16, fontWeight: "600", marginBottom: 6, color: colors.text },
-  row: { flexDirection: "row", gap: 8 },
-  input: {
-    flex: 1,
-    borderWidth: 2,
-    borderColor: colors.primary,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 20,
-    backgroundColor: "#fff",
-  },
-  inactive: { borderColor: colors.border, backgroundColor: colors.muted },
-  kb: {
-    justifyContent: "center",
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  kbText: { fontSize: 14, color: colors.text },
-});
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+    wrap: { gap: space.sm },
+    labelRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+    label: { fontSize: 17, fontWeight: "700", color: c.text, flexShrink: 1 },
+    ready: { flexDirection: "row", alignItems: "center", gap: 6 },
+    readyDot: { width: 8, height: 8, borderRadius: 4 },
+    readyText: { fontSize: 13, fontWeight: "600", color: c.successText },
+    box: {
+      flexDirection: "row",
+      alignItems: "center",
+      minHeight: size.scan,
+      borderRadius: radius.md,
+      borderWidth: 2,
+    },
+    boxActive: { borderColor: c.primary, backgroundColor: c.surface },
+    boxInactive: { borderColor: c.border, backgroundColor: c.surfaceAlt },
+    input: {
+      flex: 1,
+      minWidth: 0,
+      paddingHorizontal: space.md,
+      paddingVertical: 12,
+      fontSize: 20,
+      fontWeight: "600",
+      color: c.text,
+      ...noWebOutline,
+    },
+    kb: {
+      width: size.touch,
+      height: size.touch,
+      marginRight: 4,
+      borderRadius: radius.sm,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+  });

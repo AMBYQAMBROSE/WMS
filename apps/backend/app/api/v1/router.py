@@ -10,6 +10,7 @@ from app.api.v1 import (
     auth,
     business_partners,
     cycle_counts,
+    document_print,
     events,
     extensions,
     features,
@@ -72,4 +73,5 @@ api_router.include_router(system.router)
 api_router.include_router(events.router)
 api_router.include_router(preferences.router)
 api_router.include_router(attachments.router)
+api_router.include_router(document_print.router)
 api_router.include_router(assistant.router)

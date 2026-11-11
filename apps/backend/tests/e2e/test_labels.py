@@ -16,10 +16,13 @@ def shot(page: Page, name: str) -> None:
         page.screenshot(path=os.path.join(SHOTS, f"{name}.png"))
 
 
-def expect_pdf_tab(page: Page, click) -> None:
+def expect_pdf_tab(page: Page, click, method: str = "POST") -> None:
     """A click opens a new tab and fetches a PDF for it. (Headless Chromium has no PDF viewer, so the tab's own
     navigation to the PDF is not checked: it turns into a download.)"""
-    with page.context.expect_page() as popup, page.expect_response(lambda r: r.request.method == "POST" and "/api/v1/" in r.url) as response:
+    def is_pdf_request(r) -> bool:
+        return r.request.method == method and "/api/v1/" in r.url and ("/print" in r.url or "label" in r.url)
+
+    with page.context.expect_page() as popup, page.expect_response(is_pdf_request) as response:
         click()
     assert response.value.status == 200, response.value.text()
     assert response.value.headers["content-type"] == "application/pdf"

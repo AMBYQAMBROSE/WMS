@@ -18,7 +18,7 @@ def list_audit_logs(
     entity_id: uuid.UUID | None = Query(default=None, description="A record; for a document, also its lines"),
     entity_type: str | None = None,
     user_id: uuid.UUID | None = None,
-    action: Literal["CREATE", "UPDATE", "DELETE"] | None = None,
+    action: Literal["CREATE", "UPDATE", "DELETE", "PRINT"] | None = None,
     keyword: str | None = Query(default=None, description="Part of the record's code or document number"),
     occurred_from: datetime | None = None,
     occurred_to: datetime | None = None,

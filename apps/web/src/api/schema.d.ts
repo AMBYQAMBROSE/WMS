@@ -2032,6 +2032,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/documents/{document_id}/print": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Print Document
+         * @description The printed copy of any document: details, lines, totals and signature boxes, with the document number as a
+         *     barcode on every page. Each print is recorded in the document's history.
+         */
+        get: operations["print_document_api_v1_documents__document_id__print_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/assistant/status": {
         parameters: {
             query?: never;
@@ -2335,7 +2356,7 @@ export interface components {
              * Action
              * @enum {string}
              */
-            action: "CREATE" | "UPDATE" | "DELETE";
+            action: "CREATE" | "UPDATE" | "DELETE" | "PRINT";
             /** Entity Type */
             entity_type: string;
             /**
@@ -9356,7 +9377,7 @@ export interface operations {
                 entity_id?: string | null;
                 entity_type?: string | null;
                 user_id?: string | null;
-                action?: ("CREATE" | "UPDATE" | "DELETE") | null;
+                action?: ("CREATE" | "UPDATE" | "DELETE" | "PRINT") | null;
                 /** @description Part of the record's code or document number */
                 keyword?: string | null;
                 occurred_from?: string | null;
@@ -9610,6 +9631,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    print_document_api_v1_documents__document_id__print_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The document's A4 report as PDF */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": unknown;
+                };
             };
             /** @description Validation Error */
             422: {

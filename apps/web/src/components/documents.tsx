@@ -11,6 +11,7 @@ import { apiClient } from "@/api/client";
 import { showError } from "@/api/errors";
 import { useCan } from "@/api/me";
 import { usePreference } from "@/api/preferences";
+import { printDocument } from "@/api/print";
 import type { Document, DocumentLine, DocumentSummary } from "@/api/types";
 import {
   ColumnSettings,
@@ -55,8 +56,32 @@ export function useDocumentAction(path: string, id: string) {
   return useMutation({
     mutationFn: async (action: string) =>
       (await apiClient.post<Document>(`/${path}/${id}/${action}`)).data,
-    onSuccess: (doc) => {
-      message.success("Done");
+    onSuccess: (doc, action) => {
+      if (action === "post") {
+        // The paper copy is usually wanted right after posting (receipt for the supplier, DO for the driver). Offered
+        // as a link rather than opened automatically: a tab opened without a click is blocked as a pop-up.
+        const key = `posted-${doc.id}`;
+        message.success({
+          key,
+          duration: 8,
+          content: (
+            <span>
+              Posted.{" "}
+              <a
+                data-testid="print-after-post"
+                onClick={() => {
+                  message.destroy(key);
+                  void printDocument(doc.id);
+                }}
+              >
+                Print {doc.doc_no}
+              </a>
+            </span>
+          ),
+        });
+      } else {
+        message.success("Done");
+      }
       queryClient.setQueryData([path, id], doc);
       // Posting receipts/picks/shipments changes PO and SO status and stock, so invalidate those caches too
       queryClient.invalidateQueries({ queryKey: [path] });

@@ -21,13 +21,13 @@ QUIET_MODULES = 10
 
 # Item and partner names are user data and may be in any script. The standard PDF fonts only cover Latin-1, so other
 # text uses a CJK font that every PDF viewer provides without embedding a font file.
-_UNICODE_FONT = "STSong-Light"
+UNICODE_FONT = "STSong-Light"
 
 
 @cache
 def _unicode_font() -> str:
-    pdfmetrics.registerFont(UnicodeCIDFont(_UNICODE_FONT))
-    return _UNICODE_FONT
+    pdfmetrics.registerFont(UnicodeCIDFont(UNICODE_FONT))
+    return UNICODE_FONT
 
 
 def font_for(text: str, bold: bool = False) -> str:

@@ -70,6 +70,11 @@ Outbound → Sales orders → open the order → Ship → enter carrier, vehicle
 - **Dashboard**: today's receipts and shipments, pending backlog (click a number to open the matching list), bin utilization and expiring stock.
 - **Reports**: stock turnover, picker performance, expiring stock and partner ledger. After choosing dates, use "Export CSV" to open the data in Excel. With large data sets the page shows only the first 1000 rows; export for the full data.
 - **Shortages**: Outbound → Shortages. "Available warehouse-wide" greater than 0 means re-allocating after replenishment will cover the order.
+- **Printing documents**: every document (purchase order, receipt, putaway, pick list, delivery order, adjustment, count sheet, returns, repack) has a **Print** button next to its number. It opens an A4 PDF with the document's details, lines, totals and signature boxes; the document number is printed as a barcode on every page. After posting, the success message offers "Print <document no.>" directly. Each print is recorded in the document's History.
+  - Delivery order: customer, address, vehicle, driver and seal number, with signature boxes for the warehouse, the driver and the customer.
+  - Pick list: sorted by bin so the picker walks the warehouse once; the "Picked" column stays empty until confirmed, to write on.
+  - Count sheet: shows book quantities only to users allowed to see them (blind count otherwise).
+  - Cancelled documents print with a "CANCELLED" watermark; draft orders and delivery orders with "DRAFT".
 - **Labels**: every item and every bin should carry a barcode label, so operators scan instead of typing.
   - Item labels: Master data → Items → tick the items (the ticks stay while you search again) → "Print labels". The barcode is the item's barcode, or its SKU when it has none; the PDA reads both.
   - Location labels: Master data → Locations → "Print labels" → "Selected locations", or "Every bin and dock in an area" to label a whole zone, aisle or rack at once (printed in code order).

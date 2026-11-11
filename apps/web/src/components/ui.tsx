@@ -17,6 +17,7 @@ import { Link } from "react-router";
 import { getErrorMessage } from "@/api/errors";
 import { HistoryButton } from "@/components/AuditTrail";
 import { PhotosButton } from "@/components/DocumentPhotos";
+import { PrintButton } from "@/components/PrintButton";
 import StatusTag from "@/components/StatusTag";
 import { ACCENTS, type Accent } from "@/theme";
 import { useCountUp } from "@/theme/motion";
@@ -295,6 +296,7 @@ export function DocTitle({ label, no, status, historyOf }: { label: string; no: 
       {status && <StatusTag status={status} />}
       {historyOf && <HistoryButton entityId={historyOf} title={`${label} ${no}`} />}
       {historyOf && <PhotosButton documentId={historyOf} title={`${label} ${no}`} />}
+      {historyOf && <PrintButton documentId={historyOf} />}
     </div>
   );
 }

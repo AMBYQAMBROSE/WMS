@@ -33,6 +33,8 @@ from app.models.user import Role, User
 ACTION_CREATE = "CREATE"
 ACTION_UPDATE = "UPDATE"
 ACTION_DELETE = "DELETE"
+# A document was printed (its report PDF made); changes says which report
+ACTION_PRINT = "PRINT"
 
 MASKED = "***"
 

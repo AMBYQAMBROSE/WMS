@@ -9,12 +9,16 @@ import { showError } from "@/api/errors";
  *
  * The tab is opened before the request, while the click still counts as a user action; opening it after waiting for
  * the server would be blocked as a pop-up. Returns false when the PDF could not be made (the error is shown).
+ * Without a body the PDF is fetched with GET (document reports), with one it is POSTed (labels).
  */
-export async function openPdf(path: string, body: unknown): Promise<boolean> {
+export async function openPdf(path: string, body?: unknown): Promise<boolean> {
   const tab = window.open("", "_blank");
   tab?.document.write("<title>Preparing PDF…</title><p style='font:14px sans-serif;margin:24px'>Preparing PDF…</p>");
   try {
-    const res = await apiClient.post<Blob>(path, body, { responseType: "blob" });
+    const res =
+      body === undefined
+        ? await apiClient.get<Blob>(path, { responseType: "blob" })
+        : await apiClient.post<Blob>(path, body, { responseType: "blob" });
     const url = URL.createObjectURL(res.data);
     if (tab) {
       tab.location.href = url;
@@ -46,3 +50,6 @@ async function readBlobError(error: unknown): Promise<unknown> {
   }
   return error;
 }
+
+/** The printed report of a document (A4: details, lines, signature boxes, document number as a barcode) */
+export const printDocument = (documentId: string) => openPdf(`/documents/${documentId}/print`);

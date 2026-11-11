@@ -109,4 +109,5 @@ export const AUDIT_ACTION_LABELS: Record<string, { text: string; color: string }
   CREATE: { text: "Created", color: "green" },
   UPDATE: { text: "Changed", color: "blue" },
   DELETE: { text: "Deleted", color: "red" },
+  PRINT: { text: "Printed", color: "default" },
 };

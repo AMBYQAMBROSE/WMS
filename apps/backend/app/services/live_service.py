@@ -22,7 +22,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import select
 
 from app.core.db import SessionLocal
-from app.models.audit import AuditLog
+from app.models.audit import ACTION_PRINT, AuditLog
 from app.models.document import DocumentHeader
 from app.services.document_common import utcnow
 
@@ -95,7 +95,8 @@ class ChangeFeed:
                             AuditLog.id, AuditLog.occurred_at, AuditLog.entity_type, AuditLog.entity_id,
                             AuditLog.parent_id, AuditLog.action, AuditLog.entity_label,
                         )
-                        .where(AuditLog.tenant_id == tenant_id, AuditLog.occurred_at >= state.since - OVERLAP)
+                        # A print changes nothing on screen, so it is not announced
+                        .where(AuditLog.tenant_id == tenant_id, AuditLog.occurred_at >= state.since - OVERLAP, AuditLog.action != ACTION_PRINT)
                         .order_by(AuditLog.occurred_at)
                         .limit(MAX_ROWS_PER_POLL)
                     )

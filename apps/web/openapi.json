@@ -8625,7 +8625,8 @@
                   "enum": [
                     "CREATE",
                     "UPDATE",
-                    "DELETE"
+                    "DELETE",
+                    "PRINT"
                   ],
                   "type": "string"
                 },
@@ -9075,6 +9076,51 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/documents/{document_id}/print": {
+      "get": {
+        "tags": [
+          "printing"
+        ],
+        "summary": "Print Document",
+        "description": "The printed copy of any document: details, lines, totals and signature boxes, with the document number as a\nbarcode on every page. Each print is recorded in the document's history.",
+        "operationId": "print_document_api_v1_documents__document_id__print_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Document Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The document's A4 report as PDF",
+            "content": {
+              "application/pdf": {}
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -9883,7 +9929,8 @@
             "enum": [
               "CREATE",
               "UPDATE",
-              "DELETE"
+              "DELETE",
+              "PRINT"
             ],
             "title": "Action"
           },

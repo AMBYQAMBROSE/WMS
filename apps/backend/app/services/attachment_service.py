@@ -24,7 +24,7 @@ MAX_BYTES = 4 * 1024 * 1024
 MAX_PER_DOCUMENT = 50
 
 # Document type -> permission module, and the action that may add photos
-_PERMISSIONS = {
+DOCUMENT_PERMISSIONS = {
     "PO": ("purchase_order", "create"),
     "GRN": ("grn", "create"),
     "PUTAWAY": ("putaway", "create"),
@@ -64,7 +64,7 @@ class AttachmentService:
         doc = self.db.get(DocumentHeader, document_id)
         if doc is None or doc.tenant_id != self.user.tenant_id or doc.is_deleted:
             raise NotFoundError("Document not found")
-        module, write_action = _PERMISSIONS.get(doc.doc_type, (None, None))
+        module, write_action = DOCUMENT_PERMISSIONS.get(doc.doc_type, (None, None))
         needed = f"{module}.{'read' if action == 'read' else write_action}" if module else None
         if needed is None or needed not in self.user.permissions:
             # Without read access the document does not exist for this user

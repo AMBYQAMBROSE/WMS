@@ -19,7 +19,7 @@ class AuditLogRead(BaseModel):
     # Null with a null user_id: done by the system (background worker, scripts)
     username: str | None
     request_id: str | None
-    action: Literal["CREATE", "UPDATE", "DELETE"]
+    action: Literal["CREATE", "UPDATE", "DELETE", "PRINT"]
     entity_type: str
     entity_id: uuid.UUID
     entity_label: str | None

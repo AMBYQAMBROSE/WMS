@@ -61,7 +61,8 @@ export function AuditChanges({ changes, action }: { changes: AuditChange[]; acti
         <div key={c.field} className="wms-audit-change">
           <span className="wms-audit-field">{fieldLabel(c.field)}</span>
           <span>
-            {action !== "CREATE" && <span className="wms-audit-old">{formatValue(c.old)}</span>}
+            {/* A print has no old value: it only names the report printed */}
+            {action !== "CREATE" && action !== "PRINT" && <span className="wms-audit-old">{formatValue(c.old)}</span>}
             {action === "UPDATE" && <ArrowRightOutlined className="wms-audit-arrow" />}
             {action !== "DELETE" || c.new !== null ? <span className="wms-audit-new">{formatValue(c.new)}</span> : null}
           </span>

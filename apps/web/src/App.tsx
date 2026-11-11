@@ -41,6 +41,7 @@ const ShortagesPage = lazy(() => import("@/pages/outbound/ShortagesPage"));
 const UsersPage = lazy(() => import("@/pages/system/UsersPage"));
 const RolesPage = lazy(() => import("@/pages/system/RolesPage"));
 const FeaturesPage = lazy(() => import("@/pages/system/FeaturesPage"));
+const LabelSettingsPage = lazy(() => import("@/pages/system/LabelSettingsPage"));
 const IntegrationPage = lazy(() => import("@/pages/system/IntegrationPage"));
 const ImportPage = lazy(() => import("@/pages/system/ImportPage"));
 const AuditLogPage = lazy(() => import("@/pages/system/AuditLogPage"));
@@ -107,6 +108,7 @@ export default function App() {
               <Route path="users" element={<UsersPage />} />
               <Route path="roles" element={<RolesPage />} />
               <Route path="features" element={<FeaturesPage />} />
+              <Route path="label-settings" element={<LabelSettingsPage />} />
               <Route path="integration" element={<IntegrationPage />} />
               <Route path="imports" element={<ImportPage />} />
               <Route path="audit-log" element={<AuditLogPage />} />

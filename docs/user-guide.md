@@ -70,6 +70,11 @@ Outbound → Sales orders → open the order → Ship → enter carrier, vehicle
 - **Dashboard**: today's receipts and shipments, pending backlog (click a number to open the matching list), bin utilization and expiring stock.
 - **Reports**: stock turnover, picker performance, expiring stock and partner ledger. After choosing dates, use "Export CSV" to open the data in Excel. With large data sets the page shows only the first 1000 rows; export for the full data.
 - **Shortages**: Outbound → Shortages. "Available warehouse-wide" greater than 0 means re-allocating after replenishment will cover the order.
+- **Labels**: every item and every bin should carry a barcode label, so operators scan instead of typing.
+  - Item labels: Master data → Items → tick the items (the ticks stay while you search again) → "Print labels". The barcode is the item's barcode, or its SKU when it has none; the PDA reads both.
+  - Location labels: Master data → Locations → "Print labels" → "Selected locations", or "Every bin and dock in an area" to label a whole zone, aisle or rack at once (printed in code order).
+  - The label opens as a PDF in a new tab. Print it with scaling set to **"Actual size"**, not "Fit to page", or the labels will not line up with the label sheet.
+  - On a partly used label sheet, enter how many positions are already used under "Skip label positions".
 
 ## 9. System administrator
 
@@ -77,6 +82,7 @@ Outbound → Sales orders → open the order → Ship → enter carrier, vehicle
 |---|---|---|
 | Users, roles | System → Users / Roles | Permission changes take effect immediately; do not give "post" permissions to regular operators |
 | Feature flags | System → Feature flags | Enable returns, cross-docking, repacking, returnable assets and over-receipt as needed |
+| Label layouts | System → Labels & printing | Set the label size and layout for item and location labels: a sheet of labels on an A4 office printer, or a roll on a thermal label printer. Start from common label stock, then "Test print": it outlines every label, so hold the print against a label sheet and adjust margins and gaps until they match. The default layout is used when nobody picks one; with none, a built-in A4 layout is used |
 | Reason codes | Master data → Reason codes | Adjustment reasons, return reasons |
 | Data import | System → Data import | Download template → fill in → validate → confirm import; nothing is imported unless every row is valid |
 | Integrations | System → Integrations | Configure pushes to ERP and other external systems; check failures and resend in the push log (see integration.md) |

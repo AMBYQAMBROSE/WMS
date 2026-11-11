@@ -1,8 +1,8 @@
 import { useState } from "react";
 
-import { PlusOutlined } from "@ant-design/icons";
+import { DownOutlined, PlusOutlined, PrinterOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Checkbox, Form, Input, Select, Space, Table, Typography } from "antd";
+import { Button, Checkbox, Dropdown, Form, Input, Select, Space, Table, Typography } from "antd";
 
 import { apiClient } from "@/api/client";
 import { useCan } from "@/api/me";
@@ -13,6 +13,7 @@ import { Pill, STICKY_HEADER, YesNo } from "@/components/ui";
 import CreateModal from "@/components/CreateModal";
 import { LocationSelect } from "@/components/selects";
 import { LOCATION_TYPE_LABELS } from "@/constants/labels";
+import { PrintLabelsModal } from "@/components/labels";
 
 const yesNo = (v: boolean) => <YesNo value={v} />;
 
@@ -30,6 +31,8 @@ export default function LocationsPage() {
   const can = useCan();
   const [keyword, setKeyword] = useState("");
   const [creating, setCreating] = useState(false);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [printing, setPrinting] = useState<"selected" | "area" | null>(null);
   const { data, isLoading } = useQuery({
     queryKey: ["locations", keyword],
     queryFn: async () => (await apiClient.get<Location[]>("/locations", { params: { limit: MASTER_LIST_LIMIT, keyword: keyword || undefined } })).data,
@@ -51,6 +54,20 @@ export default function LocationsPage() {
         actions={
           <>
             {columnSettings}
+            <Dropdown
+              trigger={["click"]}
+              menu={{
+                items: [
+                  { key: "selected", label: `Selected locations${selected.length ? ` (${selected.length})` : ""}`, disabled: !selected.length },
+                  { key: "area", label: "Every bin and dock in an area…" },
+                ],
+                onClick: ({ key }) => setPrinting(key as "selected" | "area"),
+              }}
+            >
+              <Button icon={<PrinterOutlined />} data-testid="print-location-labels">
+                {selected.length ? `Print labels (${selected.length})` : "Print labels"} <DownOutlined />
+              </Button>
+            </Dropdown>
             {can("location.create") && (
               <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>
                 New location
@@ -67,7 +84,27 @@ export default function LocationsPage() {
         pagination={{ pageSize: 50, showSizeChanger: true, showTotal: (t) => `${t.toLocaleString()} records` }}
         dataSource={data}
         columns={columns}
+        rowSelection={{ selectedRowKeys: selected, onChange: (keys) => setSelected(keys as string[]), preserveSelectedRowKeys: true }}
       />
+      <PrintLabelsModal
+        open={printing !== null}
+        purpose="LOCATION"
+        path="/labels/locations"
+        body={printing === "selected" ? { location_ids: selected } : {}}
+        maxCopies={20}
+        summary={
+          printing === "selected"
+            ? `${selected.length} location${selected.length === 1 ? "" : "s"} selected.`
+            : "Prints every active bin and dock under the chosen location, in code order, so the sheets come out in the order they go on the racks."
+        }
+        onClose={() => setPrinting(null)}
+      >
+        {printing === "area" && (
+          <Form.Item name="parent_id" label="Area" rules={[{ required: true, message: "Choose a warehouse, zone, aisle or rack" }]}>
+            <LocationSelect types={["WAREHOUSE", "ZONE", "AISLE", "RACK"]} placeholder="Warehouse, zone, aisle or rack" />
+          </Form.Item>
+        )}
+      </PrintLabelsModal>
       <CreateModal
         open={creating}
         title="New location"

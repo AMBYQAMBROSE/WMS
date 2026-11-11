@@ -12,6 +12,7 @@ import { useColumnPrefs } from "@/components/ListTools";
 import { FormSection, STICKY_HEADER, YesNo } from "@/components/ui";
 import CreateModal from "@/components/CreateModal";
 import { UomSelect, useUoms } from "@/components/selects";
+import { PrintLabelsButton, PrintLabelsModal } from "@/components/labels";
 
 const yesNo = (v: boolean) => <YesNo value={v} />;
 
@@ -19,6 +20,8 @@ export default function ItemsPage() {
   const can = useCan();
   const [keyword, setKeyword] = useState("");
   const [creating, setCreating] = useState(false);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [printing, setPrinting] = useState(false);
   const { data: uoms } = useUoms();
   const { data, isLoading } = useQuery({
     queryKey: ["items", keyword],
@@ -44,6 +47,9 @@ export default function ItemsPage() {
         actions={
           <>
             {columnSettings}
+            <PrintLabelsButton disabled={!selected.length} onClick={() => setPrinting(true)}>
+              {selected.length ? `Print labels (${selected.length})` : "Print labels"}
+            </PrintLabelsButton>
             {can("item.create") && (
               <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>
                 New item
@@ -60,6 +66,17 @@ export default function ItemsPage() {
         pagination={{ pageSize: 50, showSizeChanger: true, showTotal: (t) => `${t.toLocaleString()} records` }}
         dataSource={data}
         columns={columns}
+        // Kept across searches, so items found by several searches can be printed together
+        rowSelection={{ selectedRowKeys: selected, onChange: (keys) => setSelected(keys as string[]), preserveSelectedRowKeys: true }}
+      />
+      <PrintLabelsModal
+        open={printing}
+        purpose="ITEM"
+        path="/labels/items"
+        body={{ item_ids: selected }}
+        maxCopies={500}
+        summary={`${selected.length} item${selected.length === 1 ? "" : "s"} selected. Each label carries the item's barcode, or its SKU when it has none; both scan on the PDA.`}
+        onClose={() => setPrinting(false)}
       />
       <CreateModal
         open={creating}

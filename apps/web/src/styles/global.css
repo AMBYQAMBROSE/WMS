@@ -1779,3 +1779,35 @@ a.wms-list-row:hover {
   font-size: 48px;
   color: var(--ant-color-text-quaternary);
 }
+
+/* ============================================================ label layout preview (System > Labels & printing) */
+
+.wms-label-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.wms-label-preview svg {
+  width: 100%;
+  max-height: 460px;
+  background: var(--ant-color-fill-quaternary);
+  border-radius: var(--wms-radius-lg);
+  padding: 10px;
+}
+.wms-label-page {
+  fill: #fff;
+  stroke: var(--ant-color-border);
+  stroke-width: 0.5;
+}
+.wms-label-cell {
+  fill: #fff;
+  stroke: var(--ant-color-primary);
+  stroke-width: 0.4;
+  stroke-dasharray: 1.5 1;
+}
+.wms-label-code {
+  fill: #1f2937;
+}
+.wms-label-text {
+  fill: #9ca3af;
+}

@@ -1470,6 +1470,399 @@
         }
       }
     },
+    "/api/v1/label-profiles": {
+      "get": {
+        "tags": [
+          "labels"
+        ],
+        "summary": "List Label Profiles",
+        "operationId": "list_label_profiles_api_v1_label_profiles_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "purpose",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "ITEM",
+                    "LOCATION"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Purpose"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LabelProfileRead"
+                  },
+                  "title": "Response List Label Profiles Api V1 Label Profiles Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "labels"
+        ],
+        "summary": "Create Label Profile",
+        "operationId": "create_label_profile_api_v1_label_profiles_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LabelProfileIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LabelProfileRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/label-profiles/fields": {
+      "get": {
+        "tags": [
+          "labels"
+        ],
+        "summary": "List Label Fields",
+        "operationId": "list_label_fields_api_v1_label_profiles_fields_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "items": {
+                      "$ref": "#/components/schemas/LabelFieldOption"
+                    },
+                    "type": "array"
+                  },
+                  "type": "object",
+                  "title": "Response List Label Fields Api V1 Label Profiles Fields Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/label-profiles/built-in": {
+      "get": {
+        "tags": [
+          "labels"
+        ],
+        "summary": "Built In Layouts",
+        "description": "The layouts used while a purpose has no default profile; also the starting point for a new profile",
+        "operationId": "built_in_layouts_api_v1_label_profiles_built_in_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "$ref": "#/components/schemas/LabelLayout-Output"
+                  },
+                  "type": "object",
+                  "title": "Response Built In Layouts Api V1 Label Profiles Built In Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/label-profiles/{profile_id}": {
+      "put": {
+        "tags": [
+          "labels"
+        ],
+        "summary": "Update Label Profile",
+        "operationId": "update_label_profile_api_v1_label_profiles__profile_id__put",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LabelProfileUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LabelProfileRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "labels"
+        ],
+        "summary": "Delete Label Profile",
+        "operationId": "delete_label_profile_api_v1_label_profiles__profile_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/label-profiles/test-print": {
+      "post": {
+        "tags": [
+          "labels"
+        ],
+        "summary": "Test Print",
+        "operationId": "test_print_api_v1_label_profiles_test_print_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LabelLayout-Input"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "PDF to print",
+            "content": {
+              "application/pdf": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/labels/items": {
+      "post": {
+        "tags": [
+          "labels"
+        ],
+        "summary": "Print Item Labels",
+        "operationId": "print_item_labels_api_v1_labels_items_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ItemLabelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "PDF to print",
+            "content": {
+              "application/pdf": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/labels/locations": {
+      "post": {
+        "tags": [
+          "labels"
+        ],
+        "summary": "Print Location Labels",
+        "operationId": "print_location_labels_api_v1_labels_locations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocationLabelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "PDF to print",
+            "content": {
+              "application/pdf": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/uoms": {
       "get": {
         "tags": [
@@ -11747,6 +12140,51 @@
         ],
         "title": "ItemCreate"
       },
+      "ItemLabelRequest": {
+        "properties": {
+          "item_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Item Ids"
+          },
+          "copies": {
+            "type": "integer",
+            "maximum": 500.0,
+            "minimum": 1.0,
+            "title": "Copies",
+            "default": 1
+          },
+          "profile_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Id"
+          },
+          "skip": {
+            "type": "integer",
+            "maximum": 999.0,
+            "minimum": 0.0,
+            "title": "Skip",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "item_ids"
+        ],
+        "title": "ItemLabelRequest"
+      },
       "ItemRead": {
         "properties": {
           "sku_code": {
@@ -12235,6 +12673,873 @@
         ],
         "title": "JobRead"
       },
+      "LabelFieldOption": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "name"
+        ],
+        "title": "LabelFieldOption"
+      },
+      "LabelLayout-Input": {
+        "properties": {
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "ITEM",
+              "LOCATION"
+            ],
+            "title": "Purpose"
+          },
+          "media": {
+            "type": "string",
+            "enum": [
+              "SHEET",
+              "ROLL"
+            ],
+            "title": "Media"
+          },
+          "label_width_mm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Label Width Mm"
+          },
+          "label_height_mm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Label Height Mm"
+          },
+          "page_width_mm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Page Width Mm",
+            "default": "210"
+          },
+          "page_height_mm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Page Height Mm",
+            "default": "297"
+          },
+          "columns": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Columns",
+            "default": 1
+          },
+          "rows": {
+            "type": "integer",
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Rows",
+            "default": 1
+          },
+          "margin_top_mm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Margin Top Mm",
+            "default": "0"
+          },
+          "margin_left_mm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Margin Left Mm",
+            "default": "0"
+          },
+          "gap_x_mm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Gap X Mm",
+            "default": "0"
+          },
+          "gap_y_mm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Gap Y Mm",
+            "default": "0"
+          },
+          "padding_mm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 50.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Padding Mm",
+            "default": "2"
+          },
+          "barcode_type": {
+            "type": "string",
+            "enum": [
+              "CODE128",
+              "QR"
+            ],
+            "title": "Barcode Type",
+            "default": "CODE128"
+          },
+          "fields": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Fields"
+          },
+          "font_size": {
+            "type": "integer",
+            "maximum": 72.0,
+            "minimum": 5.0,
+            "title": "Font Size",
+            "default": 9
+          }
+        },
+        "type": "object",
+        "required": [
+          "purpose",
+          "media",
+          "label_width_mm",
+          "label_height_mm"
+        ],
+        "title": "LabelLayout",
+        "description": "Everything that decides how a label prints. Also the body of a test print, so a layout can be checked on\npaper before it is saved."
+      },
+      "LabelLayout-Output": {
+        "properties": {
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "ITEM",
+              "LOCATION"
+            ],
+            "title": "Purpose"
+          },
+          "media": {
+            "type": "string",
+            "enum": [
+              "SHEET",
+              "ROLL"
+            ],
+            "title": "Media"
+          },
+          "label_width_mm": {
+            "type": "number",
+            "title": "Label Width Mm"
+          },
+          "label_height_mm": {
+            "type": "number",
+            "title": "Label Height Mm"
+          },
+          "page_width_mm": {
+            "type": "number",
+            "title": "Page Width Mm",
+            "default": 210.0
+          },
+          "page_height_mm": {
+            "type": "number",
+            "title": "Page Height Mm",
+            "default": 297.0
+          },
+          "columns": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Columns",
+            "default": 1
+          },
+          "rows": {
+            "type": "integer",
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Rows",
+            "default": 1
+          },
+          "margin_top_mm": {
+            "type": "number",
+            "title": "Margin Top Mm",
+            "default": 0.0
+          },
+          "margin_left_mm": {
+            "type": "number",
+            "title": "Margin Left Mm",
+            "default": 0.0
+          },
+          "gap_x_mm": {
+            "type": "number",
+            "title": "Gap X Mm",
+            "default": 0.0
+          },
+          "gap_y_mm": {
+            "type": "number",
+            "title": "Gap Y Mm",
+            "default": 0.0
+          },
+          "padding_mm": {
+            "type": "number",
+            "title": "Padding Mm",
+            "default": 2.0
+          },
+          "barcode_type": {
+            "type": "string",
+            "enum": [
+              "CODE128",
+              "QR"
+            ],
+            "title": "Barcode Type",
+            "default": "CODE128"
+          },
+          "fields": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Fields"
+          },
+          "font_size": {
+            "type": "integer",
+            "maximum": 72.0,
+            "minimum": 5.0,
+            "title": "Font Size",
+            "default": 9
+          }
+        },
+        "type": "object",
+        "required": [
+          "purpose",
+          "media",
+          "label_width_mm",
+          "label_height_mm"
+        ],
+        "title": "LabelLayout",
+        "description": "Everything that decides how a label prints. Also the body of a test print, so a layout can be checked on\npaper before it is saved."
+      },
+      "LabelProfileIn": {
+        "properties": {
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "ITEM",
+              "LOCATION"
+            ],
+            "title": "Purpose"
+          },
+          "media": {
+            "type": "string",
+            "enum": [
+              "SHEET",
+              "ROLL"
+            ],
+            "title": "Media"
+          },
+          "label_width_mm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Label Width Mm"
+          },
+          "label_height_mm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Label Height Mm"
+          },
+          "page_width_mm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Page Width Mm",
+            "default": "210"
+          },
+          "page_height_mm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Page Height Mm",
+            "default": "297"
+          },
+          "columns": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Columns",
+            "default": 1
+          },
+          "rows": {
+            "type": "integer",
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Rows",
+            "default": 1
+          },
+          "margin_top_mm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Margin Top Mm",
+            "default": "0"
+          },
+          "margin_left_mm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Margin Left Mm",
+            "default": "0"
+          },
+          "gap_x_mm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Gap X Mm",
+            "default": "0"
+          },
+          "gap_y_mm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Gap Y Mm",
+            "default": "0"
+          },
+          "padding_mm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 50.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Padding Mm",
+            "default": "2"
+          },
+          "barcode_type": {
+            "type": "string",
+            "enum": [
+              "CODE128",
+              "QR"
+            ],
+            "title": "Barcode Type",
+            "default": "CODE128"
+          },
+          "fields": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Fields"
+          },
+          "font_size": {
+            "type": "integer",
+            "maximum": 72.0,
+            "minimum": 5.0,
+            "title": "Font Size",
+            "default": 9
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "is_default": {
+            "type": "boolean",
+            "title": "Is Default",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "purpose",
+          "media",
+          "label_width_mm",
+          "label_height_mm",
+          "name"
+        ],
+        "title": "LabelProfileIn"
+      },
+      "LabelProfileRead": {
+        "properties": {
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "ITEM",
+              "LOCATION"
+            ],
+            "title": "Purpose"
+          },
+          "media": {
+            "type": "string",
+            "enum": [
+              "SHEET",
+              "ROLL"
+            ],
+            "title": "Media"
+          },
+          "label_width_mm": {
+            "type": "number",
+            "title": "Label Width Mm"
+          },
+          "label_height_mm": {
+            "type": "number",
+            "title": "Label Height Mm"
+          },
+          "page_width_mm": {
+            "type": "number",
+            "title": "Page Width Mm",
+            "default": 210.0
+          },
+          "page_height_mm": {
+            "type": "number",
+            "title": "Page Height Mm",
+            "default": 297.0
+          },
+          "columns": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Columns",
+            "default": 1
+          },
+          "rows": {
+            "type": "integer",
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Rows",
+            "default": 1
+          },
+          "margin_top_mm": {
+            "type": "number",
+            "title": "Margin Top Mm",
+            "default": 0.0
+          },
+          "margin_left_mm": {
+            "type": "number",
+            "title": "Margin Left Mm",
+            "default": 0.0
+          },
+          "gap_x_mm": {
+            "type": "number",
+            "title": "Gap X Mm",
+            "default": 0.0
+          },
+          "gap_y_mm": {
+            "type": "number",
+            "title": "Gap Y Mm",
+            "default": 0.0
+          },
+          "padding_mm": {
+            "type": "number",
+            "title": "Padding Mm",
+            "default": 2.0
+          },
+          "barcode_type": {
+            "type": "string",
+            "enum": [
+              "CODE128",
+              "QR"
+            ],
+            "title": "Barcode Type",
+            "default": "CODE128"
+          },
+          "fields": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Fields"
+          },
+          "font_size": {
+            "type": "integer",
+            "maximum": 72.0,
+            "minimum": 5.0,
+            "title": "Font Size",
+            "default": 9
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "is_default": {
+            "type": "boolean",
+            "title": "Is Default",
+            "default": false
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "row_version": {
+            "type": "integer",
+            "title": "Row Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "purpose",
+          "media",
+          "label_width_mm",
+          "label_height_mm",
+          "name",
+          "id",
+          "row_version"
+        ],
+        "title": "LabelProfileRead"
+      },
+      "LabelProfileUpdate": {
+        "properties": {
+          "row_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Row Version",
+            "description": "The row_version of the record as you loaded it. If someone changed the record since, the save is refused with 409 instead of silently overwriting their change. Omit to save without the check."
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "ITEM",
+              "LOCATION"
+            ],
+            "title": "Purpose"
+          },
+          "media": {
+            "type": "string",
+            "enum": [
+              "SHEET",
+              "ROLL"
+            ],
+            "title": "Media"
+          },
+          "label_width_mm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Label Width Mm"
+          },
+          "label_height_mm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Label Height Mm"
+          },
+          "page_width_mm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Page Width Mm",
+            "default": "210"
+          },
+          "page_height_mm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Page Height Mm",
+            "default": "297"
+          },
+          "columns": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Columns",
+            "default": 1
+          },
+          "rows": {
+            "type": "integer",
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Rows",
+            "default": 1
+          },
+          "margin_top_mm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Margin Top Mm",
+            "default": "0"
+          },
+          "margin_left_mm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Margin Left Mm",
+            "default": "0"
+          },
+          "gap_x_mm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Gap X Mm",
+            "default": "0"
+          },
+          "gap_y_mm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Gap Y Mm",
+            "default": "0"
+          },
+          "padding_mm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 50.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Padding Mm",
+            "default": "2"
+          },
+          "barcode_type": {
+            "type": "string",
+            "enum": [
+              "CODE128",
+              "QR"
+            ],
+            "title": "Barcode Type",
+            "default": "CODE128"
+          },
+          "fields": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Fields"
+          },
+          "font_size": {
+            "type": "integer",
+            "maximum": 72.0,
+            "minimum": 5.0,
+            "title": "Font Size",
+            "default": 9
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "is_default": {
+            "type": "boolean",
+            "title": "Is Default",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "purpose",
+          "media",
+          "label_width_mm",
+          "label_height_mm",
+          "name"
+        ],
+        "title": "LabelProfileUpdate"
+      },
       "LedgerRefLine": {
         "properties": {
           "id": {
@@ -12350,6 +13655,67 @@
           "location_type"
         ],
         "title": "LocationCreate"
+      },
+      "LocationLabelRequest": {
+        "properties": {
+          "location_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "type": "array",
+                "maxItems": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Ids"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "copies": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Copies",
+            "default": 1
+          },
+          "profile_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Id"
+          },
+          "skip": {
+            "type": "integer",
+            "maximum": 999.0,
+            "minimum": 0.0,
+            "title": "Skip",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "LocationLabelRequest",
+        "description": "Either the chosen locations, or every bin and dock under one location (a zone, an aisle, a rack)"
       },
       "LocationRead": {
         "properties": {

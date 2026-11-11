@@ -1,0 +1,151 @@
+import json
+import uuid
+
+from sqlalchemy import false, or_, select, true
+from sqlalchemy.orm import Session
+
+from app.core.errors import DomainError, NotFoundError
+from app.models.item import Item
+from app.models.label import LabelProfile
+from app.models.location import STOCK_LOCATION_TYPES, Location
+from app.repositories.base import BaseRepository, check_version
+from app.schemas.label import ItemLabelRequest, LabelLayout, LabelProfileIn, LabelProfileRead, LabelProfileUpdate, LocationLabelRequest
+from app.services.printing import labels as label_pdf
+from app.services.printing.labels import LabelContent
+
+MAX_LABELS = 5000
+
+
+class LabelService:
+    def __init__(self, db: Session, tenant_id: uuid.UUID, user_id: uuid.UUID):
+        self.db, self.tenant_id, self.user_id = db, tenant_id, user_id
+        self.repo = BaseRepository(db, LabelProfile)
+
+    # ----- profiles -----
+
+    def list_profiles(self, purpose: str | None = None) -> list[LabelProfile]:
+        stmt = self.repo._base_query(self.tenant_id).order_by(LabelProfile.purpose, LabelProfile.is_default.desc(), LabelProfile.name)
+        if purpose:
+            stmt = stmt.where(LabelProfile.purpose == purpose)
+        return list(self.db.scalars(stmt))
+
+    def get_profile(self, profile_id: uuid.UUID) -> LabelProfile:
+        profile = self.repo.get(self.tenant_id, profile_id)
+        if profile is None:
+            raise NotFoundError("Label profile not found")
+        return profile
+
+    def create_profile(self, data: LabelProfileIn) -> LabelProfile:
+        profile = LabelProfile(tenant_id=self.tenant_id, created_by=self.user_id, updated_by=self.user_id, **self._columns(data))
+        if data.is_default:
+            self._clear_default(data.purpose)
+        return self.repo.create(profile)
+
+    def update_profile(self, profile_id: uuid.UUID, data: LabelProfileUpdate) -> LabelProfile:
+        profile = self.get_profile(profile_id)
+        check_version(profile, data.row_version, f"Label profile {profile.name}")
+        if data.is_default:
+            self._clear_default(data.purpose, keep=profile.id)
+        return self.repo.update(profile, {**self._columns(data), "updated_by": self.user_id})
+
+    def delete_profile(self, profile_id: uuid.UUID) -> None:
+        self.repo.soft_delete(self.get_profile(profile_id))
+
+    def _columns(self, data: LabelProfileIn) -> dict:
+        fields = data.model_dump(exclude={"row_version"})
+        fields["fields"] = json.dumps(data.fields)
+        return fields
+
+    def _clear_default(self, purpose: str, keep: uuid.UUID | None = None) -> None:
+        # ORM updates (not a bulk update()) so the audit log records the old default losing its flag
+        for other in self.list_profiles(purpose):
+            if other.is_default and other.id != keep:
+                other.is_default = False
+                other.updated_by = self.user_id
+        self.db.flush()
+
+    def layout(self, purpose: str, profile_id: uuid.UUID | None) -> tuple[LabelLayout, str]:
+        """The chosen profile, else the purpose's default profile, else the built-in layout"""
+        if profile_id is not None:
+            profile = self.get_profile(profile_id)
+            if profile.purpose != purpose:
+                raise DomainError(f"Label profile {profile.name} is for {profile.purpose.lower()} labels")
+        else:
+            profile = next((p for p in self.list_profiles(purpose) if p.is_default), None)
+        if profile is None:
+            return label_pdf.BUILT_IN[purpose], "Built-in"
+        return LabelProfileRead.model_validate(profile), profile.name
+
+    # ----- printing -----
+
+    def item_labels(self, data: ItemLabelRequest) -> bytes:
+        layout, _ = self.layout("ITEM", data.profile_id)
+        items = {
+            i.id: i
+            for i in self.db.scalars(
+                select(Item).where(Item.tenant_id == self.tenant_id, Item.is_deleted == false(), Item.id.in_(data.item_ids))
+            )
+        }
+        missing = [str(i) for i in data.item_ids if i not in items]
+        if missing:
+            raise NotFoundError(f"Item not found: {', '.join(missing[:5])}")
+        self._check_count(len(data.item_ids) * data.copies)
+        contents = []
+        # Keep the order the user chose, each item's copies together so they can be cut and stuck as a block
+        for item_id in dict.fromkeys(data.item_ids):
+            item = items[item_id]
+            value = item.barcode or item.sku_code
+            content = LabelContent(
+                value,
+                {"name": item.name, "barcode_text": value, "sku": item.sku_code, "uom": item.base_uom.code, "category": item.category or ""},
+            )
+            contents.extend([content] * data.copies)
+        return label_pdf.render(layout, contents, data.skip, title="Item labels")
+
+    def location_labels(self, data: LocationLabelRequest) -> bytes:
+        layout, _ = self.layout("LOCATION", data.profile_id)
+        base = select(Location).where(Location.tenant_id == self.tenant_id, Location.is_deleted == false())
+        if data.location_ids:
+            found = {loc.id: loc for loc in self.db.scalars(base.where(Location.id.in_(data.location_ids)))}
+            missing = [str(i) for i in data.location_ids if i not in found]
+            if missing:
+                raise NotFoundError(f"Location not found: {', '.join(missing[:5])}")
+            locations = [found[i] for i in dict.fromkeys(data.location_ids)]
+        else:
+            parent = self.db.scalars(base.where(Location.id == data.parent_id)).first()
+            if parent is None:
+                raise NotFoundError("Location not found")
+            # Every bin and dock in that part of the tree (the parent itself too, when it holds stock), in code order
+            # so the sheets come out in the order they are stuck on the racks
+            locations = list(
+                self.db.scalars(
+                    base.where(
+                        Location.is_active == true(),
+                        Location.location_type.in_(STOCK_LOCATION_TYPES),
+                        or_(Location.id == parent.id, Location.path.startswith(parent.path + "/", autoescape=True)),
+                    ).order_by(Location.code)
+                )
+            )
+            if not locations:
+                raise DomainError(f"No bins or docks under {parent.code}")
+        self._check_count(len(locations) * data.copies)
+        contents = []
+        for loc in locations:
+            content = LabelContent(loc.code, {"code": loc.code, "name": loc.name, "path": loc.path})
+            contents.extend([content] * data.copies)
+        return label_pdf.render(layout, contents, data.skip, title="Location labels")
+
+
+    def test_print(self, layout: LabelLayout) -> bytes:
+        """One page (a few labels on a roll) of sample labels with each label's edge drawn, to line up a new
+        profile with the label stock before saving it"""
+        samples = label_pdf.sample_labels(layout.purpose)
+        count = 3 if layout.media == "ROLL" else layout.columns * layout.rows
+        contents = [samples[i % len(samples)] for i in range(count)]
+        return label_pdf.render(layout, contents, outline=True, title="Label test print")
+
+    @staticmethod
+    def _check_count(count: int) -> None:
+        if count > MAX_LABELS:
+            raise DomainError(f"{count} labels requested; print at most {MAX_LABELS} at a time")
+

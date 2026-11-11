@@ -49,6 +49,7 @@ const MASTER_KEYS: Record<string, string[]> = {
   item_barcode: ["items"],
   item_uom_conversion: ["items"],
   location: ["locations", "reports"],
+  label_profile: ["label-profiles"],
   business_partner: ["business-partners"],
   uom: ["uoms"],
   reason_code: ["reason-codes"],

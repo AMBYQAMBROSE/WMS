@@ -136,6 +136,7 @@ const MENU: MenuGroup[] = [
       { key: "/users", label: "Users", description: "Accounts and their roles", perm: "user.read" },
       { key: "/roles", label: "Roles", description: "Permission sets assigned to users", perm: "role.read" },
       { key: "/features", label: "Feature flags", description: "Turn optional modules on or off for this tenant", perm: "system.settings" },
+      { key: "/label-settings", label: "Labels & printing", description: "Label sizes and layouts for item and location labels", perm: "system.settings" },
       { key: "/integration", label: "Integrations", description: "Webhook connectors and delivery history", perm: "integration.read" },
       { key: "/imports", label: "Data import", description: "Bulk-load master data and opening stock from spreadsheets", perm: ["item.create", "location.create", "business_partner.create", "adjustment.post"] },
       { key: "/audit-log", label: "Audit log", description: "Who changed what and when, with old and new values", perm: "audit.read" },

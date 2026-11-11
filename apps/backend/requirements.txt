@@ -11,6 +11,10 @@ python-multipart==0.0.32
 tzdata==2026.5
 openpyxl==3.1.5
 et-xmlfile==2.0.0
+# Label and document PDFs (app/services/printing), with Code 128 and QR barcodes; pillow is its image dependency
+reportlab==5.1.0
+pillow==13.0.0
+charset-normalizer==3.5.2
 # Observability: OpenTelemetry export, only active when OTEL_EXPORTER_OTLP_ENDPOINT is set (app/core/observability.py)
 opentelemetry-sdk==1.45.2
 opentelemetry-exporter-otlp-proto-http==1.45.2

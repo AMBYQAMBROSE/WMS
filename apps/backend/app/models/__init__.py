@@ -8,6 +8,7 @@ from app.models import (  # noqa: F401
     idempotency,
     integration,
     item,
+    label,
     location,
     reason_code,
     returnable_asset,

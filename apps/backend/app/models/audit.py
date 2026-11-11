@@ -23,6 +23,7 @@ from app.models.business_partner import BusinessPartner
 from app.models.document import CountEntry, DocNumberRule, DocumentHeader, DocumentLine, ShipmentInfo
 from app.models.integration import IntegrationConnector
 from app.models.item import Item, ItemBarcode, ItemUomConversion, Uom
+from app.models.label import LabelProfile
 from app.models.location import Location
 from app.models.reason_code import ReasonCode
 from app.models.returnable_asset import ReturnableAssetTxn, ReturnableAssetType
@@ -76,6 +77,7 @@ _AUDITED: dict[type, tuple[str, tuple[str, ...]]] = {
     ItemUomConversion: ("item_uom_conversion", ()),
     Uom: ("uom", ("code",)),
     Location: ("location", ("code",)),
+    LabelProfile: ("label_profile", ("name",)),
     ReasonCode: ("reason_code", ("category", "code")),
     ReturnableAssetType: ("returnable_asset_type", ("code",)),
     ReturnableAssetTxn: ("returnable_asset_txn", ("txn_type",)),

@@ -53,3 +53,6 @@ export type AuditChange = Schemas["AuditChange"];
 export type SystemStatus = Schemas["SystemStatus"];
 export type OccupancyArea = Schemas["OccupancyArea"];
 export type Attachment = Schemas["AttachmentRead"];
+export type LabelLayout = Schemas["LabelLayout-Output"];
+export type LabelProfile = Schemas["LabelProfileRead"];
+export type LabelFieldOption = Schemas["LabelFieldOption"];

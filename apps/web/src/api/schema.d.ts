@@ -297,6 +297,130 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/label-profiles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Label Profiles */
+        get: operations["list_label_profiles_api_v1_label_profiles_get"];
+        put?: never;
+        /** Create Label Profile */
+        post: operations["create_label_profile_api_v1_label_profiles_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/label-profiles/fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Label Fields */
+        get: operations["list_label_fields_api_v1_label_profiles_fields_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/label-profiles/built-in": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Built In Layouts
+         * @description The layouts used while a purpose has no default profile; also the starting point for a new profile
+         */
+        get: operations["built_in_layouts_api_v1_label_profiles_built_in_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/label-profiles/{profile_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update Label Profile */
+        put: operations["update_label_profile_api_v1_label_profiles__profile_id__put"];
+        post?: never;
+        /** Delete Label Profile */
+        delete: operations["delete_label_profile_api_v1_label_profiles__profile_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/label-profiles/test-print": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Test Print */
+        post: operations["test_print_api_v1_label_profiles_test_print_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/labels/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Print Item Labels */
+        post: operations["print_item_labels_api_v1_labels_items_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/labels/locations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Print Location Labels */
+        post: operations["print_location_labels_api_v1_labels_locations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/uoms": {
         parameters: {
             query?: never;
@@ -2973,6 +3097,23 @@ export interface components {
              */
             is_active: boolean;
         };
+        /** ItemLabelRequest */
+        ItemLabelRequest: {
+            /** Item Ids */
+            item_ids: string[];
+            /**
+             * Copies
+             * @default 1
+             */
+            copies: number;
+            /** Profile Id */
+            profile_id?: string | null;
+            /**
+             * Skip
+             * @default 0
+             */
+            skip: number;
+        };
         /** ItemRead */
         ItemRead: {
             /** Sku Code */
@@ -3142,6 +3283,429 @@ export interface components {
             /** Connector Name */
             connector_name: string;
         };
+        /** LabelFieldOption */
+        LabelFieldOption: {
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+        };
+        /**
+         * LabelLayout
+         * @description Everything that decides how a label prints. Also the body of a test print, so a layout can be checked on
+         *     paper before it is saved.
+         */
+        "LabelLayout-Input": {
+            /**
+             * Purpose
+             * @enum {string}
+             */
+            purpose: "ITEM" | "LOCATION";
+            /**
+             * Media
+             * @enum {string}
+             */
+            media: "SHEET" | "ROLL";
+            /** Label Width Mm */
+            label_width_mm: number | string;
+            /** Label Height Mm */
+            label_height_mm: number | string;
+            /**
+             * Page Width Mm
+             * @default 210
+             */
+            page_width_mm: number | string;
+            /**
+             * Page Height Mm
+             * @default 297
+             */
+            page_height_mm: number | string;
+            /**
+             * Columns
+             * @default 1
+             */
+            columns: number;
+            /**
+             * Rows
+             * @default 1
+             */
+            rows: number;
+            /**
+             * Margin Top Mm
+             * @default 0
+             */
+            margin_top_mm: number | string;
+            /**
+             * Margin Left Mm
+             * @default 0
+             */
+            margin_left_mm: number | string;
+            /**
+             * Gap X Mm
+             * @default 0
+             */
+            gap_x_mm: number | string;
+            /**
+             * Gap Y Mm
+             * @default 0
+             */
+            gap_y_mm: number | string;
+            /**
+             * Padding Mm
+             * @default 2
+             */
+            padding_mm: number | string;
+            /**
+             * Barcode Type
+             * @default CODE128
+             * @enum {string}
+             */
+            barcode_type: "CODE128" | "QR";
+            /** Fields */
+            fields?: string[];
+            /**
+             * Font Size
+             * @default 9
+             */
+            font_size: number;
+        };
+        /**
+         * LabelLayout
+         * @description Everything that decides how a label prints. Also the body of a test print, so a layout can be checked on
+         *     paper before it is saved.
+         */
+        "LabelLayout-Output": {
+            /**
+             * Purpose
+             * @enum {string}
+             */
+            purpose: "ITEM" | "LOCATION";
+            /**
+             * Media
+             * @enum {string}
+             */
+            media: "SHEET" | "ROLL";
+            /** Label Width Mm */
+            label_width_mm: number;
+            /** Label Height Mm */
+            label_height_mm: number;
+            /**
+             * Page Width Mm
+             * @default 210
+             */
+            page_width_mm: number;
+            /**
+             * Page Height Mm
+             * @default 297
+             */
+            page_height_mm: number;
+            /**
+             * Columns
+             * @default 1
+             */
+            columns: number;
+            /**
+             * Rows
+             * @default 1
+             */
+            rows: number;
+            /**
+             * Margin Top Mm
+             * @default 0
+             */
+            margin_top_mm: number;
+            /**
+             * Margin Left Mm
+             * @default 0
+             */
+            margin_left_mm: number;
+            /**
+             * Gap X Mm
+             * @default 0
+             */
+            gap_x_mm: number;
+            /**
+             * Gap Y Mm
+             * @default 0
+             */
+            gap_y_mm: number;
+            /**
+             * Padding Mm
+             * @default 2
+             */
+            padding_mm: number;
+            /**
+             * Barcode Type
+             * @default CODE128
+             * @enum {string}
+             */
+            barcode_type: "CODE128" | "QR";
+            /** Fields */
+            fields?: string[];
+            /**
+             * Font Size
+             * @default 9
+             */
+            font_size: number;
+        };
+        /** LabelProfileIn */
+        LabelProfileIn: {
+            /**
+             * Purpose
+             * @enum {string}
+             */
+            purpose: "ITEM" | "LOCATION";
+            /**
+             * Media
+             * @enum {string}
+             */
+            media: "SHEET" | "ROLL";
+            /** Label Width Mm */
+            label_width_mm: number | string;
+            /** Label Height Mm */
+            label_height_mm: number | string;
+            /**
+             * Page Width Mm
+             * @default 210
+             */
+            page_width_mm: number | string;
+            /**
+             * Page Height Mm
+             * @default 297
+             */
+            page_height_mm: number | string;
+            /**
+             * Columns
+             * @default 1
+             */
+            columns: number;
+            /**
+             * Rows
+             * @default 1
+             */
+            rows: number;
+            /**
+             * Margin Top Mm
+             * @default 0
+             */
+            margin_top_mm: number | string;
+            /**
+             * Margin Left Mm
+             * @default 0
+             */
+            margin_left_mm: number | string;
+            /**
+             * Gap X Mm
+             * @default 0
+             */
+            gap_x_mm: number | string;
+            /**
+             * Gap Y Mm
+             * @default 0
+             */
+            gap_y_mm: number | string;
+            /**
+             * Padding Mm
+             * @default 2
+             */
+            padding_mm: number | string;
+            /**
+             * Barcode Type
+             * @default CODE128
+             * @enum {string}
+             */
+            barcode_type: "CODE128" | "QR";
+            /** Fields */
+            fields?: string[];
+            /**
+             * Font Size
+             * @default 9
+             */
+            font_size: number;
+            /** Name */
+            name: string;
+            /**
+             * Is Default
+             * @default false
+             */
+            is_default: boolean;
+        };
+        /** LabelProfileRead */
+        LabelProfileRead: {
+            /**
+             * Purpose
+             * @enum {string}
+             */
+            purpose: "ITEM" | "LOCATION";
+            /**
+             * Media
+             * @enum {string}
+             */
+            media: "SHEET" | "ROLL";
+            /** Label Width Mm */
+            label_width_mm: number;
+            /** Label Height Mm */
+            label_height_mm: number;
+            /**
+             * Page Width Mm
+             * @default 210
+             */
+            page_width_mm: number;
+            /**
+             * Page Height Mm
+             * @default 297
+             */
+            page_height_mm: number;
+            /**
+             * Columns
+             * @default 1
+             */
+            columns: number;
+            /**
+             * Rows
+             * @default 1
+             */
+            rows: number;
+            /**
+             * Margin Top Mm
+             * @default 0
+             */
+            margin_top_mm: number;
+            /**
+             * Margin Left Mm
+             * @default 0
+             */
+            margin_left_mm: number;
+            /**
+             * Gap X Mm
+             * @default 0
+             */
+            gap_x_mm: number;
+            /**
+             * Gap Y Mm
+             * @default 0
+             */
+            gap_y_mm: number;
+            /**
+             * Padding Mm
+             * @default 2
+             */
+            padding_mm: number;
+            /**
+             * Barcode Type
+             * @default CODE128
+             * @enum {string}
+             */
+            barcode_type: "CODE128" | "QR";
+            /** Fields */
+            fields?: string[];
+            /**
+             * Font Size
+             * @default 9
+             */
+            font_size: number;
+            /** Name */
+            name: string;
+            /**
+             * Is Default
+             * @default false
+             */
+            is_default: boolean;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Row Version */
+            row_version: number;
+        };
+        /** LabelProfileUpdate */
+        LabelProfileUpdate: {
+            /**
+             * Row Version
+             * @description The row_version of the record as you loaded it. If someone changed the record since, the save is refused with 409 instead of silently overwriting their change. Omit to save without the check.
+             */
+            row_version?: number | null;
+            /**
+             * Purpose
+             * @enum {string}
+             */
+            purpose: "ITEM" | "LOCATION";
+            /**
+             * Media
+             * @enum {string}
+             */
+            media: "SHEET" | "ROLL";
+            /** Label Width Mm */
+            label_width_mm: number | string;
+            /** Label Height Mm */
+            label_height_mm: number | string;
+            /**
+             * Page Width Mm
+             * @default 210
+             */
+            page_width_mm: number | string;
+            /**
+             * Page Height Mm
+             * @default 297
+             */
+            page_height_mm: number | string;
+            /**
+             * Columns
+             * @default 1
+             */
+            columns: number;
+            /**
+             * Rows
+             * @default 1
+             */
+            rows: number;
+            /**
+             * Margin Top Mm
+             * @default 0
+             */
+            margin_top_mm: number | string;
+            /**
+             * Margin Left Mm
+             * @default 0
+             */
+            margin_left_mm: number | string;
+            /**
+             * Gap X Mm
+             * @default 0
+             */
+            gap_x_mm: number | string;
+            /**
+             * Gap Y Mm
+             * @default 0
+             */
+            gap_y_mm: number | string;
+            /**
+             * Padding Mm
+             * @default 2
+             */
+            padding_mm: number | string;
+            /**
+             * Barcode Type
+             * @default CODE128
+             * @enum {string}
+             */
+            barcode_type: "CODE128" | "QR";
+            /** Fields */
+            fields?: string[];
+            /**
+             * Font Size
+             * @default 9
+             */
+            font_size: number;
+            /** Name */
+            name: string;
+            /**
+             * Is Default
+             * @default false
+             */
+            is_default: boolean;
+        };
         /** LedgerRefLine */
         LedgerRefLine: {
             /**
@@ -3195,6 +3759,28 @@ export interface components {
              * @default true
              */
             is_active: boolean;
+        };
+        /**
+         * LocationLabelRequest
+         * @description Either the chosen locations, or every bin and dock under one location (a zone, an aisle, a rack)
+         */
+        LocationLabelRequest: {
+            /** Location Ids */
+            location_ids?: string[] | null;
+            /** Parent Id */
+            parent_id?: string | null;
+            /**
+             * Copies
+             * @default 1
+             */
+            copies: number;
+            /** Profile Id */
+            profile_id?: string | null;
+            /**
+             * Skip
+             * @default 0
+             */
+            skip: number;
         };
         /** LocationRead */
         LocationRead: {
@@ -5139,6 +5725,277 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_label_profiles_api_v1_label_profiles_get: {
+        parameters: {
+            query?: {
+                purpose?: ("ITEM" | "LOCATION") | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabelProfileRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_label_profile_api_v1_label_profiles_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LabelProfileIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabelProfileRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_label_fields_api_v1_label_profiles_fields_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: components["schemas"]["LabelFieldOption"][];
+                    };
+                };
+            };
+        };
+    };
+    built_in_layouts_api_v1_label_profiles_built_in_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: components["schemas"]["LabelLayout-Output"];
+                    };
+                };
+            };
+        };
+    };
+    update_label_profile_api_v1_label_profiles__profile_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LabelProfileUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabelProfileRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_label_profile_api_v1_label_profiles__profile_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    test_print_api_v1_label_profiles_test_print_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LabelLayout-Input"];
+            };
+        };
+        responses: {
+            /** @description PDF to print */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    print_item_labels_api_v1_labels_items_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ItemLabelRequest"];
+            };
+        };
+        responses: {
+            /** @description PDF to print */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    print_location_labels_api_v1_labels_locations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LocationLabelRequest"];
+            };
+        };
+        responses: {
+            /** @description PDF to print */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": unknown;
+                };
             };
             /** @description Validation Error */
             422: {

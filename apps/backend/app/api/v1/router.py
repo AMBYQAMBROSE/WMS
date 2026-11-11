@@ -18,6 +18,7 @@ from app.api.v1 import (
     imports,
     integration,
     items,
+    labels,
     locations,
     mobile,
     picks,
@@ -44,6 +45,7 @@ api_router.include_router(roles.router)
 api_router.include_router(business_partners.router)
 api_router.include_router(items.router)
 api_router.include_router(locations.router)
+api_router.include_router(labels.router)
 api_router.include_router(uoms.router)
 api_router.include_router(reason_codes.router)
 api_router.include_router(purchase_orders.router)

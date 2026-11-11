@@ -13,7 +13,7 @@ PAGES = [
     "/stock", "/moves", "/moves/new", "/adjustments", "/adjustments/new", "/cycle-counts", "/cycle-counts/new",
     "/repacks", "/returns-in", "/returns-out", "/returnable-assets",
     "/business-partners", "/items", "/locations", "/reason-codes",
-    "/users", "/roles", "/features", "/integration", "/imports", "/audit-log", "/system-health",
+    "/users", "/roles", "/features", "/label-settings", "/integration", "/imports", "/audit-log", "/system-health",
 ]
 
 def sign_in(page: Page) -> None:

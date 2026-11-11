@@ -93,6 +93,7 @@ export const AUDIT_ENTITY_LABELS: Record<string, string> = {
   item_uom_conversion: "Unit conversion",
   uom: "Unit of measure",
   location: "Location",
+  label_profile: "Label layout",
   reason_code: "Reason code",
   returnable_asset_type: "Returnable asset type",
   returnable_asset_txn: "Returnable asset movement",

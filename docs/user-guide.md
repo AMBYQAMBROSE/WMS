@@ -16,6 +16,8 @@ For warehouse operators, warehouse supervisors and system administrators. Everyo
   - **Columns**: hide columns you do not need. Views and columns are personal and follow your account to any PC.
   - **Several documents at once**: tick documents and use the bar that appears (e.g. Post, Confirm, Cancel). Each document is checked exactly as if you did it on its own page; the summary lists any that failed, with the reason, and the rest are still done. Documents in the wrong status are skipped.
 
+- **AI assistant** (Dashboard & reports > AI assistant, if your company switched it on): ask in plain language, e.g. "Where is SKU A100 and how much is free?" or "Which orders are short?". It looks the answer up in the WMS, shows which lookups it made, and can only read: to change anything, use the normal screens. Check important figures on the screens it mentions, since answers can be wrong.
+
 ## 2. PDA basics
 
 - **Server URL**: entered at first sign-in (your administrator gives it to you, e.g. `http://192.168.1.10`) and remembered afterwards.

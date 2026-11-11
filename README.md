@@ -277,6 +277,15 @@ Pitfalls already hit during development; keep them in mind when writing new mode
 - Web edit forms send the version they were **opened** with, not the latest one: live updates refresh the record while the user edits, and sending its current version would defeat the check.
 - Dashboard-type reports are cached 10 s per process with single-flight (`REPORT_CACHE_SECONDS`); the browser refreshes them 11 s after a change (`REPORT_REFRESH_DELAY_MS` in `src/api/live.ts`). Keep the browser delay above the server cache time.
 
+## AI assistant notes
+
+- Read-only question answering (`app/services/assistant/`): a manual tool-use loop over the Messages API (Anthropic Python SDK 2.x, `client.beta.messages.stream`), streamed to the browser as server-sent events (`POST /api/v1/assistant/ask`).
+- **Tools** (`tools.py`) wrap existing services. A tool is offered to the model only if the user holds its permission and is checked again when it runs; results are compact JSON, at most 50 rows. A new tool: add a Pydantic input model, a function and a `Tool(...)` entry; keep `TOOLS` in a fixed order (it is part of the cached prompt prefix).
+- **Prompt caching**: the system prompt and tools never change between requests, so nothing variable (dates, user names) may go into `SYSTEM_PROMPT`; the date travels with each question.
+- **Model**: `AI_MODEL` (default `claude-opus-5-5`), adaptive thinking at `AI_EFFORT`. On the Claude API, declined questions are answered by a fallback model (`fallbacks: "default"`); Bedrock and Vertex do not support that, and a declined question is reported to the user.
+- Assistant messages are stored exactly as returned (thinking blocks included) and replayed unchanged for follow-up questions.
+- Tests use a scripted model (`tests/test_assistant.py`), so they never call a provider or cost money. A live check needs real credentials and is billed.
+
 ## List page notes
 
 - Document lists take the shared filters of `app/api/filters.py` (status, keyword, created-date range in the business time zone, paging); a new document list endpoint should use `Depends(document_filters)` too.

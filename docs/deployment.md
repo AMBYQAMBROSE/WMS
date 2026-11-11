@@ -233,6 +233,22 @@ Document numbers are taken in a separate transaction and are skipped when the bu
 - **Live updates**: the web console keeps one long-lived connection per browser (`/api/v1/events/stream`) so lists, stock and the dashboard update by themselves; the header shows **Live**. The bundled nginx needs no change. If the customer puts **their own reverse proxy or load balancer** in front, it must not buffer that path and must allow idle connections of at least 30 seconds (the server sends a heartbeat every 15 s); with buffering, the header shows Live but updates arrive late or in bursts. Without live updates everything still works; pages just refresh on reload or after the user's own actions.
 - Installs upgraded from an earlier version keep their `.env`; add the new `LOG_FORMAT`, `SLOW_REQUEST_MS` and `OTEL_*` lines from `env.template` by hand if wanted (without them: text logs, no export).
 
+### AI assistant
+
+Off by default. To offer it to a customer, both of these are needed:
+
+1. **On the server**, choose where the model runs in `.env` (see `env.template`), then `docker compose -p wms up -d`:
+   - `AI_PROVIDER=anthropic` with `ANTHROPIC_API_KEY`: the Claude API. The server needs outbound HTTPS to `api.anthropic.com`.
+   - `AI_PROVIDER=bedrock` with `AWS_REGION` and AWS credentials: Claude on Amazon Bedrock in the customer's own AWS account.
+   - `AI_PROVIDER=vertex` with `VERTEX_PROJECT_ID` and Google credentials: Claude on Google Cloud Vertex AI in the customer's own project.
+2. **In the WMS**, an administrator switches on **AI assistant** under System > Feature flags and grants the `ai.assistant` permission to the roles that should use it (only the administrator role has it by default).
+
+**What leaves the server**: each question, and the data the assistant looks up to answer it (item, stock and document details, report figures), goes to the chosen provider. Confirm with the customer that this is acceptable before switching it on; with Bedrock or Vertex it stays within their own cloud account.
+
+**What it can do**: only read. It answers from the same data the user could open on screen (each lookup runs with that user's permissions) and cannot create, change or post anything. Every conversation, with each lookup and its result, is stored in the database (`assistant_conversation`, `assistant_message`).
+
+**Cost**: billed by the provider per token. `AI_DAILY_TOKEN_BUDGET` caps one company's use per day (default 2,000,000 tokens; the assistant page shows how much is used), and `AI_EFFORT` trades answer depth for cost. A typical question with one or two lookups uses a few thousand tokens.
+
 ## 11. Troubleshooting
 
 | Symptom | What to check |
@@ -243,6 +259,7 @@ Document numbers are taken in a separate transaction and are skipped when the bu
 | Backend fails to start mentioning `JWT_SECRET_KEY` | The key in `.env` was changed to the default or is too short. Restore the original value (do not change it casually: everyone must sign in again afterwards) |
 | Upgrade failed and rolled back automatically | Send the screen output and `docker compose -p wms logs backend` to the developers. The system is back on the old version and can be used |
 | Integrations page says "the push worker is not running" | `docker compose -p wms ps worker`, `docker compose -p wms logs --tail 100 worker`. Events created while it is stopped are not lost and are sent once it recovers |
+| AI assistant says it is not set up / cannot reach the AI service | `AI_PROVIDER` and the provider's credentials in `.env`; outbound network access to the provider. The page shows the reason; details are in `docker compose -p wms logs backend` (search for `Assistant`) |
 | An external system receives no pushes | Check the status code and error in Integrations → Push log. The WMS server must be able to reach the other side (internal firewall, proxy). Integration guide: `docs/integration.md` |
 | Non-Latin text shows as `???` | The customer database's collation does not support it, or a column was manually changed to a non-Unicode type; contact the developers |
 

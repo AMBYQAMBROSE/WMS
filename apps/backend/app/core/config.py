@@ -39,6 +39,23 @@ class Settings(BaseSettings):
     # OpenTelemetry: set to the customer's OTLP/HTTP collector (e.g. http://otel-collector:4318) to push traces and metrics
     otel_exporter_otlp_endpoint: str | None = None
     otel_service_name: str = "wms-backend"
+    # AI assistant (app/services/assistant). Off unless a provider is chosen; each tenant must also switch the
+    # AI_ASSISTANT feature on. Questions and the warehouse data the assistant looks up are sent to that provider.
+    #   anthropic: the Claude API (ANTHROPIC_API_KEY; the server needs outbound access to api.anthropic.com)
+    #   bedrock:   Claude on Amazon Bedrock in the customer's AWS account (AWS_REGION and the usual AWS credentials)
+    #   vertex:    Claude on Google Cloud Vertex AI in the customer's project (VERTEX_PROJECT_ID, Google credentials)
+    ai_provider: Literal["", "anthropic", "bedrock", "vertex"] = ""
+    ai_model: str = "claude-opus-5-5"
+    # Reasoning depth (low/medium/high/xhigh/max): medium answers stock and document questions well at moderate cost
+    ai_effort: Literal["low", "medium", "high", "xhigh", "max"] = "medium"
+    # Tokens a tenant may use per day (business time zone), input plus output; 0 = no limit
+    ai_daily_token_budget: int = 2_000_000
+    # Tool-call rounds per question before the assistant must answer with what it has
+    ai_max_tool_rounds: int = 8
+    anthropic_api_key: str | None = None
+    aws_region: str | None = None
+    vertex_project_id: str | None = None
+    vertex_region: str = "global"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

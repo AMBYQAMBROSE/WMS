@@ -176,7 +176,10 @@ button:focus-visible,
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    /* 0s, not 0.01ms: transition-property defaults to "all", so a tiny non-zero duration animates every
+       property change, and antd popups measured mid-move open ~1000vh off screen */
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
     scroll-behavior: auto !important;
   }
 }
@@ -1661,4 +1664,118 @@ a.wms-list-row:hover {
 }
 .wms-content .ant-tabs-tabpane > .ant-space-vertical {
   gap: 8px !important;
+}
+
+/* ---- AI assistant (pages/reports/AssistantPage.tsx) ---- */
+.wms-ai {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 16px;
+  min-height: 60vh;
+}
+@media (max-width: 900px) {
+  .wms-ai {
+    grid-template-columns: 1fr;
+  }
+}
+.wms-ai-list {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+}
+.wms-ai-item {
+  display: flex;
+  align-items: center;
+  border-radius: 8px;
+}
+.wms-ai-item button:first-child {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  padding: 8px 10px;
+  background: none;
+  border: none;
+  color: var(--ant-color-text);
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: inherit;
+}
+.wms-ai-item-active,
+.wms-ai-item:hover {
+  background: var(--ant-color-fill-tertiary);
+}
+.wms-ai-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  background: var(--ant-color-bg-container);
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 12px;
+  padding: 16px;
+}
+.wms-ai-transcript {
+  flex: 1;
+  display: grid;
+  gap: 20px;
+  align-content: start;
+  overflow-y: auto;
+  max-height: 65vh;
+}
+.wms-ai-exchange {
+  display: grid;
+  gap: 8px;
+}
+.wms-ai-question {
+  justify-self: end;
+  max-width: 80%;
+  padding: 8px 12px;
+  border-radius: 12px 12px 2px 12px;
+  background: var(--ant-color-primary-bg);
+  white-space: pre-wrap;
+}
+.wms-ai-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.wms-ai-tool {
+  font-family: var(--ant-font-family-code);
+  font-size: 12px;
+}
+.wms-ai-answer {
+  line-height: 1.6;
+  overflow-x: auto;
+}
+.wms-ai-answer table {
+  border-collapse: collapse;
+  margin: 8px 0;
+}
+.wms-ai-answer th,
+.wms-ai-answer td {
+  border: 1px solid var(--ant-color-border-secondary);
+  padding: 4px 10px;
+  text-align: left;
+}
+.wms-ai-answer p {
+  margin: 0 0 8px;
+}
+.wms-ai-composer {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+.wms-ai-footnote {
+  font-size: 12px;
+}
+.wms-ai-suggestions {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+}
+.wms-ai-empty-icon {
+  font-size: 48px;
+  color: var(--ant-color-text-quaternary);
 }

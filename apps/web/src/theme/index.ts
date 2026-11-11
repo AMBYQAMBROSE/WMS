@@ -74,7 +74,7 @@ export const SHELL = {
 const prefersReducedMotion = () =>
   typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
-export function buildTheme(mode: ColorMode, density: Density = "comfortable"): ThemeConfig {
+export function buildTheme(mode: ColorMode, density: Density = "comfortable", animations = true): ThemeConfig {
   const dark = mode === "dark";
   const p = PALETTE[mode];
   const compact = density === "compact";
@@ -116,7 +116,8 @@ export function buildTheme(mode: ColorMode, density: Density = "comfortable"): T
       boxShadowSecondary: dark
         ? "0 0 0 1px rgba(255,255,255,0.05), 0 12px 32px rgba(0,0,0,0.55)"
         : "0 0 0 1px rgba(15,17,21,0.05), 0 8px 16px -4px rgba(15,17,21,0.08), 0 20px 40px -8px rgba(15,17,21,0.14)",
-      motion: !prefersReducedMotion(),
+      // Off with the in-app "Animations" switch too, the same as the OS setting
+      motion: animations && !prefersReducedMotion(),
       motionDurationFast: "0.12s",
       motionDurationMid: "0.18s",
       motionDurationSlow: "0.24s",

@@ -2,7 +2,6 @@
 
 import re
 
-import pytest
 from playwright.sync_api import Page, expect
 
 from tests.conftest import ADMIN_PASSWORD
@@ -16,21 +15,6 @@ PAGES = [
     "/business-partners", "/items", "/locations", "/reason-codes",
     "/users", "/roles", "/features", "/integration", "/imports", "/audit-log", "/system-health",
 ]
-
-# Expected noise: the browser logs every non-2xx response (e.g. a disabled feature answering 403)
-_IGNORED = re.compile(r"Failed to load resource")
-
-
-@pytest.fixture
-def errors(page: Page) -> list[str]:
-    collected: list[str] = []
-    page.on("pageerror", lambda exc: collected.append(f"pageerror: {exc}"))
-    page.on(
-        "console",
-        lambda msg: msg.type == "error" and not _IGNORED.search(msg.text) and collected.append(f"console: {msg.text}"),
-    )
-    return collected
-
 
 def sign_in(page: Page) -> None:
     page.goto("/login")

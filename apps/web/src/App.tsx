@@ -46,6 +46,7 @@ const ImportPage = lazy(() => import("@/pages/system/ImportPage"));
 const AuditLogPage = lazy(() => import("@/pages/system/AuditLogPage"));
 const SystemHealthPage = lazy(() => import("@/pages/system/SystemHealthPage"));
 const DashboardPage = lazy(() => import("@/pages/reports/DashboardPage"));
+const AssistantPage = lazy(() => import("@/pages/reports/AssistantPage"));
 const TurnoverReportPage = lazy(() => import("@/pages/reports/TurnoverReportPage"));
 const PickerKpiPage = lazy(() => import("@/pages/reports/PickerKpiPage"));
 const ExpiryReportPage = lazy(() => import("@/pages/reports/ExpiryReportPage"));
@@ -111,6 +112,7 @@ export default function App() {
               <Route path="audit-log" element={<AuditLogPage />} />
               <Route path="system-health" element={<SystemHealthPage />} />
               <Route path="dashboard" element={<DashboardPage />} />
+              <Route path="assistant" element={<AssistantPage />} />
               <Route path="reports/turnover" element={<TurnoverReportPage />} />
               <Route path="reports/picker-kpi" element={<PickerKpiPage />} />
               <Route path="reports/expiry" element={<ExpiryReportPage />} />

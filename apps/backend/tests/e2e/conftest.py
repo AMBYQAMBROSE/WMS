@@ -9,6 +9,7 @@ Tests whose build is missing are skipped; run only these with: pytest tests/e2e
 """
 
 import os
+import re
 import socket
 import threading
 import time
@@ -97,3 +98,19 @@ def pda_url(database) -> str:
     yield url
     server.should_exit = True
     thread.join(timeout=10)
+
+
+# Expected noise: the browser logs every non-2xx response (e.g. a disabled feature answering 403)
+_IGNORED = re.compile(r"Failed to load resource")
+
+
+@pytest.fixture
+def errors(page) -> list[str]:
+    """Browser errors (uncaught exceptions, console errors) collected while a test runs: assert it stays empty"""
+    collected: list[str] = []
+    page.on("pageerror", lambda exc: collected.append(f"pageerror: {exc}"))
+    page.on(
+        "console",
+        lambda msg: msg.type == "error" and not _IGNORED.search(msg.text) and collected.append(f"console: {msg.text}"),
+    )
+    return collected

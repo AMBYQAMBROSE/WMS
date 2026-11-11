@@ -16,3 +16,6 @@ opentelemetry-sdk==1.45.2
 opentelemetry-exporter-otlp-proto-http==1.45.2
 opentelemetry-instrumentation-fastapi==0.66b2
 opentelemetry-instrumentation-sqlalchemy==0.66b2
+# AI assistant (app/services/assistant): the Anthropic SDK, with the Amazon Bedrock and Google Vertex AI clients
+# so any provider can be chosen in the settings without a new install package
+anthropic[bedrock,vertex]==2.8.0

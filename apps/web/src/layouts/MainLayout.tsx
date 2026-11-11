@@ -67,6 +67,7 @@ const MENU: MenuGroup[] = [
     icon: <BarChartOutlined />,
     children: [
       { key: "/dashboard", label: "Dashboard", description: "Today's activity, open work and stock health at a glance", perm: "report.read", ownHeader: true },
+      { key: "/assistant", label: "AI assistant", description: "Ask about stock, documents and reports in plain language", perm: "ai.assistant", feature: "AI_ASSISTANT", ownHeader: true },
       { key: "/reports/turnover", label: "Stock turnover", description: "Opening, inbound, outbound and closing quantities per item", perm: "report.read" },
       { key: "/reports/picker-kpi", label: "Picker performance", description: "Lines and quantities picked per operator", perm: "report.read" },
       { key: "/reports/expiry", label: "Expiring stock", description: "Expired batches and those approaching their expiry date", perm: "report.read" },

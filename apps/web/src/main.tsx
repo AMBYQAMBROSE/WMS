@@ -70,7 +70,7 @@ function ThemedApp() {
     document.documentElement.dataset.motion = animations ? "on" : "off";
   }, [animations]);
 
-  const themeConfig = useMemo(() => buildTheme(mode, density), [mode, density]);
+  const themeConfig = useMemo(() => buildTheme(mode, density, animations), [mode, density, animations]);
 
   // Static message/Modal calls (message.success, Modal.warning) render outside this tree: give them the same theme
   useEffect(() => {

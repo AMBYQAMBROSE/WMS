@@ -13,7 +13,7 @@ from app.services.import_service import KINDS, ImportService, template
 
 router = APIRouter(route_class=TransactionalRoute, prefix="/imports", tags=["imports"])
 
-Kind = Literal["items", "locations", "partners", "opening_stock"]
+Kind = Literal["items", "locations", "partners", "opening_stock", "purchase_orders", "sales_orders"]
 # Same as nginx client_max_body_size
 MAX_FILE_BYTES = 20 * 1024 * 1024
 
@@ -22,6 +22,16 @@ class ImportErrorRow(BaseModel):
     row: int
     column: str
     message: str
+
+
+class ImportedDocument(BaseModel):
+    """An order from an order import; document_id/no are set once it is created (empty while only validating)"""
+
+    ref: str | None
+    partner: str
+    lines: int
+    document_id: uuid.UUID | None
+    document_no: str | None
 
 
 class ImportResultRead(BaseModel):
@@ -35,6 +45,7 @@ class ImportResultRead(BaseModel):
     committed: bool
     document_id: uuid.UUID | None
     document_no: str | None
+    documents: list[ImportedDocument] = []
 
 
 class ImportKindRead(BaseModel):

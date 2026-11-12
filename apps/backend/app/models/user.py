@@ -5,6 +5,7 @@ from sqlalchemy import Boolean, DateTime, ForeignKey, Unicode, UnicodeText, Uniq
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TenantScopedMixin
+from app.models.business_partner import BusinessPartner
 
 
 class User(Base, TenantScopedMixin):
@@ -19,9 +20,13 @@ class User(Base, TenantScopedMixin):
     auth_provider: Mapped[str] = mapped_column(Unicode(20), default="local", nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Optional customer link for a customer or store account: in the shopping cart it always orders for this customer,
+    # and it only sees this customer's sales orders. Internal staff have none.
+    partner_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("business_partner.id"), nullable=True)
 
     # Read-only: roles are changed through the user_role table, see UserService.set_roles
     roles: Mapped[list["Role"]] = relationship(secondary="user_role", lazy="selectin", viewonly=True)
+    partner: Mapped[BusinessPartner | None] = relationship(lazy="joined")
 
 
 class Role(Base, TenantScopedMixin):

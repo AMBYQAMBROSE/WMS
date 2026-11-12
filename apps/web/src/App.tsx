@@ -38,6 +38,7 @@ const PickDetailPage = lazy(() => import("@/pages/outbound/PickDetailPage"));
 const ShipmentsPage = lazy(() => import("@/pages/outbound/ShipmentsPage"));
 const ShipmentDetailPage = lazy(() => import("@/pages/outbound/ShipmentDetailPage"));
 const ShortagesPage = lazy(() => import("@/pages/outbound/ShortagesPage"));
+const CartPage = lazy(() => import("@/pages/outbound/CartPage"));
 const UsersPage = lazy(() => import("@/pages/system/UsersPage"));
 const RolesPage = lazy(() => import("@/pages/system/RolesPage"));
 const FeaturesPage = lazy(() => import("@/pages/system/FeaturesPage"));
@@ -105,6 +106,7 @@ export default function App() {
               <Route path="shipments" element={<ShipmentsPage />} />
               <Route path="shipments/:id" element={<ShipmentDetailPage />} />
               <Route path="shortages" element={<ShortagesPage />} />
+              <Route path="cart" element={<CartPage />} />
               <Route path="users" element={<UsersPage />} />
               <Route path="roles" element={<RolesPage />} />
               <Route path="features" element={<FeaturesPage />} />

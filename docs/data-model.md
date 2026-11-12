@@ -87,6 +87,7 @@ Unique: `(tenant_id, feature_code)`
 | `auth_provider` | nvarchar(20) default `'local'` | Reserved: `local` / `ad` / `saml` / `oidc`; only `local` is implemented |
 | `is_active` | bit | |
 | `last_login_at` | datetime2 | Nullable |
+| `partner_id` | FK→business_partner (nullable) | Customer account: in the shopping cart the user always orders for this customer (must be a customer or both) and sees only its orders. Empty for warehouse staff |
 
 ### `role`
 | Field | Type | Description |
@@ -468,11 +469,12 @@ There are no summary tables; everything is computed from `stock_ledger` / `stock
 
 ## 12. Data import
 
-`app/services/import_service.py` handles master data and opening stock.
+`app/services/import_service.py` handles master data, opening stock and orders.
 - **Master data** (items, locations, business partners): upserted by code, inserting new ones and updating existing ones.
   - Columns missing from the file do not overwrite existing values.
   - Existing items cannot change their base unit, and existing locations cannot change their parent (it would change the path).
 - **Opening stock**: rows with the same item + location + unit + batch + expiry are merged, and one posted stock adjustment is created with reason `OPENING` (opening stock).
+- **Purchase / sales orders**: one row per order line. Rows with the same *Order ref* become one order; without a ref, rows with the same partner + date + remark are grouped. Every row of one order must agree on partner, date and remark. Lines with the same item + unit are merged. Each order is created as a `DRAFT` through the normal order service; the ref itself is only a grouping key and is not stored. At most 2,000 orders per file.
 - **Commit**: validation runs first; nothing is written unless there are no errors, and the whole batch is one transaction.
 
 ## 7. Tables not built yet (to avoid over-design)

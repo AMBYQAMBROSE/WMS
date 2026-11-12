@@ -9,6 +9,7 @@ from app.api.v1 import (
     audit,
     auth,
     business_partners,
+    cart,
     cycle_counts,
     document_print,
     events,
@@ -56,6 +57,7 @@ api_router.include_router(transfers.move_router)
 api_router.include_router(adjustments.router)
 api_router.include_router(cycle_counts.router)
 api_router.include_router(sales_orders.router)
+api_router.include_router(cart.router)
 api_router.include_router(picks.router)
 api_router.include_router(shipments.router)
 api_router.include_router(extensions.return_in_router)

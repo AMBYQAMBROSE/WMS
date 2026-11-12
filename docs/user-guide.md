@@ -84,6 +84,8 @@ Pick → scan the pick list number (or choose it from the list) → go to the bi
 - **Approvals**: supervisors post stock adjustments and cycle counts.
 - **Dashboard**: today's receipts and shipments, pending backlog (click a number to open the matching list), bin utilization and expiring stock.
 - **Reports**: stock turnover, picker performance, expiring stock and partner ledger. After choosing dates, use "Export CSV" to open the data in Excel. With large data sets the page shows only the first 1000 rows; export for the full data.
+- **Importing orders**: Inbound → Purchase orders or Outbound → Sales orders → "Import from Excel". Download the template, enter one row per order line (rows with the same order ref become one order), then Validate and Import. Orders arrive as drafts: review them, tick them in the list and confirm them together.
+- **Cart orders**: orders placed from the shopping cart arrive in Sales orders as drafts, created by the person who ordered. Check and confirm them as usual; the person who ordered can withdraw a draft until it is confirmed.
 - **Shortages**: Outbound → Shortages. "Available warehouse-wide" greater than 0 means re-allocating after replenishment will cover the order.
 - **Printing documents**: every document (purchase order, receipt, putaway, pick list, delivery order, adjustment, count sheet, returns, repack) has a **Print** button next to its number. It opens an A4 PDF with the document's details, lines, totals and signature boxes; the document number is printed as a barcode on every page. After posting, the success message offers "Print <document no.>" directly. Each print is recorded in the document's History.
   - Delivery order: customer, address, vehicle, driver and seal number, with signature boxes for the warehouse, the driver and the customer.
@@ -104,9 +106,22 @@ Pick → scan the pick list number (or choose it from the list) → go to the bi
 | Feature flags | System → Feature flags | Enable returns, cross-docking, repacking, returnable assets and over-receipt as needed |
 | Label layouts | System → Labels & printing | Set the label size and layout for item and location labels: a sheet of labels on an A4 office printer, or a roll on a thermal label printer. Start from common label stock, then "Test print": it outlines every label, so hold the print against a label sheet and adjust margins and gaps until they match. The default layout is used when nobody picks one; with none, a built-in A4 layout is used |
 | Reason codes | Master data → Reason codes | Adjustment reasons, return reasons |
-| Data import | System → Data import | Download template → fill in → validate → confirm import; nothing is imported unless every row is valid |
+| Data import | System → Data import | Download template → fill in → validate → confirm import; nothing is imported unless every row is valid. Also imports purchase and sales orders |
+| Customer accounts | System → Users | For a customer or store that orders through the shopping cart: give the user the **Customer ordering** role and set "Customer account for". The account sees only the shopping cart, orders only for that customer and sees only that customer's orders. Do not give it other roles: those open the normal screens, which show every customer's data. Staff who order for many customers get the `cart.order` permission without a customer link |
 | Integrations | System → Integrations | Configure pushes to ERP and other external systems; check failures and resend in the push log (see integration.md) |
 | Backup, upgrade | On the server | See deployment.md |
+
+## 9a. Ordering with the shopping cart
+
+Outbound → Shopping cart (a customer account lands here after login).
+
+1. Search by SKU or name, filter by category, or scan a barcode and press Enter to add one straight away. "Available" is the stock that can be shipped now.
+2. Choose the quantity and unit, and click **Add**. Adding the same item again raises the quantity.
+3. In the cart on the right: staff choose the customer (a customer account always orders for its own customer), optionally a requested ship date and a remark, then **Place order**.
+4. Ordering more than is available is allowed: the warehouse ships what it has and the rest later.
+5. **My orders** shows each order's status; expand a row to see its lines. **Order again** copies an earlier order into the cart. **Withdraw** cancels an order the warehouse has not confirmed yet.
+
+The cart is kept on the server, so it is still there after logging in on another PC.
 
 ## 10. FAQ
 

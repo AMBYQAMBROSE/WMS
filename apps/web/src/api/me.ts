@@ -10,6 +10,8 @@ export interface Me {
   permissions: string[];
   /** Extension features enabled for the tenant (RETURNS / CROSS_DOCK / REPACK / RETURNABLE_ASSET ...) */
   features: string[];
+  /** Set for a customer account: the shopping cart always orders for this customer */
+  partner?: { id: string; code: string; name: string } | null;
 }
 
 export function useMe() {

@@ -89,6 +89,7 @@ const MENU: MenuGroup[] = [
     label: "Outbound",
     icon: <ExportOutlined />,
     children: [
+      { key: "/cart", label: "Shopping cart", description: "Browse items and place an order in a few clicks", perm: "cart.order" },
       { key: "/sales-orders", label: "Sales orders", description: "Customer orders from allocation to shipment", perm: "sales_order.read", create: { label: "New sales order", perm: "sales_order.create" } },
       { key: "/picks", label: "Pick lists", description: "Picking tasks in bin order", perm: "pick.read" },
       { key: "/shipments", label: "Shipments", description: "Goods leaving the warehouse", perm: "shipment.read" },
@@ -138,7 +139,7 @@ const MENU: MenuGroup[] = [
       { key: "/features", label: "Feature flags", description: "Turn optional modules on or off for this tenant", perm: "system.settings" },
       { key: "/label-settings", label: "Labels & printing", description: "Label sizes and layouts for item and location labels", perm: "system.settings" },
       { key: "/integration", label: "Integrations", description: "Webhook connectors and delivery history", perm: "integration.read" },
-      { key: "/imports", label: "Data import", description: "Bulk-load master data and opening stock from spreadsheets", perm: ["item.create", "location.create", "business_partner.create", "adjustment.post"] },
+      { key: "/imports", label: "Data import", description: "Bulk-load master data, opening stock and orders from spreadsheets", perm: ["item.create", "location.create", "business_partner.create", "adjustment.post", "purchase_order.create", "sales_order.create"] },
       { key: "/audit-log", label: "Audit log", description: "Who changed what and when, with old and new values", perm: "audit.read" },
       { key: "/system-health", label: "System health", description: "Database, background worker, integration queue and monitoring", perm: "system.settings" },
     ],

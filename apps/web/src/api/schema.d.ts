@@ -1104,6 +1104,92 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cart/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Catalog */
+        get: operations["catalog_api_v1_cart_catalog_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cart/customers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Customers */
+        get: operations["customers_api_v1_cart_customers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cart/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My Orders */
+        get: operations["my_orders_api_v1_cart_orders_get"];
+        put?: never;
+        /** Submit Order */
+        post: operations["submit_order_api_v1_cart_orders_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cart/orders/{so_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My Order */
+        get: operations["my_order_api_v1_cart_orders__so_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cart/orders/{so_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel My Order */
+        post: operations["cancel_my_order_api_v1_cart_orders__so_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/picks": {
         parameters: {
             query?: never;
@@ -2596,6 +2682,67 @@ export interface components {
             /** Is Active */
             is_active?: boolean | null;
         };
+        /**
+         * CartOrderIn
+         * @description Submit the cart. A customer account may leave partner_id empty (its own customer is used) and cannot order for another.
+         */
+        CartOrderIn: {
+            /** Partner Id */
+            partner_id?: string | null;
+            /** Expected Date */
+            expected_date?: string | null;
+            /** Remark */
+            remark?: string | null;
+            /** Lines */
+            lines: components["schemas"]["SalesOrderLineIn"][];
+        };
+        /**
+         * CartUom
+         * @description A unit the item can be ordered in; factor = base units per one of this unit (1 for the base unit)
+         */
+        CartUom: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Factor */
+            factor: number;
+        };
+        /** CatalogItem */
+        CatalogItem: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Sku Code */
+            sku_code: string;
+            /** Name */
+            name: string;
+            /** Category */
+            category: string | null;
+            /** Barcode */
+            barcode: string | null;
+            base_uom: components["schemas"]["UomBrief"];
+            /** Uoms */
+            uoms: components["schemas"]["CartUom"][];
+            /** Available */
+            available: number;
+        };
+        /** CatalogPage */
+        CatalogPage: {
+            /** Items */
+            items: components["schemas"]["CatalogItem"][];
+            /** Total */
+            total: number;
+            /** Categories */
+            categories: string[];
+        };
         /** ConnectorIn */
         ConnectorIn: {
             /** Code */
@@ -3145,6 +3292,27 @@ export interface components {
             warnings: string[];
             /** Committed */
             committed: boolean;
+            /** Document Id */
+            document_id: string | null;
+            /** Document No */
+            document_no: string | null;
+            /**
+             * Documents
+             * @default []
+             */
+            documents: components["schemas"]["ImportedDocument"][];
+        };
+        /**
+         * ImportedDocument
+         * @description An order from an order import; document_id/no are set once it is created (empty while only validating)
+         */
+        ImportedDocument: {
+            /** Ref */
+            ref: string | null;
+            /** Partner */
+            partner: string;
+            /** Lines */
+            lines: number;
             /** Document Id */
             document_id: string | null;
             /** Document No */
@@ -4013,6 +4181,7 @@ export interface components {
             permissions: string[];
             /** Features */
             features: string[];
+            partner?: components["schemas"]["PartnerBrief"] | null;
         };
         /**
          * OccupancyArea
@@ -5017,6 +5186,8 @@ export interface components {
              * @default []
              */
             role_codes: string[];
+            /** Partner Id */
+            partner_id?: string | null;
         };
         /** UserRead */
         UserRead: {
@@ -5038,6 +5209,7 @@ export interface components {
              * @default []
              */
             roles: components["schemas"]["RoleBrief"][];
+            partner?: components["schemas"]["PartnerBrief"] | null;
             /** Row Version */
             row_version: number;
         };
@@ -5062,6 +5234,8 @@ export interface components {
              * @default []
              */
             role_codes: string[];
+            /** Partner Id */
+            partner_id?: string | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -7844,6 +8018,200 @@ export interface operations {
             };
         };
     };
+    catalog_api_v1_cart_catalog_get: {
+        parameters: {
+            query?: {
+                keyword?: string | null;
+                category?: string | null;
+                in_stock_only?: boolean;
+                skip?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    customers_api_v1_cart_customers_get: {
+        parameters: {
+            query?: {
+                keyword?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartnerBrief"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_orders_api_v1_cart_orders_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                skip?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_order_api_v1_cart_orders_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CartOrderIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SalesOrderRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_order_api_v1_cart_orders__so_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                so_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SalesOrderRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_my_order_api_v1_cart_orders__so_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                so_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SalesOrderRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_picks_api_v1_picks_get: {
         parameters: {
             query?: {
@@ -9522,7 +9890,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                kind: "items" | "locations" | "partners" | "opening_stock";
+                kind: "items" | "locations" | "partners" | "opening_stock" | "purchase_orders" | "sales_orders";
             };
             cookie?: never;
         };
@@ -9556,7 +9924,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                kind: "items" | "locations" | "partners" | "opening_stock";
+                kind: "items" | "locations" | "partners" | "opening_stock" | "purchase_orders" | "sales_orders";
             };
             cookie?: never;
         };

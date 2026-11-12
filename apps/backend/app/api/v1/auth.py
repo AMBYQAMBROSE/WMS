@@ -8,7 +8,9 @@ from sqlalchemy.orm import Session
 from app.api.deps import CurrentUser, get_current_user, get_db_session
 from app.api.routing import TransactionalRoute
 from app.api.v1.features import enabled_features
+from app.models.business_partner import BusinessPartner
 from app.schemas.auth import TokenResponse
+from app.schemas.document import PartnerBrief
 from app.services.auth_service import AuthService
 
 router = APIRouter(route_class=TransactionalRoute, prefix="/auth", tags=["auth"])
@@ -20,6 +22,8 @@ class MeResponse(BaseModel):
     display_name: str
     permissions: list[str]
     features: list[str]
+    # Set for a customer account: the shopping cart orders for this customer only
+    partner: PartnerBrief | None = None
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -45,4 +49,5 @@ def me(
         display_name=user.display_name,
         permissions=sorted(user.permissions),
         features=sorted(enabled_features(db, user.tenant_id)),
+        partner=db.get(BusinessPartner, user.partner_id) if user.partner_id else None,
     )

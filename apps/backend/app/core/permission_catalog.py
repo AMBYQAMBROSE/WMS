@@ -59,6 +59,7 @@ PERMISSIONS: list[tuple[str, str, str]] = [
     ("sales_order.allocate", "outbound", "Allocate stock (creates pick lists)"),
     ("sales_order.cancel", "outbound", "Cancel sales orders"),
     ("sales_order.close", "outbound", "Close sales orders"),
+    ("cart.order", "outbound", "Order from the shopping cart (creates draft sales orders; customer accounts order only for their own customer)"),
     ("pick.read", "outbound", "View pick lists"),
     ("pick.confirm", "outbound", "Confirm picks (enter picked quantities)"),
     ("pick.post", "outbound", "Post pick lists"),

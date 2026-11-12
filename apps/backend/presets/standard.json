@@ -48,6 +48,11 @@
       ]
     },
     {
+      "code": "CUSTOMER",
+      "name": "Customer ordering",
+      "permissions": ["cart.order"]
+    },
+    {
       "code": "VIEWER",
       "name": "Read-only",
       "permissions": ["*.read"],

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PlusOutlined, SearchOutlined } from "@ant-design/icons";
@@ -146,6 +146,7 @@ export function DocumentListPage({
   createPerm,
   extraParams,
   batchActions = [],
+  toolbarExtra,
 }: {
   path: string;
   statuses: string[];
@@ -155,6 +156,8 @@ export function DocumentListPage({
   extraParams?: Record<string, string>;
   /** Actions that can run on several selected documents at once */
   batchActions?: BatchAction[];
+  /** Extra buttons next to the create button, e.g. an Excel import */
+  toolbarExtra?: ReactNode;
 }) {
   const navigate = useNavigate();
   const can = useCan();
@@ -253,6 +256,7 @@ export function DocumentListPage({
               value={keywordInput}
               onChange={(e) => setKeywordInput(e.target.value)}
             />
+            {toolbarExtra}
             {createLabel && can(createPerm) && (
               <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate(`/${path}/new`)}>
                 {createLabel}

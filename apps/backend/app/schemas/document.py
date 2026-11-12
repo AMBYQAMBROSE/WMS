@@ -63,6 +63,8 @@ class DocumentLineRead(_Orm):
     from_location: LocationBrief | None
     to_location: LocationBrief | None
     ref_line_id: uuid.UUID | None
+    # Lines worked one by one (putaway sheet, pick list, count): when this line was done; null while open
+    confirmed_at: datetime | None = None
 
 
 class ReasonBrief(_Orm):
@@ -130,6 +132,14 @@ class TransferLineIn(BaseModel):
     expiry_date: date | None = None
     from_location_id: uuid.UUID
     to_location_id: uuid.UUID
+
+
+class PutawayPutIn(BaseModel):
+    """Quantity of a putaway sheet line placed in a bin (in the line's unit). Resend with the same Idempotency-Key
+    when the response was lost: a plain resend would put the quantity twice"""
+
+    to_location_id: uuid.UUID
+    qty: PositiveQty
 
 
 class TransferIn(BaseModel):

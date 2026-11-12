@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Card, Descriptions, Space, Table } from "antd";
 import { Link, useNavigate, useParams } from "react-router";
 
@@ -20,7 +20,14 @@ export default function GrnDetailPage() {
   const navigate = useNavigate();
   const can = useCan();
   const { data: grn, isLoading, error, refetch } = useDocument("grns", id);
-  const action = useDocumentAction("grns", id);
+  const queryClient = useQueryClient();
+  const action = useDocumentAction("grns", id, {
+    // Posting into a dock makes a putaway sheet: offer it for printing with the receipt
+    madeByPosting: async (doc) => {
+      void queryClient.invalidateQueries({ queryKey: ["putaways"] });
+      return (await apiClient.get<DocumentSummary[]>("/putaways", { params: { ref_document_id: doc.id, status: "TO_PUT_AWAY" } })).data;
+    },
+  });
   const { data: putaways, isLoading: putawaysLoading } = useQuery({
     queryKey: ["putaways", "by-grn", id],
     queryFn: async () =>
@@ -30,6 +37,7 @@ export default function GrnDetailPage() {
   if (isLoading) return <DetailSkeleton />;
   if (!grn) return <ErrorState title="Could not load this goods receipt" error={error} onRetry={() => refetch()} back={{ to: "/grns", label: "Back to goods receipts" }} />;
   const run = (name: string) => () => action.mutate(name);
+  const openSheet = putaways?.find((p) => p.status === "TO_PUT_AWAY");
 
   return (
     <Space orientation="vertical" style={{ width: "100%" }}>
@@ -44,8 +52,18 @@ export default function GrnDetailPage() {
               </>
             )}
             {grn.status === "POSTED" && can("putaway.create") && (
-              <Button type="primary" onClick={() => navigate(`/putaways/new?grn=${id}`)}>
+              <Button
+                key="create"
+                type={openSheet ? "default" : "primary"}
+                title={openSheet ? `Plan the putaway here instead; replaces sheet ${openSheet.doc_no} if nothing on it is put away yet` : undefined}
+                onClick={() => navigate(`/putaways/new?grn=${id}`)}
+              >
                 Create putaway
+              </Button>
+            )}
+            {openSheet && (
+              <Button key="sheet" type="primary" onClick={() => navigate(`/putaways/${openSheet.id}`)}>
+                Putaway sheet {openSheet.doc_no}
               </Button>
             )}
           </Space>

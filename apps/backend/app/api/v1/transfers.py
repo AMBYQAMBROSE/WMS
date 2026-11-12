@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import CurrentUser, get_db_session, require_permission
 from app.api.filters import document_filters
 from app.api.routing import TransactionalRoute
-from app.schemas.document import DocumentRead, DocumentSummary, TransferIn
+from app.schemas.document import DocumentRead, DocumentSummary, PutawayPutIn, TransferIn
 from app.services.transfer_service import MoveService, PutawayService, TransferService
 
 
@@ -70,3 +70,16 @@ def make_transfer_router(
 
 putaway_router = make_transfer_router("/putaways", PutawayService, "putaway", "putaways")
 move_router = make_transfer_router("/moves", MoveService, "move", "moves")
+
+
+@putaway_router.post("/{document_id}/lines/{line_id}/put", response_model=DocumentRead)
+def put_away_line(
+    document_id: uuid.UUID,
+    line_id: uuid.UUID,
+    data: PutawayPutIn,
+    db: Session = Depends(get_db_session),
+    user: CurrentUser = Depends(require_permission("putaway.create")),
+):
+    """Putaway sheet (status TO_PUT_AWAY): record the quantity of a line placed in a bin. Less than the line's
+    quantity splits off the rest as a new open line. Post the sheet once every line is done."""
+    return PutawayService(db, user.tenant_id, user.id).put(document_id, line_id, data.to_location_id, data.qty)

@@ -57,6 +57,7 @@ def test_k_pda_full_flow(flow, unique, pda_url):
     flow.step("K-04  Unknown barcode on the putaway item scan")
     _home(page, pda_url)
     page.get_by_test_id("menu-putaway").click()
+    page.get_by_test_id("putaway-free").click()  # the free putaway, without a sheet
     _scan(page, "scan-from", s.code("IN"))
     _scan(page, "scan-item", f"NOPE{unique}")
     text = _banner(page)
@@ -126,6 +127,7 @@ def test_k_pda_offline_putaway(flow, unique, pda_url):
 
     flow.step("K-05  Offline putaway: queued on the device, submitted once online, no duplicate")
     page.get_by_test_id("menu-putaway").click()
+    page.get_by_test_id("putaway-free").click()  # the free putaway, without a sheet
     _scan(page, "scan-from", s.code("IN"))
     _scan(page, "scan-item", s.a)
     page.get_by_test_id("qty").fill("8")
@@ -147,6 +149,7 @@ def test_k_pda_offline_putaway(flow, unique, pda_url):
     received(api, s, s.item_a, 2)
     _home(page, pda_url)
     page.get_by_test_id("menu-putaway").click()
+    page.get_by_test_id("putaway-free").click()  # the free putaway, without a sheet
     _scan(page, "scan-from", s.code("IN"))
     _scan(page, "scan-item", s.a)
     page.get_by_test_id("qty").fill("2")

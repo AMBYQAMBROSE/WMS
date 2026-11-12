@@ -28,4 +28,12 @@ def test_print_a_document_and_print_after_posting(page: Page, errors, client, ad
     expect_pdf_tab(page, link.click, method="GET")
     # The print is in the document's history
     assert [log["action"] for log in api.get("/audit-logs", entity_id=grn["id"], action="PRINT")] == ["PRINT"]
+
+    # Posting into the dock made a putaway sheet: offered for printing too, and linked from the receipt
+    sheet = api.get("/putaways", ref_document_id=grn["id"], status="TO_PUT_AWAY")[0]
+    expect(page.get_by_test_id("print-made-by-post")).to_have_text(f"Print {sheet['doc_no']}")
+    page.get_by_role("button", name=f"Putaway sheet {sheet['doc_no']}").click()
+    expect(page.get_by_text("Putaway sheet", exact=True)).to_be_visible()
+    expect(page.get_by_test_id("put-1")).to_be_visible()
+    shot(page, "putaway-sheet-web")
     assert not errors

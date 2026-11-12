@@ -51,31 +51,47 @@ export function useDocument(path: string, id: string | undefined) {
   });
 }
 
-export function useDocumentAction(path: string, id: string) {
+interface Printable {
+  id: string;
+  doc_no: string;
+}
+
+export function useDocumentAction(
+  path: string,
+  id: string,
+  options?: {
+    /** Documents that posting created and that are printed right away too (a receipt's putaway sheet) */
+    madeByPosting?: (doc: Document) => Promise<Printable[]>;
+  },
+) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (action: string) =>
       (await apiClient.post<Document>(`/${path}/${id}/${action}`)).data,
-    onSuccess: (doc, action) => {
+    onSuccess: async (doc, action) => {
       if (action === "post") {
+        const made = options?.madeByPosting ? await options.madeByPosting(doc).catch(() => []) : [];
         // The paper copy is usually wanted right after posting (receipt for the supplier, DO for the driver). Offered
         // as a link rather than opened automatically: a tab opened without a click is blocked as a pop-up.
         const key = `posted-${doc.id}`;
+        const link = (target: Printable, testId: string) => (
+          <a
+            key={target.id}
+            data-testid={testId}
+            style={{ marginLeft: 8 }}
+            onClick={() => void printDocument(target.id)}
+          >
+            Print {target.doc_no}
+          </a>
+        );
         message.success({
           key,
-          duration: 8,
+          duration: made.length ? 15 : 8,
           content: (
             <span>
-              Posted.{" "}
-              <a
-                data-testid="print-after-post"
-                onClick={() => {
-                  message.destroy(key);
-                  void printDocument(doc.id);
-                }}
-              >
-                Print {doc.doc_no}
-              </a>
+              Posted.
+              {link(doc, "print-after-post")}
+              {made.map((m) => link(m, "print-made-by-post"))}
             </span>
           ),
         });

@@ -12,10 +12,13 @@ import { useSession } from "@/stores/session";
  * receive/putaway/move: create + post the document (request IDs prevent duplicates)
  * count / pick_confirm: record counted / picked quantities ("set" semantics, safe to resubmit)
  * pick_post: post the pick list (an "already posted" response on resend counts as success)
+ * putaway_put: put part or all of a putaway sheet line into a bin (sent with an Idempotency-Key: a resend after a lost
+ *   response is answered from the first put instead of putting the quantity twice)
+ * putaway_post: post the putaway sheet once every line is put away (same "already posted" rule as pick_post)
  * attach: photos for a document that already exists (payload.document_id), e.g. what a count found
  * Any operation may carry photos: they are uploaded to its document once that exists.
  */
-export type OpType = "receive" | "putaway" | "move" | "count" | "pick_confirm" | "pick_post" | "attach";
+export type OpType = "receive" | "putaway" | "move" | "count" | "pick_confirm" | "pick_post" | "putaway_put" | "putaway_post" | "attach";
 
 type DocumentOp = "receive" | "putaway" | "move";
 
@@ -97,14 +100,15 @@ async function createIdempotent(path: string, payload: Record<string, unknown>):
   }
 }
 
-async function postPick(pickId: string): Promise<string> {
+/** Post a document worked line by line (pick list, putaway sheet) */
+async function postWorked(path: string, docId: string): Promise<string> {
   try {
-    return (await request<Document>("POST", `/picks/${pickId}/post`)).doc_no;
+    return (await request<Document>("POST", `${path}/${docId}/post`)).doc_no;
   } catch (error) {
     // The previous post actually succeeded but the response was lost: status POSTED counts as success
     if (error instanceof ApiError && error.status === 409) {
-      const pick = await request<Document>("GET", `/picks/${pickId}`);
-      if (pick.status === "POSTED") return pick.doc_no;
+      const doc = await request<Document>("GET", `${path}/${docId}`);
+      if (doc.status === "POSTED") return doc.doc_no;
     }
     throw error;
   }
@@ -156,7 +160,18 @@ async function process(op: QueuedOp): Promise<Processed> {
   }
   if (op.type === "pick_post") {
     const pickId = (op.payload as { pick_id: string }).pick_id;
-    return { docNo: await postPick(pickId), docId: pickId };
+    return { docNo: await postWorked("/picks", pickId), docId: pickId };
+  }
+  if (op.type === "putaway_put") {
+    const { sheet_id, line_id, to_location_id, qty } = op.payload as { sheet_id: string; line_id: string; to_location_id: string; qty: number };
+    const doc = await request<Document>("POST", `/putaways/${sheet_id}/lines/${line_id}/put`, { to_location_id, qty }, {
+      headers: { "Idempotency-Key": `put-${op.id}` },
+    });
+    return { docNo: doc.doc_no, docId: doc.id };
+  }
+  if (op.type === "putaway_post") {
+    const sheetId = (op.payload as { sheet_id: string }).sheet_id;
+    return { docNo: await postWorked("/putaways", sheetId), docId: sheetId };
   }
   const path = DOCUMENT_PATHS[op.type];
   // Request ID = queue item id, so resending never creates a duplicate document

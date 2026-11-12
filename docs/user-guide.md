@@ -40,9 +40,13 @@ Note: over-receipt is not allowed by default. After a partial receipt the PO sho
 
 ## 4. Putaway operator
 
-**PDA**: Put away → ① scan the source location (receiving dock) → ② scan the item barcode (choose a batch if there are several) → enter the quantity → scan the target bin. You can do several lines in a row, then tap "Submit putaway".
+Posting a receipt into a dock creates a **putaway sheet** (status "To put away") at once. The success message offers to print it along with the receipt. The printed sheet has the sheet number as a barcode, and each line has the item barcode and the suggested bin as a barcode. The suggested bin is the bin that already holds most of that item; "Any bin" means the item is not in any bin yet.
 
-**Web**: Inbound → Goods receipts → Create putaway → choose a bin for each line → Post.
+**PDA (by sheet)**: Put away → ① scan the sheet number (or choose it from the list) → ② scan an item from the dock, in any order → ③ take it to the suggested bin, or any other bin, and scan that bin → ④ confirm the quantity. If the bin is full, enter what fits: the rest stays on the sheet and the PDA asks for the next bin. When everything is put away, tap "Finish putaway (post)". The stock moves into the bins only then, and the sheet cannot be posted while anything is left. This also works offline: puts are queued and sent without duplicates.
+
+**PDA (without a sheet)**: Put away → "Put away without a sheet" → scan the dock → scan the item → quantity → scan the target bin; several lines, then "Submit putaway".
+
+**Web**: open the sheet from the receipt (button "Putaway sheet …") or under Inbound → Putaways (filter "To put away"). The progress bar shows how much is still on the dock. "Put away…" on a line does the same as the PDA. A supervisor can cancel a sheet and do a free putaway instead.
 
 ## 5. Picker (PDA)
 

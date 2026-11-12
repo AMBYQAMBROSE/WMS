@@ -698,6 +698,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/putaways/{document_id}/lines/{line_id}/put": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Put Away Line
+         * @description Putaway sheet (status TO_PUT_AWAY): record the quantity of a line placed in a bin. Less than the line's
+         *     quantity splits off the rest as a new open line. Post the sheet once every line is done.
+         */
+        post: operations["put_away_line_api_v1_putaways__document_id__lines__line_id__put_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/moves": {
         parameters: {
             query?: never;
@@ -2817,6 +2838,8 @@ export interface components {
             to_location: components["schemas"]["LocationBrief"] | null;
             /** Ref Line Id */
             ref_line_id: string | null;
+            /** Confirmed At */
+            confirmed_at?: string | null;
         };
         /** DocumentRead */
         DocumentRead: {
@@ -4104,6 +4127,20 @@ export interface components {
              * Format: uuid
              */
             uom_id: string;
+            /** Qty */
+            qty: number | string;
+        };
+        /**
+         * PutawayPutIn
+         * @description Quantity of a putaway sheet line placed in a bin (in the line's unit). Resend with the same Idempotency-Key
+         *     when the response was lost: a plain resend would put the quantity twice
+         */
+        PutawayPutIn: {
+            /**
+             * To Location Id
+             * Format: uuid
+             */
+            to_location_id: string;
             /** Qty */
             qty: number | string;
         };
@@ -6708,6 +6745,42 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_away_line_api_v1_putaways__document_id__lines__line_id__put_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+                line_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PutawayPutIn"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

@@ -126,3 +126,25 @@ export interface StockBalance {
   expiry_date: string | null;
   qty_on_hand: number;
 }
+
+export interface PutawayLine {
+  id: string;
+  line_no: number;
+  item: ItemBrief;
+  uom: { id: string; code: string; name: string };
+  /** Quantity of this line; a partial put splits the rest off as a new line */
+  qty_planned: number;
+  qty_actual: number;
+  batch_no: string | null;
+  expiry_date: string | null;
+  /** Suggested bin while open (null: any bin); the bin used once put away */
+  to_location: { id: string; code: string; name: string } | null;
+  confirmed_at: string | null;
+}
+
+/** Putaway sheet made from a posted receipt (status TO_PUT_AWAY while being worked) */
+export interface PutawaySheet extends DocumentSummary {
+  ref_document: { id: string; doc_no: string } | null;
+  location: { id: string; code: string; name: string } | null;
+  lines: PutawayLine[];
+}

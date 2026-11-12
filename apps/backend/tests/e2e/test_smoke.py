@@ -44,6 +44,8 @@ def test_every_page_renders_without_errors(page: Page, errors):
 
 def test_command_palette_jumps_to_a_page(page: Page, errors):
     sign_in(page)
+    # Let the home redirect finish first: a shortcut pressed during it is lost with the page it was pressed on
+    expect(page).to_have_url(re.compile(r"/dashboard$"))
     page.keyboard.press("Control+k")
     page.get_by_placeholder("Jump to a page…").fill("Items")
     page.keyboard.press("Enter")

@@ -1,6 +1,6 @@
 import { ApiError, request } from "@/lib/api";
 import { loadJson, saveJson } from "@/lib/storage";
-import type { CycleCount, Document, DocumentSummary, Pick, StockBalance } from "@/lib/types";
+import type { CycleCount, Document, DocumentSummary, Pick, PutawaySheet, StockBalance } from "@/lib/types";
 
 export interface Fetched<T> {
   data: T;
@@ -74,6 +74,22 @@ export function fetchPick(id: string, docNo: string): Promise<Fetched<Pick>> {
     `cache.pick.${id}`,
     () => request<Pick>("GET", `/picks/${id}`),
     `Offline and pick list ${docNo} is not cached on this device; open again where there is signal`,
+  );
+}
+
+export function fetchOpenPutawaySheets(): Promise<Fetched<DocumentSummary[]>> {
+  return withCache(
+    "cache.putaways.open",
+    () => request<DocumentSummary[]>("GET", "/putaways?status=TO_PUT_AWAY&limit=100"),
+    "Offline and no putaway sheets are cached on this device; open again where there is signal",
+  );
+}
+
+export function fetchPutawaySheet(id: string, docNo: string): Promise<Fetched<PutawaySheet>> {
+  return withCache(
+    `cache.putaway.${id}`,
+    () => request<PutawaySheet>("GET", `/putaways/${id}`),
+    `Offline and putaway sheet ${docNo} is not cached on this device; open again where there is signal`,
   );
 }
 

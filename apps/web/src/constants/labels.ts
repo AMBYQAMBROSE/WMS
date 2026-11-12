@@ -11,6 +11,7 @@ export const STATUS_LABELS: Record<string, { text: string; color: string }> = {
   PARTIALLY_SHIPPED: { text: "Partially shipped", color: "orange" },
   SHIPPED: { text: "Shipped", color: "green" },
   OPEN: { text: "To pick", color: "blue" },
+  TO_PUT_AWAY: { text: "To put away", color: "blue" },
 };
 
 export const PARTNER_TYPE_LABELS: Record<string, string> = {

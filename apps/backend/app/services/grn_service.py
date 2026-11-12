@@ -148,6 +148,11 @@ class GrnService:
         grn.updated_by = self.user_id
         grn.row_version += 1
         self.db.flush()
+
+        # Goods on the dock get a putaway sheet at once, to print and to work through on the PDA
+        from app.services.transfer_service import PutawayService  # transfer_service imports this module
+
+        PutawayService(self.db, self.tenant_id, self.user_id).create_sheet(grn)
         return grn
 
     def cancel(self, grn_id: uuid.UUID) -> DocumentHeader:

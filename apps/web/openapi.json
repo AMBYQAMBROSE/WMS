@@ -3275,6 +3275,75 @@
         }
       }
     },
+    "/api/v1/putaways/{document_id}/lines/{line_id}/put": {
+      "post": {
+        "tags": [
+          "putaways"
+        ],
+        "summary": "Put Away Line",
+        "description": "Putaway sheet (status TO_PUT_AWAY): record the quantity of a line placed in a bin. Less than the line's\nquantity splits off the rest as a new open line. Post the sheet once every line is done.",
+        "operationId": "put_away_line_api_v1_putaways__document_id__lines__line_id__put_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Document Id"
+            }
+          },
+          {
+            "name": "line_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Line Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutawayPutIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/moves": {
       "get": {
         "tags": [
@@ -11260,6 +11329,18 @@
               }
             ],
             "title": "Ref Line Id"
+          },
+          "confirmed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmed At"
           }
         },
         "type": "object",
@@ -14634,6 +14715,34 @@
           "qty"
         ],
         "title": "PurchaseOrderLineIn"
+      },
+      "PutawayPutIn": {
+        "properties": {
+          "to_location_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "To Location Id"
+          },
+          "qty": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Qty"
+          }
+        },
+        "type": "object",
+        "required": [
+          "to_location_id",
+          "qty"
+        ],
+        "title": "PutawayPutIn",
+        "description": "Quantity of a putaway sheet line placed in a bin (in the line's unit). Resend with the same Idempotency-Key\nwhen the response was lost: a plain resend would put the quantity twice"
       },
       "ReasonBrief": {
         "properties": {

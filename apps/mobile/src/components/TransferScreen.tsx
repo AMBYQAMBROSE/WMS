@@ -29,18 +29,11 @@ const CONFIG = {
     targetTypes: ["BIN"],
     targetName: "bin",
   },
-  move: {
-    verb: "Move",
-    fromLabel: "Scan source location",
-    targetLabel: "Scan target location",
-    targetTypes: ["BIN", "DOCK"],
-    targetName: "location",
-  },
 } as const;
 
 let nextKey = 1;
 
-/** Shared by putaway and move: scan source location -> scan item (choose batch if several) -> quantity -> scan target location -> submit */
+/** Free putaway: scan source location -> scan item (choose batch if several) -> quantity -> scan target location -> submit */
 export default function TransferScreen({ kind }: { kind: keyof typeof CONFIG }) {
   const cfg = CONFIG[kind];
   const { c } = useTheme();

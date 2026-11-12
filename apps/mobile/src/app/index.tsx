@@ -68,7 +68,7 @@ export default function HomeScreen() {
   const tiles: { key: string; title: string; hint: string; icon: IconName; href: Href; badge?: number; testID: string }[] = [
     { key: "receive", title: "Receive", hint: "Against a PO", icon: "truck-delivery-outline", href: "/receive", testID: "menu-receive" },
     { key: "putaway", title: "Put away", hint: "By putaway sheet", icon: "tray-arrow-down", href: "/putaway", testID: "menu-putaway" },
-    { key: "move", title: "Move", hint: "Bin to bin", icon: "swap-horizontal", href: "/move", testID: "menu-move" },
+    { key: "move", title: "Move", hint: "Whole location A → B", icon: "swap-horizontal", href: "/move", testID: "menu-move" },
     { key: "count", title: "Count", hint: "Cycle counts", icon: "clipboard-check-outline", href: "/count", badge: fresh.count, testID: "menu-count" },
     { key: "pick", title: "Pick", hint: "Guided picking", icon: "cart-outline", href: "/pick", badge: fresh.pick, testID: "menu-pick" },
     { key: "ship", title: "Ship", hint: "Scan every piece", icon: "truck-outline", href: "/ship", testID: "menu-ship" },

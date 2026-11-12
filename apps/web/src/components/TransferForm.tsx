@@ -28,7 +28,7 @@ interface FormValues {
   lines: LineValues[];
 }
 
-/** Entry form shared by putaways and moves: they differ only in target location types, wording, and whether lines come from a goods receipt */
+/** Line-by-line entry form for putaways (lines may come from a goods receipt). Moves use the location-to-location page instead. */
 export default function TransferForm({
   path,
   docLabel,

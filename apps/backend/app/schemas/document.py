@@ -65,6 +65,8 @@ class DocumentLineRead(_Orm):
     ref_line_id: uuid.UUID | None
     # Lines worked one by one (putaway sheet, pick list, count): when this line was done; null while open
     confirmed_at: datetime | None = None
+    # Shipment lines: quantity scanned piece by piece while loading
+    qty_checked: Qty = Decimal(0)
 
 
 class ReasonBrief(_Orm):

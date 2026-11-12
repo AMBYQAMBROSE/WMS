@@ -31,7 +31,7 @@
       "permissions": [
         "*.read", "*.create", "*.update", "*.confirm", "*.post", "*.cancel", "*.close",
         "sales_order.allocate", "cycle_count.count", "cycle_count.view_expected",
-        "pick.confirm", "returnable_asset.manage", "mobile.sync"
+        "pick.confirm", "returnable_asset.manage", "mobile.sync", "shipment.post_unchecked"
       ],
       "exclude": ["user.*", "role.*", "system.*", "audit.*"]
     },

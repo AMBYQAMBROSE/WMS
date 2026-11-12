@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import { useNavigation, usePreventRemove } from "expo-router";
+import { useLocalSearchParams, useNavigation, usePreventRemove } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 
 import PhotoCapture from "@/components/PhotoCapture";
@@ -87,6 +87,11 @@ export default function ReceiveScreen() {
   const scanPo = async (code: string) => {
     setBusy(true);
     setNotice(null);
+    await loadPo(code);
+  };
+
+  /** Fetch the order and show it; state is only set after the fetch, so the mount effect below may call it */
+  const loadPo = async (code: string) => {
     try {
       const { data, cachedAt: cached } = await fetchPurchaseOrder(code);
       if (!RECEIVABLE.includes(data.status)) {
@@ -107,6 +112,13 @@ export default function ReceiveScreen() {
       setBusy(false);
     }
   };
+
+  // Opened from the home screen's scan field with a purchase order number
+  const params = useLocalSearchParams<{ doc?: string }>();
+  useEffect(() => {
+    if (params.doc) void loadPo(params.doc);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once on mount
+  }, []);
 
   const scanLocation = (code: string) => {
     const loc = findLocation(code);

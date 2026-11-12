@@ -125,6 +125,7 @@ export interface StockBalance {
   batch_no: string | null;
   expiry_date: string | null;
   qty_on_hand: number;
+  qty_allocated: number;
 }
 
 export interface PutawayLine {
@@ -147,4 +148,48 @@ export interface PutawaySheet extends DocumentSummary {
   ref_document: { id: string; doc_no: string } | null;
   location: { id: string; code: string; name: string } | null;
   lines: PutawayLine[];
+}
+
+export interface ShipmentInfo {
+  carrier: string | null;
+  vehicle_no: string | null;
+  driver_name: string | null;
+  driver_phone: string | null;
+  seal_no: string | null;
+}
+
+export interface ShipmentLine {
+  id: string;
+  line_no: number;
+  item: ItemBrief;
+  uom: { id: string; code: string; name: string };
+  /** Quantity to ship (base units) */
+  qty_actual: number;
+  /** Scanned onto the vehicle so far */
+  qty_checked: number;
+  batch_no: string | null;
+  expiry_date: string | null;
+  from_location: { id: string; code: string; name: string } | null;
+}
+
+/** Delivery order (shipment); posted only once every piece is scanned */
+export interface Shipment extends DocumentSummary {
+  partner: { id: string; code: string; name: string } | null;
+  ref_document: { id: string; doc_no: string } | null;
+  shipment_info: ShipmentInfo | null;
+  lines: ShipmentLine[];
+}
+
+/** A document whose number was scanned (GET /mobile/lookup) */
+export interface DocumentHit {
+  id: string;
+  doc_type: string;
+  doc_no: string;
+  status: string;
+  ref_document_id: string | null;
+}
+
+export interface LoadingHistory {
+  carriers: string[];
+  vehicles: ShipmentInfo[];
 }

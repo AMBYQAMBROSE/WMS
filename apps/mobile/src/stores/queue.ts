@@ -15,10 +15,12 @@ import { useSession } from "@/stores/session";
  * putaway_put: put part or all of a putaway sheet line into a bin (sent with an Idempotency-Key: a resend after a lost
  *   response is answered from the first put instead of putting the quantity twice)
  * putaway_post: post the putaway sheet once every line is put away (same "already posted" rule as pick_post)
+ * ship_check: scanned quantity of a delivery order line so far ("set" semantics, safe to resubmit)
+ * ship_info: vehicle, driver and seal of a delivery order; ship_post: post it (same "already posted" rule)
  * attach: photos for a document that already exists (payload.document_id), e.g. what a count found
  * Any operation may carry photos: they are uploaded to its document once that exists.
  */
-export type OpType = "receive" | "putaway" | "move" | "count" | "pick_confirm" | "pick_post" | "putaway_put" | "putaway_post" | "attach";
+export type OpType = "receive" | "putaway" | "move" | "count" | "pick_confirm" | "pick_post" | "putaway_put" | "putaway_post" | "ship_check" | "ship_info" | "ship_post" | "attach";
 
 type DocumentOp = "receive" | "putaway" | "move";
 
@@ -168,6 +170,20 @@ async function process(op: QueuedOp): Promise<Processed> {
       headers: { "Idempotency-Key": `put-${op.id}` },
     });
     return { docNo: doc.doc_no, docId: doc.id };
+  }
+  if (op.type === "ship_check") {
+    const { ship_id, line_id, qty } = op.payload as { ship_id: string; line_id: string; qty: number };
+    const doc = await request<Document>("POST", `/shipments/${ship_id}/lines/${line_id}/check`, { qty });
+    return { docNo: doc.doc_no, docId: doc.id };
+  }
+  if (op.type === "ship_info") {
+    const { ship_id, info } = op.payload as { ship_id: string; info: Record<string, string | null> };
+    const doc = await request<Document>("PUT", `/shipments/${ship_id}/info`, info);
+    return { docNo: doc.doc_no, docId: doc.id };
+  }
+  if (op.type === "ship_post") {
+    const shipId = (op.payload as { ship_id: string }).ship_id;
+    return { docNo: await postWorked("/shipments", shipId), docId: shipId };
   }
   if (op.type === "putaway_post") {
     const sheetId = (op.payload as { sheet_id: string }).sheet_id;

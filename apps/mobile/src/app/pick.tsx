@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useLocalSearchParams } from "expo-router";
 import { Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 
 import ScanInput from "@/components/ScanInput";
@@ -27,6 +28,7 @@ export default function PickScreen() {
   const findItem = useMasterData((st) => st.findItem);
   const submitOp = useQueue((st) => st.submit);
 
+  const params = useLocalSearchParams<{ doc?: string }>();
   const [picks, setPicks] = useState<DocumentSummary[] | null>(null);
   const [pick, setPick] = useState<Pick | null>(null);
   // Picked quantities confirmed on this device (including those still in the queue)
@@ -56,15 +58,6 @@ export default function PickScreen() {
     }
   };
 
-  // On mount, state is set from the promise callbacks rather than synchronously in the effect
-  useEffect(() => {
-    useTasks.getState().seen("pick");
-    fetchOpenPicks()
-      .then(applyList, failList)
-      .finally(() => setBusy(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once on mount
-  }, []);
-
   const openPick = async (summary: DocumentSummary) => {
     setBusy(true);
     try {
@@ -84,6 +77,20 @@ export default function PickScreen() {
       setBusy(false);
     }
   };
+
+  // On mount, state is set from the promise callbacks rather than synchronously in the effect
+  useEffect(() => {
+    useTasks.getState().seen("pick");
+    fetchOpenPicks()
+.then((result) => {
+        applyList(result);
+        // Opened from the home screen's scan field with this document's number
+        const wanted = params.doc && result.data.find((d) => d.doc_no.toUpperCase() === params.doc!.toUpperCase());
+        if (wanted) void openPick(wanted);
+      }, failList)
+      .finally(() => setBusy(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once on mount
+  }, []);
 
   const isDone = (l: PickLine) => l.confirmed_at !== null || l.id in local;
   const remaining = pick ? pick.lines.filter((l) => !isDone(l)) : [];
@@ -191,7 +198,18 @@ export default function PickScreen() {
           />
         ) : (
           <>
-            <Text style={s.listHeader}>Choose a pick list</Text>
+            <ScanInput
+              label="Scan the pick list"
+              icon="file-document-outline"
+              onScan={(code) => {
+                const found = picks.find((p) => p.doc_no.toUpperCase() === code.trim().toUpperCase());
+                if (found) void openPick(found);
+                else setNotice({ kind: "error", text: `${code} is not an open pick list. Pull down to refresh the list.` });
+              }}
+              active={!busy}
+              testID="scan-pick-list"
+            />
+            <Text style={s.listHeader}>Or choose one</Text>
             {picks.map((p) => (
               <ListRow
                 key={p.id}

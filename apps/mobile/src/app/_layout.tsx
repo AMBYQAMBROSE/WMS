@@ -95,6 +95,8 @@ export default function RootLayout() {
         <Stack.Screen name="move" options={{ title: "Move" }} />
         <Stack.Screen name="count" options={{ title: "Count" }} />
         <Stack.Screen name="pick" options={{ title: "Pick" }} />
+        <Stack.Screen name="ship" options={{ title: "Ship" }} />
+        <Stack.Screen name="stock" options={{ title: "Stock lookup" }} />
         <Stack.Screen name="queue" options={{ title: "Submit queue" }} />
       </Stack>
     </ThemeProvider>

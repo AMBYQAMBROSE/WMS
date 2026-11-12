@@ -41,6 +41,8 @@ interface MasterDataState {
   hydrate: () => Promise<void>;
   findItem: (code: string) => ItemMatch | null;
   findLocation: (code: string) => MobileLocation | null;
+  /** How many base units one unit of uomId is for the item (a carton barcode counts its pack size); null if unknown */
+  baseFactor: (item: MobileItem, uomId: string) => number | null;
 }
 
 const STORAGE_KEY = "wms.masterData.v2";
@@ -133,6 +135,14 @@ export const useMasterData = create<MasterDataState>()((set, get) => ({
     return item ? { item, uomId: item.base_uom_id } : null;
   },
   findLocation: (raw) => get().indexes?.locations.get(raw.trim().toUpperCase()) ?? null,
+  baseFactor: (item, uomId) => {
+    if (uomId === item.base_uom_id) return 1;
+    const conversions = get().data?.conversions ?? [];
+    const direct = conversions.find((v) => v.item_id === item.id && v.from_uom_id === uomId && v.to_uom_id === item.base_uom_id);
+    if (direct) return direct.factor;
+    const inverse = conversions.find((v) => v.item_id === item.id && v.from_uom_id === item.base_uom_id && v.to_uom_id === uomId);
+    return inverse && inverse.factor ? 1 / inverse.factor : null;
+  },
 }));
 
 // On startup, load the last downloaded master data from local storage (barcodes resolve even offline)

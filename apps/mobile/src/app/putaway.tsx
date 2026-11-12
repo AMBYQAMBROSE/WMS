@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 
 import ScanInput from "@/components/ScanInput";
@@ -29,6 +29,7 @@ export default function PutawayScreen() {
   const { c } = useTheme();
   const s = useStyles(makeStyles);
   const router = useRouter();
+  const params = useLocalSearchParams<{ doc?: string }>();
   const findItem = useMasterData((st) => st.findItem);
   const findLocation = useMasterData((st) => st.findLocation);
   const submitOp = useQueue((st) => st.submit);
@@ -62,13 +63,6 @@ export default function PutawayScreen() {
     }
   };
 
-  useEffect(() => {
-    fetchOpenPutawaySheets()
-      .then(applyList, failList)
-      .finally(() => setBusy(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once on mount
-  }, []);
-
   const openSheet = async (summary: DocumentSummary) => {
     setBusy(true);
     try {
@@ -93,6 +87,18 @@ export default function PutawayScreen() {
       setBusy(false);
     }
   };
+
+  useEffect(() => {
+    fetchOpenPutawaySheets()
+.then((result) => {
+        applyList(result);
+        // Opened from the home screen's scan field with this document's number
+        const wanted = params.doc && result.data.find((d) => d.doc_no.toUpperCase() === params.doc!.toUpperCase());
+        if (wanted) void openSheet(wanted);
+      }, failList)
+      .finally(() => setBusy(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once on mount
+  }, []);
 
   /** The sheet barcode at the top of every printed page holds its number */
   const scanSheet = (code: string) => {

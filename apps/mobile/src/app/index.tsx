@@ -4,8 +4,11 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Redirect, useRouter, type Href } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
+import ScanInput from "@/components/ScanInput";
 import { Banner, Button, Card, Divider, EachScanToggle, IconButton, Segmented, Stat, type IconName, type Notice } from "@/components/ui";
 import { errorText } from "@/lib/api";
+import { haptic } from "@/lib/feedback";
+import { lookupDocument } from "@/lib/inbound";
 import { useMasterData } from "@/stores/masterData";
 import { useQueue } from "@/stores/queue";
 import { useSession } from "@/stores/session";
@@ -68,7 +71,46 @@ export default function HomeScreen() {
     { key: "move", title: "Move", hint: "Bin to bin", icon: "swap-horizontal", href: "/move", testID: "menu-move" },
     { key: "count", title: "Count", hint: "Cycle counts", icon: "clipboard-check-outline", href: "/count", badge: fresh.count, testID: "menu-count" },
     { key: "pick", title: "Pick", hint: "Guided picking", icon: "cart-outline", href: "/pick", badge: fresh.pick, testID: "menu-pick" },
+    { key: "ship", title: "Ship", hint: "Scan every piece", icon: "truck-outline", href: "/ship", testID: "menu-ship" },
+    { key: "stock", title: "Stock", hint: "Bin or item", icon: "magnify", href: "/stock", testID: "menu-stock" },
   ];
+
+  /** One scan field for everything: a bin or item shows its stock, a document number opens its task */
+  const scanAnything = async (raw: string) => {
+    const code = raw.trim();
+    const findLocation = useMasterData.getState().findLocation;
+    const findItem = useMasterData.getState().findItem;
+    if (findLocation(code) || findItem(code)) {
+      haptic("tick");
+      return router.push({ pathname: "/stock", params: { code } });
+    }
+    try {
+      const hits = await lookupDocument(code);
+      const route = (h: (typeof hits)[number]): Href | null => {
+        const params = { doc: h.doc_no };
+        if (h.doc_type === "PO") return { pathname: "/receive", params };
+        if (h.doc_type === "PUTAWAY" && h.status === "TO_PUT_AWAY") return { pathname: "/putaway", params };
+        if (h.doc_type === "PICK" && h.status === "OPEN") return { pathname: "/pick", params };
+        if (h.doc_type === "PICK" || h.doc_type === "SO" || (h.doc_type === "SHIP" && h.status === "DRAFT")) return { pathname: "/ship", params };
+        if (h.doc_type === "COUNT" && h.status === "COUNTING") return { pathname: "/count", params };
+        return null;
+      };
+      const target = hits.map(route).find(Boolean);
+      if (target) {
+        haptic("tick");
+        setNotice(null);
+        return router.push(target);
+      }
+      haptic("error");
+      setNotice({
+        kind: "error",
+        text: hits.length ? `${code}: nothing to do on the PDA (${hits[0].doc_type.toLowerCase()} is ${hits[0].status.toLowerCase().replace(/_/g, " ")})` : `${code} is not a known bin, item or document`,
+      });
+    } catch (error) {
+      haptic("error");
+      setNotice({ kind: "error", text: errorText(error) });
+    }
+  };
 
   return (
     <ScrollView style={{ backgroundColor: c.bg }} contentContainerStyle={s.screen}>
@@ -100,6 +142,8 @@ export default function HomeScreen() {
       )}
       <Banner notice={notice} />
       {newWork.length > 0 && <Banner notice={{ kind: "info", text: `New work: ${newWork.join(", ")}` }} />}
+
+      {data && <ScanInput label="Scan anything" placeholder="Bin, item or document number" onScan={(c2) => void scanAnything(c2)} testID="scan-home" />}
 
       <View style={s.grid}>
         {tiles.map((t) => (

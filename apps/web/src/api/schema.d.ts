@@ -1204,6 +1204,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/shipments/loading-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Loading History
+         * @description Recent carriers, vehicles and drivers, to choose from when entering loading details
+         */
+        get: operations["loading_history_api_v1_shipments_loading_history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/shipments/{ship_id}": {
         parameters: {
             query?: never;
@@ -1249,6 +1269,27 @@ export interface paths {
         put?: never;
         /** Post Shipment */
         post: operations["post_shipment_api_v1_shipments__ship_id__post_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shipments/{ship_id}/lines/{line_id}/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check Shipment Line
+         * @description Quantity of a line scanned onto the vehicle so far (base units). A shipment is posted only when every line
+         *     is fully scanned, unless the user holds shipment.post_unchecked.
+         */
+        post: operations["check_shipment_line_api_v1_shipments__ship_id__lines__line_id__check_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1920,6 +1961,28 @@ export interface paths {
          * @description format=compact is the compact format used by the current PDA app; the default format is kept for older app versions
          */
         get: operations["get_master_data_api_v1_mobile_master_data_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mobile/lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lookup Document
+         * @description The documents a scanned code is the number of, for the home screen's scan field to open the right task.
+         *     Numbers are unique per document type, so a code can in theory match several types; documents the user may not
+         *     read are left out. Items and locations are recognised on the PDA from its master data, not here.
+         */
+        get: operations["lookup_document_api_v1_mobile_lookup_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2815,6 +2878,22 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** DocumentHit */
+        DocumentHit: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Doc Type */
+            doc_type: string;
+            /** Doc No */
+            doc_no: string;
+            /** Status */
+            status: string;
+            /** Ref Document Id */
+            ref_document_id: string | null;
+        };
         /** DocumentLineRead */
         DocumentLineRead: {
             /**
@@ -2840,6 +2919,11 @@ export interface components {
             ref_line_id: string | null;
             /** Confirmed At */
             confirmed_at?: string | null;
+            /**
+             * Qty Checked
+             * @default 0
+             */
+            qty_checked: number;
         };
         /** DocumentRead */
         DocumentRead: {
@@ -3759,6 +3843,16 @@ export interface components {
             id: string;
             document: components["schemas"]["DocumentBrief"];
         };
+        /**
+         * LoadingHistory
+         * @description Recently used loading details, for choosing instead of typing
+         */
+        LoadingHistory: {
+            /** Carriers */
+            carriers: string[];
+            /** Vehicles */
+            vehicles: components["schemas"]["ShipmentInfoRead"][];
+        };
         /** LocationBrief */
         LocationBrief: {
             /**
@@ -4010,6 +4104,11 @@ export interface components {
             ref_line_id: string | null;
             /** Confirmed At */
             confirmed_at: string | null;
+            /**
+             * Qty Checked
+             * @default 0
+             */
+            qty_checked: number;
             confirmer: components["schemas"]["UserBrief"] | null;
         };
         /** PickRead */
@@ -4488,6 +4587,14 @@ export interface components {
             row_version: number;
             /** Lines */
             lines: components["schemas"]["SalesOrderLineRead"][];
+        };
+        /**
+         * ShipmentCheckIn
+         * @description Scanned quantity of a shipment line so far (base units). "Set" semantics: a resend gives the same result
+         */
+        ShipmentCheckIn: {
+            /** Qty */
+            qty: number | string;
         };
         /** ShipmentCreate */
         ShipmentCreate: {
@@ -7931,6 +8038,26 @@ export interface operations {
             };
         };
     };
+    loading_history_api_v1_shipments_loading_history_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoadingHistory"];
+                };
+            };
+        };
+    };
     get_shipment_api_v1_shipments__ship_id__get: {
         parameters: {
             query?: never;
@@ -8007,6 +8134,42 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShipmentRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    check_shipment_line_api_v1_shipments__ship_id__lines__line_id__check_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ship_id: string;
+                line_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShipmentCheckIn"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -9430,6 +9593,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    lookup_document_api_v1_mobile_lookup_get: {
+        parameters: {
+            query: {
+                code: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentHit"][];
                 };
             };
             /** @description Validation Error */

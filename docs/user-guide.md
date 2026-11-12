@@ -29,6 +29,7 @@ For warehouse operators, warehouse supervisors and system administrators. Everyo
 - **Each scan counts 1**: for goods labelled per piece, switch this on in Receive or Count and scan every piece instead of typing the quantity.
 - **Photos**: in Receive and Count, tap "Take photo" (add a note first if useful) to record damage or what you found. Photos are sent with the record, also when you were offline, and the office sees them on the document.
 - **New work**: when new pick lists or counts arrive, the PDA vibrates and the home screen shows them (e.g. "Pick · 2 new") until you open that screen.
+- **Scan anything**: the scan field on the home screen takes any barcode. A bin or an item shows its stock. A document number opens its task: a purchase order opens Receive, a putaway sheet opens Put away, an open pick list opens Pick, a picked pick list or a sales order opens Ship, and a running cycle count opens Count.
 
 ## 3. Receiving clerk
 
@@ -50,14 +51,18 @@ Posting a receipt into a dock creates a **putaway sheet** (status "To put away")
 
 ## 5. Picker (PDA)
 
-Pick → choose a pick list → go to the bin shown → ① scan the bin → ② scan the item → ③ enter the picked quantity (0 if none).
+Pick → scan the pick list number (or choose it from the list) → go to the bin shown → ① scan the bin → ② scan the item → ③ enter the picked quantity (0 if none).
 - **Short pick**: if you find less than requested, confirm the actual quantity. The difference goes back to the order as "unallocated" and can be allocated again once stock is replenished.
 - **Skip**: if you cannot find something right away, use "Skip this line, pick later".
 - **Finish**: when everything is picked, tap "Finish picking (post)". This needs the pick-posting permission; without it, a supervisor posts the pick list on the web.
 
 ## 6. Shipping
 
-Outbound → Sales orders → open the order → Ship → enter carrier, vehicle plate, driver and seal no. → create the shipment → post it once loading is done. The shipment automatically includes every picked but unshipped item for that order in staging.
+**Every piece is scanned onto the vehicle**: a delivery order (shipment) can be posted only after all of its pieces were scanned while loading.
+
+**PDA**: Ship → ① scan the pick list number (or the sales order number). The PDA opens the order's delivery order, or creates one with everything picked and waiting in staging. ② Scan every piece as it goes onto the vehicle. A carton barcode counts as its whole pack (e.g. 12). A wrong item or an extra piece is refused with a buzz: take it off the vehicle. ③ Once everything is scanned, choose the vehicle and driver from the recent ones (or type them) and scan or enter the seal number. ④ "Post delivery order". Without the posting permission the PDA says so, and a supervisor posts it on the web. Print the delivery order on the web (Print button, or the link after posting) for the driver to sign.
+
+**Web**: Outbound → Sales orders → open the order → Ship → enter carrier, vehicle plate, driver and seal no. → create the shipment. The shipment page shows how much was scanned while loading. "Post shipment" stays disabled until every piece is scanned. Supervisors (permission "Post shipments without every piece scanned") can post anyway after a warning; this is recorded in the shipment's history.
 
 ## 7. Inventory operations
 

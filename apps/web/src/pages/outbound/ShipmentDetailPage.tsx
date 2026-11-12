@@ -1,14 +1,14 @@
 import { useEffect, useRef } from "react";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Card, Descriptions, Form, Input, Space, message } from "antd";
+import { Button, Card, Descriptions, Form, Input, Space, Tooltip, message } from "antd";
 import { Link, useParams } from "react-router";
 
 import { apiClient } from "@/api/client";
 import { showError } from "@/api/errors";
 import { useCan } from "@/api/me";
 import type { Shipment, ShipmentInfo } from "@/api/types";
-import { DESC_COLUMNS, DetailSkeleton, DocTitle, ErrorState, formatQty } from "@/components/ui";
+import { DESC_COLUMNS, DetailSkeleton, DocTitle, ErrorState, QtyProgress, formatQty } from "@/components/ui";
 import { ActionButton, DocumentLinesTable, formatDateTime, preventEnterSubmit, useDocumentAction } from "@/components/documents";
 
 const INFO_FIELDS: [keyof ShipmentInfo, string, number][] = [
@@ -53,6 +53,9 @@ export default function ShipmentDetailPage() {
   const draft = ship.status === "DRAFT";
   const editable = draft && can("shipment.create");
   const run = (name: string) => () => action.mutate(name);
+  const toLoad = ship.lines.reduce((sum, l) => sum + l.qty_actual, 0);
+  const scanned = ship.lines.reduce((sum, l) => sum + l.qty_checked, 0);
+  const allScanned = scanned >= toLoad;
 
   return (
     <Space orientation="vertical" style={{ width: "100%" }}>
@@ -61,14 +64,28 @@ export default function ShipmentDetailPage() {
         extra={
           draft && (
             <Space wrap>
-              <ActionButton
-                perm="shipment.post"
-                type="primary"
-                label="Post shipment"
-                confirm="Has the truck been loaded and left? Posting ships the stock out of staging and updates the order to shipped/partially shipped."
-                onConfirm={run("post")}
-                loading={action.isPending}
-              />
+              {allScanned || can("shipment.post_unchecked") ? (
+                <ActionButton
+                  perm="shipment.post"
+                  type="primary"
+                  label="Post shipment"
+                  confirm={
+                    allScanned
+                      ? "Has the truck been loaded and left? Posting ships the stock out of staging and updates the order to shipped/partially shipped."
+                      : `Only ${formatQty(scanned)} of ${formatQty(toLoad)} pieces were scanned while loading. Post anyway? This is recorded in the shipment's history.`
+                  }
+                  onConfirm={run("post")}
+                  loading={action.isPending}
+                />
+              ) : (
+                can("shipment.post") && (
+                  <Tooltip title="Scan every piece on the PDA (Ship) while loading; then the shipment can be posted">
+                    <Button type="primary" disabled>
+                      Post shipment
+                    </Button>
+                  </Tooltip>
+                )
+              )}
               <ActionButton perm="shipment.cancel" danger label="Cancel" confirm="Cancel this shipment?" onConfirm={run("cancel")} loading={action.isPending} />
             </Space>
           )
@@ -80,6 +97,11 @@ export default function ShipmentDetailPage() {
           </Descriptions.Item>
           <Descriptions.Item label="Customer">{ship.partner?.name}</Descriptions.Item>
           <Descriptions.Item label="Posted">{formatDateTime(ship.posted_at) || <span className="wms-empty-value">Not yet</span>}</Descriptions.Item>
+          <Descriptions.Item label="Scanned while loading">
+            <div style={{ minWidth: 180 }}>
+              <QtyProgress done={scanned} total={toLoad} label="Scanned while loading" />
+            </div>
+          </Descriptions.Item>
           {!editable &&
             INFO_FIELDS.map(([key, label]) => (
               <Descriptions.Item key={key} label={label}>
@@ -118,6 +140,13 @@ export default function ShipmentDetailPage() {
           lines={ship.lines}
           columns={[
             { title: "Quantity", dataIndex: "qty_actual", align: "right", render: formatQty },
+            {
+              title: "Scanned",
+              align: "right",
+              render: (_, l) => (
+                <span style={{ color: l.qty_checked >= l.qty_actual ? "var(--wms-tone-green-fg)" : undefined }}>{formatQty(l.qty_checked)}</span>
+              ),
+            },
             { title: "Batch no.", dataIndex: "batch_no" },
             { title: "Expiry date", dataIndex: "expiry_date" },
             { title: "Staging", render: (_, l) => <span className="wms-mono">{l.from_location?.code}</span> },

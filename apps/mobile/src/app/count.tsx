@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { useLocalSearchParams } from "expo-router";
 import { RefreshControl, StyleSheet, Text, View } from "react-native";
 
 import PhotoCapture from "@/components/PhotoCapture";
@@ -35,6 +36,7 @@ export default function CountScreen() {
   const submitOp = useQueue((st) => st.submit);
   const eachScan = useSettings((st) => st.eachScanCountsOne);
 
+  const params = useLocalSearchParams<{ doc?: string }>();
   const [counts, setCounts] = useState<DocumentSummary[] | null>(null);
   const [count, setCount] = useState<CycleCount | null>(null);
   const [location, setLocation] = useState<MobileLocation | null>(null);
@@ -65,15 +67,6 @@ export default function CountScreen() {
     }
   };
 
-  // On mount, state is set from the promise callbacks rather than synchronously in the effect
-  useEffect(() => {
-    useTasks.getState().seen("count");
-    fetchActiveCounts()
-      .then(applyList, failList)
-      .finally(() => setBusy(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once on mount
-  }, []);
-
   const openCount = async (summary: DocumentSummary, keepNotice = false) => {
     setBusy(true);
     try {
@@ -88,6 +81,20 @@ export default function CountScreen() {
       setBusy(false);
     }
   };
+
+  // On mount, state is set from the promise callbacks rather than synchronously in the effect
+  useEffect(() => {
+    useTasks.getState().seen("count");
+    fetchActiveCounts()
+.then((result) => {
+        applyList(result);
+        // Opened from the home screen's scan field with this document's number
+        const wanted = params.doc && result.data.find((d) => d.doc_no.toUpperCase() === params.doc!.toUpperCase());
+        if (wanted) void openCount(wanted);
+      }, failList)
+      .finally(() => setBusy(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once on mount
+  }, []);
 
   const scanLocation = (code: string) => {
     if (!count) return;

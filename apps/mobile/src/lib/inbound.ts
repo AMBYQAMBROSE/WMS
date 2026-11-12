@@ -1,6 +1,18 @@
 import { ApiError, request } from "@/lib/api";
 import { loadJson, saveJson } from "@/lib/storage";
-import type { CycleCount, Document, DocumentSummary, Pick, PutawaySheet, StockBalance } from "@/lib/types";
+import * as Crypto from "expo-crypto";
+
+import type {
+  CycleCount,
+  Document,
+  DocumentHit,
+  DocumentSummary,
+  LoadingHistory,
+  Pick,
+  PutawaySheet,
+  Shipment,
+  StockBalance,
+} from "@/lib/types";
 
 export interface Fetched<T> {
   data: T;
@@ -42,6 +54,14 @@ export function fetchBalances(locationId: string, locationCode: string): Promise
     `cache.balances.${locationId}`,
     () => request<StockBalance[]>("GET", `/stock/balances?location_id=${locationId}&limit=500`),
     `Offline and stock for location ${locationCode} is not cached on this device; scan again where there is signal`,
+  );
+}
+
+export function fetchItemBalances(itemId: string, sku: string): Promise<Fetched<StockBalance[]>> {
+  return withCache(
+    `cache.itemBalances.${itemId}`,
+    () => request<StockBalance[]>("GET", `/stock/balances?item_id=${itemId}&limit=500`),
+    `Offline and stock of ${sku} is not cached on this device; scan again where there is signal`,
   );
 }
 
@@ -91,6 +111,38 @@ export function fetchPutawaySheet(id: string, docNo: string): Promise<Fetched<Pu
     () => request<PutawaySheet>("GET", `/putaways/${id}`),
     `Offline and putaway sheet ${docNo} is not cached on this device; open again where there is signal`,
   );
+}
+
+/** The documents a scanned code is the number of (online only: numbers are not part of the master data) */
+export function lookupDocument(code: string): Promise<DocumentHit[]> {
+  return request<DocumentHit[]>("GET", `/mobile/lookup?code=${encodeURIComponent(code.trim())}`);
+}
+
+export function fetchShipment(id: string, docNo: string): Promise<Fetched<Shipment>> {
+  return withCache(
+    `cache.shipment.${id}`,
+    () => request<Shipment>("GET", `/shipments/${id}`),
+    `Offline and delivery order ${docNo} is not cached on this device; open again where there is signal`,
+  );
+}
+
+export function fetchLoadingShipments(): Promise<Fetched<DocumentSummary[]>> {
+  return withCache(
+    "cache.shipments.draft",
+    () => request<DocumentSummary[]>("GET", "/shipments?status=DRAFT&limit=100"),
+    "Offline and no delivery orders are cached on this device; open again where there is signal",
+  );
+}
+
+export function fetchLoadingHistory(): Promise<Fetched<LoadingHistory>> {
+  return withCache("cache.shipments.history", () => request<LoadingHistory>("GET", "/shipments/loading-history"), "Offline");
+}
+
+/** The order's delivery order being loaded, or a new one with everything picked for it (needs a connection) */
+export async function shipmentForOrder(soId: string): Promise<Shipment> {
+  const drafts = await request<DocumentSummary[]>("GET", `/shipments?so_id=${soId}&status=DRAFT`);
+  if (drafts.length) return request<Shipment>("GET", `/shipments/${drafts[0].id}`);
+  return request<Shipment>("POST", "/shipments", { so_id: soId, client_request_id: Crypto.randomUUID() });
 }
 
 export function parseQty(text: string): number | null {

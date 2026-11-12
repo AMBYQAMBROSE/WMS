@@ -113,6 +113,10 @@ class DocumentLine(Base, TenantScopedMixin):
     qty_planned: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
     # PO line: cumulative received quantity; GRN/putaway line: quantity of this document
     qty_actual: Mapped[Decimal] = mapped_column(Numeric(18, 4), default=Decimal(0), nullable=False)
+    # Quantity verified by scanning piece by piece (shipment lines: loaded onto the vehicle)
+    qty_checked: Mapped[Decimal] = mapped_column(
+        Numeric(18, 4), default=Decimal(0), server_default="0", nullable=False
+    )
     batch_no: Mapped[str | None] = mapped_column(Unicode(50), nullable=True)
     expiry_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     from_location_id: Mapped[uuid.UUID | None] = mapped_column(

@@ -5640,6 +5640,33 @@
         }
       }
     },
+    "/api/v1/shipments/loading-history": {
+      "get": {
+        "tags": [
+          "shipments"
+        ],
+        "summary": "Loading History",
+        "description": "Recent carriers, vehicles and drivers, to choose from when entering loading details",
+        "operationId": "loading_history_api_v1_shipments_loading_history_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoadingHistory"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/shipments/{ship_id}": {
       "get": {
         "tags": [
@@ -5770,6 +5797,75 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipmentRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shipments/{ship_id}/lines/{line_id}/check": {
+      "post": {
+        "tags": [
+          "shipments"
+        ],
+        "summary": "Check Shipment Line",
+        "description": "Quantity of a line scanned onto the vehicle so far (base units). A shipment is posted only when every line\nis fully scanned, unless the user holds shipment.post_unchecked.",
+        "operationId": "check_shipment_line_api_v1_shipments__ship_id__lines__line_id__check_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "ship_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Ship Id"
+            }
+          },
+          {
+            "name": "line_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Line Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShipmentCheckIn"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -8619,6 +8715,60 @@
         }
       }
     },
+    "/api/v1/mobile/lookup": {
+      "get": {
+        "tags": [
+          "mobile"
+        ],
+        "summary": "Lookup Document",
+        "description": "The documents a scanned code is the number of, for the home screen's scan field to open the right task.\nNumbers are unique per document type, so a code can in theory match several types; documents the user may not\nread are left out. Items and locations are recognised on the PDA from its master data, not here.",
+        "operationId": "lookup_document_api_v1_mobile_lookup_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50,
+              "title": "Code"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DocumentHit"
+                  },
+                  "title": "Response Lookup Document Api V1 Mobile Lookup Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/audit-logs": {
       "get": {
         "tags": [
@@ -11250,6 +11400,48 @@
         ],
         "title": "DocumentBrief"
       },
+      "DocumentHit": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "doc_type": {
+            "type": "string",
+            "title": "Doc Type"
+          },
+          "doc_no": {
+            "type": "string",
+            "title": "Doc No"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "ref_document_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ref Document Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "doc_type",
+          "doc_no",
+          "status",
+          "ref_document_id"
+        ],
+        "title": "DocumentHit"
+      },
       "DocumentLineRead": {
         "properties": {
           "id": {
@@ -11341,6 +11533,11 @@
               }
             ],
             "title": "Confirmed At"
+          },
+          "qty_checked": {
+            "type": "number",
+            "title": "Qty Checked",
+            "default": 0.0
           }
         },
         "type": "object",
@@ -13686,6 +13883,31 @@
         ],
         "title": "LedgerRefLine"
       },
+      "LoadingHistory": {
+        "properties": {
+          "carriers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Carriers"
+          },
+          "vehicles": {
+            "items": {
+              "$ref": "#/components/schemas/ShipmentInfoRead"
+            },
+            "type": "array",
+            "title": "Vehicles"
+          }
+        },
+        "type": "object",
+        "required": [
+          "carriers",
+          "vehicles"
+        ],
+        "title": "LoadingHistory",
+        "description": "Recently used loading details, for choosing instead of typing"
+      },
       "LocationBrief": {
         "properties": {
           "id": {
@@ -14347,6 +14569,11 @@
               }
             ],
             "title": "Confirmed At"
+          },
+          "qty_checked": {
+            "type": "number",
+            "title": "Qty Checked",
+            "default": 0.0
           },
           "confirmer": {
             "anyOf": [
@@ -15713,6 +15940,28 @@
           "lines"
         ],
         "title": "SalesOrderRead"
+      },
+      "ShipmentCheckIn": {
+        "properties": {
+          "qty": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Qty"
+          }
+        },
+        "type": "object",
+        "required": [
+          "qty"
+        ],
+        "title": "ShipmentCheckIn",
+        "description": "Scanned quantity of a shipment line so far (base units). \"Set\" semantics: a resend gives the same result"
       },
       "ShipmentCreate": {
         "properties": {

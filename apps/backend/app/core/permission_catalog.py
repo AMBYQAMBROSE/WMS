@@ -66,6 +66,7 @@ PERMISSIONS: list[tuple[str, str, str]] = [
     ("shipment.read", "outbound", "View shipments"),
     ("shipment.create", "outbound", "Create shipments / enter loading details"),
     ("shipment.post", "outbound", "Post shipments"),
+    ("shipment.post_unchecked", "outbound", "Post shipments without every piece scanned (recorded in the audit log)"),
     ("shipment.cancel", "outbound", "Cancel shipments"),
     ("return_in.read", "returns", "View customer returns"),
     ("return_in.create", "returns", "Create customer returns"),

@@ -2,16 +2,18 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import false, select, true
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_db_session, require_permission
 from app.api.routing import TransactionalRoute
+from app.models.document import DocumentHeader
 from app.models.item import Item, ItemBarcode, ItemUomConversion, Uom
 from app.models.location import STOCK_LOCATION_TYPES, Location
 from app.schemas.document import Qty
+from app.services.attachment_service import DOCUMENT_PERMISSIONS
 from app.services.document_common import utcnow
 
 router = APIRouter(route_class=TransactionalRoute, prefix="/mobile", tags=["mobile"])
@@ -152,3 +154,35 @@ def get_master_data(
             Location.location_type.in_(STOCK_LOCATION_TYPES),
         ),
     )
+
+
+class DocumentHit(BaseModel):
+    id: uuid.UUID
+    doc_type: str
+    doc_no: str
+    status: str
+    # The source document (a pick list's sales order, a putaway sheet's receipt)
+    ref_document_id: uuid.UUID | None
+
+
+@router.get("/lookup", response_model=list[DocumentHit])
+def lookup_document(
+    code: str = Query(min_length=1, max_length=50),
+    db: Session = Depends(get_db_session),
+    user: CurrentUser = Depends(require_permission("mobile.sync")),
+):
+    """The documents a scanned code is the number of, for the home screen's scan field to open the right task.
+    Numbers are unique per document type, so a code can in theory match several types; documents the user may not
+    read are left out. Items and locations are recognised on the PDA from its master data, not here."""
+    rows = db.scalars(
+        select(DocumentHeader).where(
+            DocumentHeader.tenant_id == user.tenant_id,
+            DocumentHeader.is_deleted == false(),
+            DocumentHeader.doc_no == code.strip(),
+        )
+    ).all()
+    return [
+        DocumentHit(id=d.id, doc_type=d.doc_type, doc_no=d.doc_no, status=d.status, ref_document_id=d.ref_document_id)
+        for d in rows
+        if f"{DOCUMENT_PERMISSIONS.get(d.doc_type, ('',))[0]}.read" in user.permissions
+    ]

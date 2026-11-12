@@ -125,3 +125,33 @@ def test_test_print_outlines_a_full_sheet(client, admin_headers, unique):
     pdf = print_pdf(client, admin_headers, "/label-profiles/test-print", SHEET_3X8)
     assert pages(pdf) == 1
     assert pages(print_pdf(client, admin_headers, "/label-profiles/test-print", ROLL_50X30)) == 3
+
+
+def test_stock_labels_per_carton_of_a_receipt(client, admin_headers, unique):
+    from datetime import date
+    from decimal import Decimal
+
+    from app.services.printing.labels import stock_code
+    from tests.helpers import make_warehouse
+
+    api = Api(client, admin_headers)
+    wh = make_warehouse(api, unique)
+    item = api.post("/items", {"sku_code": f"STK{unique}", "name": "Batch item", "base_uom_id": wh.ea,
+                               "is_batch_managed": True, "is_expiry_managed": True})["id"]
+    po = api.post("/purchase-orders", {"partner_id": wh.supplier, "lines": [{"item_id": item, "uom_id": wh.ea, "qty": 50}]})
+    api.post(f"/purchase-orders/{po['id']}/confirm")
+    grn = api.post("/grns", {"po_id": po["id"], "location_id": wh.dock_in, "lines": [
+        {"po_line_id": po["lines"][0]["id"], "qty": 50, "batch_no": f"L{unique}", "expiry_date": "2027-05-31"}]})
+    print_pdf(client, admin_headers, "/labels/stock", {"grn_id": grn["id"]}, expect=400)  # not posted yet
+    api.post(f"/grns/{grn['id']}/post")
+
+    roll = {**ROLL_50X30, "purpose": "STOCK", "barcode_type": "QR", "fields": ["sku", "batch", "expiry", "qty"], "name": f"Stock {unique}"}
+    profile = api.post("/label-profiles", roll)
+    # Cartons of 24: 24 + 24 + 2, one label (page on a roll) each
+    body = {"grn_id": grn["id"], "qty_per_label": 24, "profile_id": profile["id"]}
+    assert pages(print_pdf(client, admin_headers, "/labels/stock", body)) == 3
+    assert pages(print_pdf(client, admin_headers, "/labels/stock", {"grn_id": grn["id"]})) == 1  # built-in A4 layout
+
+    # The code the PDA reads: printable GS1 element string
+    assert stock_code("SKU-1", "L1", date(2027, 5, 31), Decimal(24)) == "(240)SKU-1(10)L1(17)270531(30)24"
+    assert stock_code("SKU-1", None, None, Decimal("2.5")) == "(240)SKU-1"

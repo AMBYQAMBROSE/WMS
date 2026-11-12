@@ -108,9 +108,15 @@ export default function ShipScreen() {
     if (!ship) return;
     const match = findItem(code);
     if (!match) return setNotice({ kind: "error", text: `Unknown barcode ${code}` });
-    const lines = ship.lines.filter((l) => l.item.id === match.item.id);
+    const lot = match.lot;
+    const sameLot = (l: { batch_no: string | null; expiry_date: string | null }) =>
+      (!lot?.batchNo || l.batch_no === lot.batchNo) && (!lot?.expiryDate || l.expiry_date === lot.expiryDate);
+    const lines = ship.lines.filter((l) => l.item.id === match.item.id && sameLot(l));
+    if (lot?.batchNo && !lines.length && ship.lines.some((l) => l.item.id === match.item.id)) {
+      return setNotice({ kind: "error", text: `Wrong batch: ${match.item.sku_code} batch ${lot.batchNo} is not on this delivery order` });
+    }
     if (!lines.length) return setNotice({ kind: "error", text: `${match.item.sku_code} is not on this delivery order. Take it off the vehicle.` });
-    const pieces = baseFactor(match.item, match.uomId);
+    const pieces = lot?.qty ?? baseFactor(match.item, match.uomId);
     if (pieces === null) return setNotice({ kind: "error", text: `No conversion from this barcode's unit to ${match.item.sku_code}'s base unit` });
     const line = lines.find((l) => left(l) >= pieces);
     if (!line) {

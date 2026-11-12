@@ -15,6 +15,7 @@ from app.schemas.label import (
     LabelProfileUpdate,
     LocationLabelRequest,
     Purpose,
+    StockLabelRequest,
 )
 from app.services.label_service import LabelService
 from app.services.printing.labels import BUILT_IN
@@ -98,6 +99,16 @@ def print_item_labels(
     user: CurrentUser = Depends(require_permission("item.read")),
 ):
     return _pdf(_service(db, user).item_labels(data), "item-labels")
+
+
+@router.post("/labels/stock", response_class=Response, responses=PDF)
+def print_stock_labels(
+    data: StockLabelRequest,
+    db: Session = Depends(get_db_session),
+    user: CurrentUser = Depends(require_permission("grn.read")),
+):
+    """Stock labels for a posted receipt: item, batch, expiry and quantity in one QR code that the PDA reads"""
+    return _pdf(_service(db, user).stock_labels(data), "stock-labels")
 
 
 @router.post("/labels/locations", response_class=Response, responses=PDF)

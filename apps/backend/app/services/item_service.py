@@ -3,6 +3,7 @@ import uuid
 from sqlalchemy import or_, select, true
 from sqlalchemy.orm import Session
 
+from app.core.gs1 import parse as parse_gs1
 from app.models.item import Item, ItemBarcode
 from app.repositories.base import BaseRepository, check_version
 from app.schemas.item import ItemCreate, ItemUpdate
@@ -24,12 +25,16 @@ class ItemService:
         """keyword: SKU / name contains, or exact barcode match (incl. extra barcodes); ids: fetch by ID (to display selected dropdown values)"""
         conditions = []
         if keyword := (keyword or "").strip():
+            # A scanned GS1 carton code or stock label: look for the item it names (GTIN / AI 240), not the whole text
+            gs1 = parse_gs1(keyword)
+            codes = gs1.item_keys() if gs1 else [keyword]
             conditions.append(
                 or_(
                     Item.sku_code.contains(keyword, autoescape=True),
                     Item.name.contains(keyword, autoescape=True),
-                    Item.barcode == keyword,
-                    Item.id.in_(select(ItemBarcode.item_id).where(ItemBarcode.tenant_id == tenant_id, ItemBarcode.barcode == keyword)),
+                    Item.barcode.in_(codes),
+                    Item.sku_code.in_(codes),
+                    Item.id.in_(select(ItemBarcode.item_id).where(ItemBarcode.tenant_id == tenant_id, ItemBarcode.barcode.in_(codes))),
                 )
             )
         if ids:

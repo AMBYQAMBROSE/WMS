@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, PlainSerializer, field_valida
 
 from app.schemas.versioning import ExpectedVersion
 
-Purpose = Literal["ITEM", "LOCATION"]
+Purpose = Literal["ITEM", "LOCATION", "STOCK"]
 
 # Text fields a label of each purpose can show besides the barcode, in the order offered to the user
 LABEL_FIELDS: dict[str, list[tuple[str, str]]] = {
@@ -22,6 +22,15 @@ LABEL_FIELDS: dict[str, list[tuple[str, str]]] = {
         ("code", "Location code (large)"),
         ("name", "Location name"),
         ("path", "Location path"),
+    ],
+    # Stock label: one carton or pallet of a receipt; its code carries item, batch, expiry and quantity
+    "STOCK": [
+        ("name", "Item name"),
+        ("sku", "SKU"),
+        ("batch", "Batch no."),
+        ("expiry", "Expiry date"),
+        ("qty", "Quantity"),
+        ("source", "Receipt no. and date"),
     ],
 }
 
@@ -106,6 +115,17 @@ class ItemLabelRequest(BaseModel):
     copies: int = Field(default=1, ge=1, le=500)
     profile_id: uuid.UUID | None = None
     # Label positions to leave blank at the start of the first sheet, to reuse a partly used label sheet
+    skip: int = Field(default=0, ge=0, le=999)
+
+
+class StockLabelRequest(BaseModel):
+    """Stock labels for the lines of a posted receipt: one label per line, or with qty_per_label one per carton or
+    pallet of that size (the last one holds the rest)"""
+
+    grn_id: uuid.UUID
+    qty_per_label: Decimal | None = Field(default=None, gt=0, max_digits=18, decimal_places=4)
+    copies: int = Field(default=1, ge=1, le=20)
+    profile_id: uuid.UUID | None = None
     skip: int = Field(default=0, ge=0, le=999)
 
 

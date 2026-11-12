@@ -115,9 +115,18 @@ export default function TransferScreen({ kind }: { kind: keyof typeof CONFIG }) 
       return setNotice({ kind: "error", text: `No ${match.item.sku_code} stock available at ${from?.code}` });
     }
     haptic("tick");
-    if (rows.length === 1) return startEdit(rows[0]);
+    const lot = match.lot;
+    const sameLot = (l: { batch_no: string | null; expiry_date: string | null }) =>
+      (!lot?.batchNo || l.batch_no === lot.batchNo) && (!lot?.expiryDate || l.expiry_date === lot.expiryDate);
+    const matching = lot?.batchNo || lot?.expiryDate ? rows.filter(sameLot) : rows;
+    if (lot && !matching.length) return setNotice({ kind: "error", text: `No ${match.item.sku_code} of batch ${lot.batchNo ?? lot.expiryDate} at ${from?.code}` });
+    if (matching.length === 1) {
+      startEdit(matching[0]);
+      if (lot?.qty && lot.qty <= available(matching[0])) setQtyText(fmtQty(lot.qty));
+      return;
+    }
     // The item has several batches at this location: let the operator choose by the batch on the goods
-    setChoices(rows);
+    setChoices(matching);
     setNotice({ kind: "info", text: "This item has several batches; choose the batch on the goods" }, { silent: true });
   };
 

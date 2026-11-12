@@ -2,12 +2,15 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 
 import { request } from "@/lib/api";
+import { gtinCandidates, parseGs1 } from "@/lib/gs1";
 import { loadLarge, saveLarge } from "@/lib/largeStore";
 import type { MasterData, MobileItem, MobileLocation } from "@/lib/types";
 
 export interface ItemMatch {
   item: MobileItem;
   uomId: string;
+  /** From a GS1 code or our stock label: what the goods themselves say, so it is not typed */
+  lot?: { batchNo: string | null; expiryDate: string | null; qty: number | null };
 }
 
 /** Server compact format (columnar, units by index); see backend /mobile/master-data?format=compact */
@@ -124,15 +127,27 @@ export const useMasterData = create<MasterDataState>()((set, get) => ({
       set({ hydrated: true });
     }
   },
-  // Lookup order: barcode (multi-barcode table -> item main barcode) -> SKU code
+  // Lookup order: barcode (multi-barcode table -> item main barcode) -> SKU code -> GS1 code / stock label
   findItem: (raw) => {
     const code = raw.trim();
     const idx = get().indexes;
     if (!idx || !code) return null;
-    const byBarcode = idx.barcodes.get(code);
-    if (byBarcode) return byBarcode;
-    const item = idx.skus.get(code.toUpperCase());
-    return item ? { item, uomId: item.base_uom_id } : null;
+    const plain = (value: string): ItemMatch | null => {
+      const byBarcode = idx.barcodes.get(value);
+      if (byBarcode) return byBarcode;
+      const item = idx.skus.get(value.toUpperCase());
+      return item ? { item, uomId: item.base_uom_id } : null;
+    };
+    const direct = plain(code);
+    if (direct) return direct;
+    const gs1 = parseGs1(raw);
+    if (!gs1) return null;
+    const keys = [...(gs1.itemCode ? [gs1.itemCode] : []), ...(gs1.gtin ? gtinCandidates(gs1.gtin) : [])];
+    for (const key of keys) {
+      const match = plain(key);
+      if (match) return { ...match, lot: { batchNo: gs1.batch, expiryDate: gs1.expiry, qty: gs1.qty } };
+    }
+    return null;
   },
   findLocation: (raw) => get().indexes?.locations.get(raw.trim().toUpperCase()) ?? null,
   baseFactor: (item, uomId) => {

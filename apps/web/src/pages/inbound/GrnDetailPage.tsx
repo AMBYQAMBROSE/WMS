@@ -1,10 +1,14 @@
+import { useState } from "react";
+
+import { PrinterOutlined } from "@ant-design/icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Card, Descriptions, Space, Table } from "antd";
+import { Button, Card, Descriptions, Form, InputNumber, Space, Table } from "antd";
 import { Link, useNavigate, useParams } from "react-router";
 
 import { apiClient } from "@/api/client";
 import { useCan } from "@/api/me";
 import type { DocumentSummary } from "@/api/types";
+import { PrintLabelsModal } from "@/components/labels";
 import StatusTag from "@/components/StatusTag";
 import { DESC_COLUMNS, DetailSkeleton, DocTitle, ErrorState, emptyLocale, formatQty } from "@/components/ui";
 import {
@@ -21,6 +25,7 @@ export default function GrnDetailPage() {
   const can = useCan();
   const { data: grn, isLoading, error, refetch } = useDocument("grns", id);
   const queryClient = useQueryClient();
+  const [printingLabels, setPrintingLabels] = useState(false);
   const action = useDocumentAction("grns", id, {
     // Posting into a dock makes a putaway sheet: offer it for printing with the receipt
     madeByPosting: async (doc) => {
@@ -38,6 +43,7 @@ export default function GrnDetailPage() {
   if (!grn) return <ErrorState title="Could not load this goods receipt" error={error} onRetry={() => refetch()} back={{ to: "/grns", label: "Back to goods receipts" }} />;
   const run = (name: string) => () => action.mutate(name);
   const openSheet = putaways?.find((p) => p.status === "TO_PUT_AWAY");
+  const tracked = grn.lines.some((l) => l.batch_no || l.expiry_date);
 
   return (
     <Space orientation="vertical" style={{ width: "100%" }}>
@@ -50,6 +56,11 @@ export default function GrnDetailPage() {
                 <ActionButton perm="grn.post" type="primary" label="Post" confirm="Posting increases stock immediately and cannot be undone. Continue?" onConfirm={run("post")} loading={action.isPending} />
                 <ActionButton perm="grn.cancel" danger label="Cancel" confirm="Cancel this goods receipt?" onConfirm={run("cancel")} loading={action.isPending} />
               </>
+            )}
+            {grn.status === "POSTED" && (
+              <Button key="stock-labels" icon={<PrinterOutlined />} onClick={() => setPrintingLabels(true)} data-testid="print-stock-labels">
+                Print stock labels
+              </Button>
             )}
             {grn.status === "POSTED" && can("putaway.create") && (
               <Button
@@ -79,6 +90,28 @@ export default function GrnDetailPage() {
           <Descriptions.Item label="Remark">{grn.remark}</Descriptions.Item>
         </Descriptions>
       </Card>
+
+      <PrintLabelsModal
+        open={printingLabels}
+        purpose="STOCK"
+        path="/labels/stock"
+        body={{ grn_id: grn.id }}
+        maxCopies={20}
+        summary={
+          tracked
+            ? "One label per carton or pallet: its QR code holds the item, batch, expiry and quantity, so putting away, picking, counting and loading need nothing typed."
+            : "One label per carton or pallet: its QR code holds the item and quantity, so later scans need nothing typed."
+        }
+        onClose={() => setPrintingLabels(false)}
+      >
+        <Form.Item
+          name="qty_per_label"
+          label="Quantity per carton or pallet"
+          extra="Leave empty for one label per line with the whole quantity. With 24, a line of 50 gets labels of 24, 24 and 2."
+        >
+          <InputNumber min={0.0001} style={{ width: 200 }} data-testid="qty-per-label" />
+        </Form.Item>
+      </PrintLabelsModal>
 
       <Card title="Lines">
         <DocumentLinesTable

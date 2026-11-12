@@ -1492,7 +1492,8 @@
                 {
                   "enum": [
                     "ITEM",
-                    "LOCATION"
+                    "LOCATION",
+                    "STOCK"
                   ],
                   "type": "string"
                 },
@@ -1791,6 +1792,49 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ItemLabelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "PDF to print",
+            "content": {
+              "application/pdf": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/labels/stock": {
+      "post": {
+        "tags": [
+          "labels"
+        ],
+        "summary": "Print Stock Labels",
+        "description": "Stock labels for a posted receipt: item, batch, expiry and quantity in one QR code that the PDA reads",
+        "operationId": "print_stock_labels_api_v1_labels_stock_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StockLabelRequest"
               }
             }
           },
@@ -13022,7 +13066,8 @@
             "type": "string",
             "enum": [
               "ITEM",
-              "LOCATION"
+              "LOCATION",
+              "STOCK"
             ],
             "title": "Purpose"
           },
@@ -13213,7 +13258,8 @@
             "type": "string",
             "enum": [
               "ITEM",
-              "LOCATION"
+              "LOCATION",
+              "STOCK"
             ],
             "title": "Purpose"
           },
@@ -13323,7 +13369,8 @@
             "type": "string",
             "enum": [
               "ITEM",
-              "LOCATION"
+              "LOCATION",
+              "STOCK"
             ],
             "title": "Purpose"
           },
@@ -13525,7 +13572,8 @@
             "type": "string",
             "enum": [
               "ITEM",
-              "LOCATION"
+              "LOCATION",
+              "STOCK"
             ],
             "title": "Purpose"
           },
@@ -13669,7 +13717,8 @@
             "type": "string",
             "enum": [
               "ITEM",
-              "LOCATION"
+              "LOCATION",
+              "STOCK"
             ],
             "title": "Purpose"
           },
@@ -16489,6 +16538,62 @@
           "qty_allocated"
         ],
         "title": "StockBalanceRead"
+      },
+      "StockLabelRequest": {
+        "properties": {
+          "grn_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Grn Id"
+          },
+          "qty_per_label": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qty Per Label"
+          },
+          "copies": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Copies",
+            "default": 1
+          },
+          "profile_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Id"
+          },
+          "skip": {
+            "type": "integer",
+            "maximum": 999.0,
+            "minimum": 0.0,
+            "title": "Skip",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "grn_id"
+        ],
+        "title": "StockLabelRequest",
+        "description": "Stock labels for the lines of a posted receipt: one label per line, or with qty_per_label one per carton or\npallet of that size (the last one holds the rest)"
       },
       "StockLedgerRead": {
         "properties": {

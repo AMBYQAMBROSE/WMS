@@ -4,6 +4,7 @@ import { useLocalSearchParams, useNavigation, usePreventRemove } from "expo-rout
 import { StyleSheet, Text, View } from "react-native";
 
 import PhotoCapture from "@/components/PhotoCapture";
+import { DateField } from "@/components/DateField";
 import ScanInput from "@/components/ScanInput";
 import Screen, { ContextBar } from "@/components/Screen";
 import { Button, Card, Divider, EachScanToggle, Field, IconButton, Pill, ProgressBar, QtyField, Stat } from "@/components/ui";
@@ -137,13 +138,15 @@ export default function ReceiveScreen() {
     if (!lines.length) return setNotice({ kind: "error", text: `${match.item.sku_code} ${match.item.name} is not on this purchase order` });
     const line = lines.find((l) => left(l) > 0) ?? lines[0];
     if (left(line) <= 0) return setNotice({ kind: "warning", text: `${line.item.sku_code} is fully received` });
-    if (eachScan && !line.item.is_batch_managed && !line.item.is_expiry_managed) return addOne(line);
+    // A GS1 carton code carries its own quantity, batch and expiry: no each-scan counting, nothing to type
+    const lot = match.lot;
+    if (eachScan && !lot && !line.item.is_batch_managed && !line.item.is_expiry_managed) return addOne(line);
     setNotice(null);
     haptic("tick");
     setEditing(line);
-    setQtyText(fmtQty(left(line)));
-    setBatchText("");
-    setExpiryText("");
+    setQtyText(fmtQty(lot?.qty ? Math.min(lot.qty, left(line)) : left(line)));
+    setBatchText(lot?.batchNo ?? "");
+    setExpiryText(lot?.expiryDate ?? "");
   };
 
   /** Continuous scanning: one more piece on the line, consecutive scans of it add up in one entry */
@@ -271,7 +274,7 @@ export default function ReceiveScreen() {
                 <Field label="Batch no. (scannable)" value={batchText} onChangeText={setBatchText} autoFocus testID="batch" />
               )}
               {editing.item.is_expiry_managed && (
-                <Field label="Expiry date" placeholder="YYYY-MM-DD" value={expiryText} onChangeText={setExpiryText} testID="expiry" />
+                <DateField label="Expiry date" value={expiryText} onChange={setExpiryText} testID="expiry" />
               )}
               <QtyField
                 label="Received now"

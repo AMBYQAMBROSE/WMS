@@ -404,6 +404,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/labels/stock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Print Stock Labels
+         * @description Stock labels for a posted receipt: item, batch, expiry and quantity in one QR code that the PDA reads
+         */
+        post: operations["print_stock_labels_api_v1_labels_stock_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/labels/locations": {
         parameters: {
             query?: never;
@@ -3428,7 +3448,7 @@ export interface components {
              * Purpose
              * @enum {string}
              */
-            purpose: "ITEM" | "LOCATION";
+            purpose: "ITEM" | "LOCATION" | "STOCK";
             /**
              * Media
              * @enum {string}
@@ -3507,7 +3527,7 @@ export interface components {
              * Purpose
              * @enum {string}
              */
-            purpose: "ITEM" | "LOCATION";
+            purpose: "ITEM" | "LOCATION" | "STOCK";
             /**
              * Media
              * @enum {string}
@@ -3582,7 +3602,7 @@ export interface components {
              * Purpose
              * @enum {string}
              */
-            purpose: "ITEM" | "LOCATION";
+            purpose: "ITEM" | "LOCATION" | "STOCK";
             /**
              * Media
              * @enum {string}
@@ -3664,7 +3684,7 @@ export interface components {
              * Purpose
              * @enum {string}
              */
-            purpose: "ITEM" | "LOCATION";
+            purpose: "ITEM" | "LOCATION" | "STOCK";
             /**
              * Media
              * @enum {string}
@@ -3758,7 +3778,7 @@ export interface components {
              * Purpose
              * @enum {string}
              */
-            purpose: "ITEM" | "LOCATION";
+            purpose: "ITEM" | "LOCATION" | "STOCK";
             /**
              * Media
              * @enum {string}
@@ -4740,6 +4760,32 @@ export interface components {
             qty_on_hand: number;
             /** Qty Allocated */
             qty_allocated: number;
+        };
+        /**
+         * StockLabelRequest
+         * @description Stock labels for the lines of a posted receipt: one label per line, or with qty_per_label one per carton or
+         *     pallet of that size (the last one holds the rest)
+         */
+        StockLabelRequest: {
+            /**
+             * Grn Id
+             * Format: uuid
+             */
+            grn_id: string;
+            /** Qty Per Label */
+            qty_per_label?: number | string | null;
+            /**
+             * Copies
+             * @default 1
+             */
+            copies: number;
+            /** Profile Id */
+            profile_id?: string | null;
+            /**
+             * Skip
+             * @default 0
+             */
+            skip: number;
         };
         /** StockLedgerRead */
         StockLedgerRead: {
@@ -5905,7 +5951,7 @@ export interface operations {
     list_label_profiles_api_v1_label_profiles_get: {
         parameters: {
             query?: {
-                purpose?: ("ITEM" | "LOCATION") | null;
+                purpose?: ("ITEM" | "LOCATION" | "STOCK") | null;
             };
             header?: never;
             path?: never;
@@ -6117,6 +6163,39 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ItemLabelRequest"];
+            };
+        };
+        responses: {
+            /** @description PDF to print */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    print_stock_labels_api_v1_labels_stock_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StockLabelRequest"];
             };
         };
         responses: {

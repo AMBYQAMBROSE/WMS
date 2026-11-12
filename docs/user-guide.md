@@ -22,7 +22,9 @@ For warehouse operators, warehouse supervisors and system administrators. Everyo
 
 - **Server URL**: entered at first sign-in (your administrator gives it to you, e.g. `http://192.168.1.10`) and remembered afterwards.
 - **Master data**: items, locations and so on are downloaded after sign-in and used to recognize barcodes. The home screen shows when it was last updated; tap "Update master data" when items change.
-- **Scanning**: the scanner sends Enter after each scan and the cursor always stays in the scan field, so there is no need to tap the screen.
+- **Scanning**: the scanner sends Enter after each scan and the cursor always stays in the scan field, so there is no need to tap the screen. New devices must be set up first: see [scanner-setup.md](scanner-setup.md).
+- **GS1 carton codes and stock labels**: wherever an item is scanned, a supplier's GS1 carton code or one of our stock labels also gives the batch, expiry and quantity. Batch and expiry are filled in, the quantity is offered, and a carton of the wrong batch is refused when picking or loading.
+- **Dates**: expiry dates are typed as digits only (20271231); the dashes appear by themselves.
 - **Offline**: keep working when the signal is poor. Records go to the "Submit queue" and are submitted automatically once the signal returns, without duplicates (you can also tap "Sync now" in the queue). The home screen shows how many are pending; **make sure the queue is empty before the end of your shift**.
 - **Shared PDAs**: records you made offline are only submitted while **you** are signed in, so they are recorded as your work. If you sign out with records still waiting, sign in on that PDA again later to send them. The queue shows other people's waiting records separately.
 - **Failed records**: if the server refuses a record (e.g. the location was locked meanwhile), the queue shows what it contained and why. Fix the cause and tap **Retry**; delete it only if you redid the work another way.
@@ -36,6 +38,10 @@ For warehouse operators, warehouse supervisors and system administrators. Everyo
 **Web**: Inbound → Purchase orders → open the order → Receive → enter received quantities (batch/expiry items need batch no. and expiry date) → Create → Post.
 
 **PDA**: Receive → ① scan the PO number → ② scan the receiving location (receiving dock) → ③ scan the item barcode → enter the quantity (for batch items, scan/enter batch no. and expiry date) → OK.
+
+**GS1 cartons**: scanning a carton's GS1 code fills in batch, expiry and quantity; check them and tap OK.
+
+**Stock labels**: after posting a receipt, "Print stock labels" on the receipt page prints a label per line, or per carton or pallet ("Quantity per carton or pallet", e.g. 24). The label's QR code holds item, batch, expiry and quantity; stick it on the goods so that putting away, picking, counting and loading need nothing typed. The layout is set up under System → Labels & printing → Stock labels.
 
 Note: over-receipt is not allowed by default. After a partial receipt the PO shows "Partially received"; receive the rest next time.
 

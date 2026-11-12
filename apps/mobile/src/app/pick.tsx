@@ -114,6 +114,9 @@ export default function PickScreen() {
     if (!match || match.item.id !== current.item.id) {
       return setNotice({ kind: "error", text: `Wrong item: pick ${current.item.sku_code} ${current.item.name}` });
     }
+    if (match.lot?.batchNo && current.batch_no && match.lot.batchNo !== current.batch_no) {
+      return setNotice({ kind: "error", text: `Wrong batch: pick batch ${current.batch_no}, this is ${match.lot.batchNo}` });
+    }
     setNotice(null);
     haptic("tick");
     setQtyText(fmtQty(current.qty_planned));

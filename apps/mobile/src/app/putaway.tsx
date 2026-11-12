@@ -42,6 +42,8 @@ export default function PutawayScreen() {
   const [bin, setBin] = useState<MobileLocation | null>(null);
   const [step, setStep] = useState<Step>("item");
   const [qtyText, setQtyText] = useState("");
+  // Quantity printed on the scanned carton or stock label, offered as the quantity put away
+  const [lotQty, setLotQty] = useState<number | null>(null);
   const [notice, setNotice] = useNotice();
   const [showLines, setShowLines] = useState(false);
   const [busy, setBusy] = useState(true);
@@ -119,8 +121,14 @@ export default function PutawayScreen() {
   const scanItem = (code: string) => {
     const match = findItem(code);
     if (!match) return setNotice({ kind: "error", text: `Unknown barcode ${code}` });
-    // The line on show first, then the first open line of that item
-    const line = (current?.item.id === match.item.id ? current : null) ?? open.find((l) => l.item.id === match.item.id);
+    // The line on show first, then the first open line of that item (of the batch the code says, if it says one)
+    const lot = match.lot;
+    const sameLot = (l: { batch_no: string | null; expiry_date: string | null }) =>
+      (!lot?.batchNo || l.batch_no === lot.batchNo) && (!lot?.expiryDate || l.expiry_date === lot.expiryDate);
+    const line =
+      (current?.item.id === match.item.id && sameLot(current) ? current : null) ??
+      open.find((l) => l.item.id === match.item.id && sameLot(l));
+    setLotQty(lot?.qty ?? null);
     if (!line) return setNotice({ kind: "error", text: `${match.item.sku_code} is not on this sheet, or already put away` });
     setLineId(line.id);
     setNotice(null);
@@ -142,7 +150,7 @@ export default function PutawayScreen() {
         : null,
       { silent: true },
     );
-    setQtyText(fmtQty(left(current)));
+    setQtyText(fmtQty(lotQty ? Math.min(lotQty, left(current)) : left(current)));
     setStep("qty");
   };
 

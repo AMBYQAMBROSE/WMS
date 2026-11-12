@@ -487,7 +487,8 @@ export interface paths {
         /** Update Reason Code */
         put: operations["update_reason_code_api_v1_reason_codes__reason_id__put"];
         post?: never;
-        delete?: never;
+        /** Delete Reason Code */
+        delete: operations["delete_reason_code_api_v1_reason_codes__reason_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -6547,6 +6548,35 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ReasonCodeRead"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_reason_code_api_v1_reason_codes__reason_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reason_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

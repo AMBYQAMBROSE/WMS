@@ -11,6 +11,7 @@ import MasterSearch, { MASTER_LIST_LIMIT } from "@/components/MasterSearch";
 import { useColumnPrefs } from "@/components/ListTools";
 import { FormSection, STICKY_HEADER, YesNo } from "@/components/ui";
 import CreateModal from "@/components/CreateModal";
+import { useMasterActionsColumn } from "@/components/MasterRowActions";
 import { UomSelect, useUoms } from "@/components/selects";
 import { PrintLabelsButton, PrintLabelsModal } from "@/components/labels";
 
@@ -20,6 +21,7 @@ export default function ItemsPage() {
   const can = useCan();
   const [keyword, setKeyword] = useState("");
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<Item | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [printing, setPrinting] = useState(false);
   const { data: uoms } = useUoms();
@@ -39,6 +41,18 @@ export default function ItemsPage() {
     { title: "Expiry managed", dataIndex: "is_expiry_managed", render: yesNo },
     { title: "Active", dataIndex: "is_active", render: yesNo },
   ]);
+  const actions = useMasterActionsColumn<Item>({
+    permission: "item",
+    path: "/items",
+    queryKey: "items",
+    describe: (it) => `item ${it.sku_code}`,
+    onEdit: setEditing,
+  });
+  const tableColumns = actions ? [...columns, actions] : columns;
+  const closeForm = () => {
+    setCreating(false);
+    setEditing(null);
+  };
 
   return (
     <Space orientation="vertical" style={{ width: "100%" }}>
@@ -65,7 +79,7 @@ export default function ItemsPage() {
         scroll={{ x: "max-content" }}
         pagination={{ pageSize: 50, showSizeChanger: true, showTotal: (t) => `${t.toLocaleString()} records` }}
         dataSource={data}
-        columns={columns}
+        columns={tableColumns}
         // Kept across searches, so items found by several searches can be printed together
         rowSelection={{ selectedRowKeys: selected, onChange: (keys) => setSelected(keys as string[]), preserveSelectedRowKeys: true }}
       />
@@ -79,19 +93,20 @@ export default function ItemsPage() {
         onClose={() => setPrinting(false)}
       />
       <CreateModal
-        open={creating}
-        title="New item"
+        open={creating || editing !== null}
+        title={editing ? `Edit item: ${editing.sku_code}` : "New item"}
         path="/items"
         queryKey="items"
-        initialValues={{ is_batch_managed: false, is_expiry_managed: false }}
-        onClose={() => setCreating(false)}
+        record={editing}
+        initialValues={editing ?? { is_batch_managed: false, is_expiry_managed: false }}
+        onClose={closeForm}
       >
         {() => (
           <>
             <Row gutter={12}>
               <Col xs={24} sm={10}>
-                <Form.Item name="sku_code" label="SKU" rules={[{ required: true }]}>
-                  <Input />
+                <Form.Item name="sku_code" label="SKU" rules={[{ required: true }]} extra={editing ? "Cannot be changed" : undefined}>
+                  <Input disabled={!!editing} />
                 </Form.Item>
               </Col>
               <Col xs={24} sm={14}>
@@ -101,7 +116,7 @@ export default function ItemsPage() {
               </Col>
               <Col xs={24} sm={10}>
                 <Form.Item name="base_uom_id" label="Base unit" rules={[{ required: true }]}>
-                  <UomSelect />
+                  <UomSelect disabled={!!editing} />
                 </Form.Item>
               </Col>
               <Col xs={24} sm={14}>
@@ -115,17 +130,29 @@ export default function ItemsPage() {
                 </Form.Item>
               </Col>
             </Row>
-            <FormSection title="Tracking" description="Batch and expiry tracking cannot be added later without stock adjustments.">
+            <FormSection
+              title="Tracking"
+              description={
+                editing
+                  ? "Batch and expiry tracking are fixed once the item exists, because existing stock was recorded with or without them."
+                  : "Batch and expiry tracking cannot be added later without stock adjustments."
+              }
+            >
               <Form.Item name="is_batch_managed" valuePropName="checked" style={{ marginBottom: 8 }}>
-                <Checkbox>Batch managed</Checkbox>
+                <Checkbox disabled={!!editing}>Batch managed</Checkbox>
               </Form.Item>
               <Form.Item name="is_expiry_managed" valuePropName="checked">
-                <Checkbox>Expiry managed</Checkbox>
+                <Checkbox disabled={!!editing}>Expiry managed</Checkbox>
               </Form.Item>
               <Form.Item name="shelf_life_days" label="Shelf life (days)">
                 <InputNumber min={1} style={{ width: "100%" }} />
               </Form.Item>
             </FormSection>
+            {editing && (
+              <Form.Item name="is_active" valuePropName="checked">
+                <Checkbox>Active</Checkbox>
+              </Form.Item>
+            )}
           </>
         )}
       </CreateModal>

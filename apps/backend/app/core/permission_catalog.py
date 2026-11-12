@@ -37,6 +37,7 @@ PERMISSIONS: list[tuple[str, str, str]] = [
     ("reason_code.read", "master_data", "View reason codes"),
     ("reason_code.create", "master_data", "Create reason codes"),
     ("reason_code.update", "master_data", "Edit reason codes"),
+    ("reason_code.delete", "master_data", "Delete reason codes (refused while open documents use them)"),
     ("adjustment.read", "inventory", "View stock adjustments"),
     ("adjustment.create", "inventory", "Create stock adjustments"),
     ("adjustment.post", "inventory", "Post (approve) stock adjustments"),

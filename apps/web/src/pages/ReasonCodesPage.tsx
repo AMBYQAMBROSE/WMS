@@ -2,12 +2,13 @@ import { useState } from "react";
 
 import { useQuery } from "@tanstack/react-query";
 import { PlusOutlined } from "@ant-design/icons";
-import { Button, Form, Input, Segmented, Space, Table } from "antd";
+import { Button, Checkbox, Form, Input, Segmented, Space, Table } from "antd";
 
 import { apiClient } from "@/api/client";
 import { useCan } from "@/api/me";
 import type { ReasonCode } from "@/api/types";
 import CreateModal from "@/components/CreateModal";
+import { useMasterActionsColumn } from "@/components/MasterRowActions";
 import { Toolbar, YesNo } from "@/components/ui";
 
 const CATEGORIES = { ADJUST: "Adjustment reasons", RETURN: "Return reasons" };
@@ -15,12 +16,24 @@ const CATEGORIES = { ADJUST: "Adjustment reasons", RETURN: "Return reasons" };
 export default function ReasonCodesPage() {
   const can = useCan();
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<ReasonCode | null>(null);
   const [category, setCategory] = useState<keyof typeof CATEGORIES>("ADJUST");
   const label = CATEGORIES[category];
   const { data, isLoading } = useQuery({
     queryKey: ["reason-codes", category],
     queryFn: async () => (await apiClient.get<ReasonCode[]>("/reason-codes", { params: { category } })).data,
   });
+  const actions = useMasterActionsColumn<ReasonCode>({
+    permission: "reason_code",
+    path: "/reason-codes",
+    queryKey: "reason-codes",
+    describe: (r) => `reason code ${r.code}`,
+    onEdit: setEditing,
+  });
+  const closeForm = () => {
+    setCreating(false);
+    setEditing(null);
+  };
 
   return (
     <Space orientation="vertical" style={{ width: "100%" }}>
@@ -49,16 +62,18 @@ export default function ReasonCodesPage() {
           { title: "Name", dataIndex: "name" },
           { title: "ERP transaction code", dataIndex: "external_code", render: (v: string | null) => (v ? <span className="wms-code">{v}</span> : <span className="wms-empty-value">—</span>) },
           { title: "Active", dataIndex: "is_active", render: (v: boolean) => <YesNo value={v} /> },
+          ...(actions ? [actions] : []),
         ]}
       />
       <CreateModal
         key={category}
-        open={creating}
-        title={`New ${label.toLowerCase().replace(/s$/, "")}`}
+        open={creating || editing !== null}
+        title={editing ? `Edit reason code: ${editing.code}` : `New ${label.toLowerCase().replace(/s$/, "")}`}
         path="/reason-codes"
         queryKey="reason-codes"
-        initialValues={{ category }}
-        onClose={() => setCreating(false)}
+        record={editing}
+        initialValues={editing ?? { category, is_active: true }}
+        onClose={closeForm}
       >
         {() => (
           <>
@@ -74,6 +89,11 @@ export default function ReasonCodesPage() {
             <Form.Item name="external_code" label="ERP transaction code (when integrating with an ERP)">
               <Input maxLength={50} />
             </Form.Item>
+            {editing && (
+              <Form.Item name="is_active" valuePropName="checked">
+                <Checkbox>Active</Checkbox>
+              </Form.Item>
+            )}
           </>
         )}
       </CreateModal>

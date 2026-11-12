@@ -8,6 +8,7 @@ from app.api.routing import TransactionalRoute
 from app.models.reason_code import ReasonCode
 from app.repositories.base import BaseRepository, check_version
 from app.schemas.document import ReasonCodeIn, ReasonCodeRead
+from app.services.master_guard import check_reason_deletable
 
 router = APIRouter(route_class=TransactionalRoute, prefix="/reason-codes", tags=["reason-codes"])
 
@@ -53,3 +54,17 @@ def update_reason_code(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reason code not found")
     check_version(reason, data.row_version, f"Reason code {reason.code}")
     return repo.update(reason, {**data.model_dump(exclude={"row_version"}), "updated_by": user.id})
+
+
+@router.delete("/{reason_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_reason_code(
+    reason_id: uuid.UUID,
+    db: Session = Depends(get_db_session),
+    user: CurrentUser = Depends(require_permission("reason_code.delete")),
+) -> None:
+    repo = BaseRepository(db, ReasonCode)
+    reason = repo.get(user.tenant_id, reason_id)
+    if reason is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reason code not found")
+    check_reason_deletable(db, user.tenant_id, reason.id, reason.code)
+    repo.soft_delete(reason)

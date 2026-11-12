@@ -7,6 +7,7 @@ from app.core.gs1 import parse as parse_gs1
 from app.models.item import Item, ItemBarcode
 from app.repositories.base import BaseRepository, check_version
 from app.schemas.item import ItemCreate, ItemUpdate
+from app.services.master_guard import check_item_deletable
 
 
 class ItemService:
@@ -62,4 +63,5 @@ class ItemService:
         return self.repo.update(item, fields)
 
     def delete(self, item: Item) -> None:
+        check_item_deletable(self.repo.db, item.tenant_id, item.id, item.sku_code)
         self.repo.soft_delete(item)

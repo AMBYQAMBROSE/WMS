@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.models.business_partner import BusinessPartner
 from app.repositories.base import BaseRepository, check_version
 from app.schemas.business_partner import BusinessPartnerCreate, BusinessPartnerUpdate
+from app.services.master_guard import check_partner_deletable
 
 
 class BusinessPartnerService:
@@ -62,4 +63,5 @@ class BusinessPartnerService:
         return self.repo.update(partner, fields)
 
     def delete(self, partner: BusinessPartner) -> None:
+        check_partner_deletable(self.repo.db, partner.tenant_id, partner.id, partner.code)
         self.repo.soft_delete(partner)

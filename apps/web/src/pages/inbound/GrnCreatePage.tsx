@@ -149,9 +149,15 @@ export default function GrnCreatePage() {
                     {
                       title: "Received now",
                       render: (_, f) => (
-                        <Form.Item name={[f.name, "qty"]} noStyle rules={[{ required: true }]}>
-                          <InputNumber min={0} aria-label={`Received quantity, line ${f.name + 1}`} />
-                        </Form.Item>
+                        <>
+                          {/* Register po_line_id so onFinish includes it: antd only returns fields bound to a Form.Item */}
+                          <Form.Item name={[f.name, "po_line_id"]} hidden noStyle>
+                            <Input />
+                          </Form.Item>
+                          <Form.Item name={[f.name, "qty"]} noStyle rules={[{ required: true }]}>
+                            <InputNumber min={0} aria-label={`Received quantity, line ${f.name + 1}`} />
+                          </Form.Item>
+                        </>
                       ),
                     },
                     {

@@ -136,6 +136,8 @@ class ImportKind:
     permissions: tuple[str, ...]
     columns: list[Column]
     notes: list[str] = field(default_factory=list)
+    # Extra example rows for the template, keyed by column (when one row of column examples is not enough)
+    examples: list[dict] = field(default_factory=list)
 
 
 def _order_columns(partner: str, partner_example: str, date_header: str) -> list[Column]:
@@ -186,7 +188,17 @@ KINDS: dict[str, ImportKind] = {
             Column("is_locked", "Locked", boolean, False, "Yes/No, default No", "No"),
             Column("is_active", "Active", boolean, False, "Yes/No, default Yes", "Yes"),
         ],
-        ["The parent of an existing location cannot be changed by import (it would change the paths below it); change it in the UI"],
+        [
+            "A parent must already exist or be another row in this file (rows can be in any order); "
+            "on a new system, include the zone/rack rows as well as the bins",
+            "The parent of an existing location cannot be changed by import (it would change the paths below it); change it in the UI",
+        ],
+        # Parent first, so the example works on an empty system
+        [
+            {"code": "A01", "name": "Zone A row 01", "location_type": "Zone", "parent_code": None,
+             "is_pickable": "No", "is_locked": "No", "is_active": "Yes"},
+            {},
+        ],
     ),
     "partners": ImportKind(
         "partners", "Business partners", ("business_partner.create", "business_partner.update"),
@@ -430,7 +442,8 @@ class ImportService:
         for n, r in rows:
             parent = (r["parent_code"] or "").upper()
             if parent and parent not in existing and parent not in in_file:
-                result.error(n, "Parent location code", f"Parent location {r['parent_code']} does not exist")
+                result.error(n, "Parent location code",
+                             f"Parent location {r['parent_code']} does not exist; create it first or add a row for it in this file")
                 continue
             if parent == r["code"].upper():
                 result.error(n, "Parent location code", "Cannot be its own parent")
@@ -655,7 +668,10 @@ def template(kind_key: str) -> bytes:
     ws = wb.active
     ws.title = kind.name
     ws.append([c.header + ("*" if c.required else "") for c in kind.columns])
-    ws.append([c.example for c in kind.columns])
+    # An empty dict in examples means "the column examples"
+    for example in kind.examples or [{}]:
+        ws.append([example.get(c.key) if example else c.example for c in kind.columns])
+    example_rows = len(kind.examples or [{}])
     bold, fill = Font(bold=True), PatternFill("solid", fgColor="FFF2CC")
     for i, col in enumerate(kind.columns, start=1):
         cell = ws.cell(row=1, column=i)
@@ -674,7 +690,8 @@ def template(kind_key: str) -> bytes:
     for col in kind.columns:
         notes.append([col.header, "Yes" if col.required else "", col.help])
     notes.append([])
-    for line in ["Row 1 is the header, do not change it; row 2 is an example, delete it before importing.", "Click Validate first; when there are no errors click Import.", *kind.notes]:
+    sample = "row 2 is an example, delete it" if example_rows == 1 else f"rows 2-{example_rows + 1} are examples, delete them"
+    for line in [f"Row 1 is the header, do not change it; {sample} before importing.","Click Validate first; when there are no errors click Import.", *kind.notes]:
         notes.append([line])
     notes.column_dimensions["A"].width = 18
     notes.column_dimensions["C"].width = 70

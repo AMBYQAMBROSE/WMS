@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import { useLocalSearchParams, useNavigation, usePreventRemove } from "expo-router";
+import { useLocalSearchParams, useNavigation, usePreventRemove, useRouter } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 
 import PhotoCapture from "@/components/PhotoCapture";
@@ -8,11 +8,11 @@ import { DateField } from "@/components/DateField";
 import ScanInput from "@/components/ScanInput";
 import Screen, { ContextBar } from "@/components/Screen";
 import { Button, Card, Divider, EachScanToggle, Field, IconButton, Pill, ProgressBar, QtyField, Stat } from "@/components/ui";
-import { errorText } from "@/lib/api";
+import { errorText, request } from "@/lib/api";
 import { confirm, haptic, useNotice } from "@/lib/feedback";
-import { fetchPurchaseOrder, fmtQty, parseDate, parseQty } from "@/lib/inbound";
+import { fetchPurchaseOrder, fmtQty, lookupDocument, parseDate, parseQty } from "@/lib/inbound";
 import { removePhoto, type PhotoRef } from "@/lib/photos";
-import type { Document, DocumentLine, MobileLocation } from "@/lib/types";
+import type { Document, DocumentLine, DocumentSummary, MobileLocation } from "@/lib/types";
 import { useMasterData } from "@/stores/masterData";
 import { useQueue } from "@/stores/queue";
 import { useSettings } from "@/stores/settings";
@@ -29,11 +29,22 @@ interface Entry {
 const RECEIVABLE = ["CONFIRMED", "PARTIALLY_RECEIVED"];
 let nextKey = 1;
 
+/** The open putaway sheet the server made when this receipt was posted onto the dock (online only) */
+async function putawayFor(grnNo: string): Promise<DocumentSummary | null> {
+  const grn = (await lookupDocument(grnNo)).find((h) => h.doc_type === "GRN");
+  if (!grn) return null;
+  const sheets = await request<DocumentSummary[]>("GET", `/putaways?ref_document_id=${grn.id}&status=TO_PUT_AWAY`);
+  return sheets[0] ?? null;
+}
+
 export default function ReceiveScreen() {
   const s = useStyles(makeStyles);
   const navigation = useNavigation();
+  const router = useRouter();
   const findItem = useMasterData((st) => st.findItem);
   const findLocation = useMasterData((st) => st.findLocation);
+  const findAfterUpdate = useMasterData((st) => st.findAfterUpdate);
+  const locations = useMasterData((st) => st.indexes?.locations);
   const submitOp = useQueue((st) => st.submit);
   const eachScan = useSettings((st) => st.eachScanCountsOne);
 
@@ -48,6 +59,7 @@ export default function ReceiveScreen() {
   const [photos, setPhotos] = useState<PhotoRef[]>([]);
   const [busy, setBusy] = useState(false);
   const [cachedAt, setCachedAt] = useState<string | null>(null);
+  const [sheet, setSheet] = useState<DocumentSummary | null>(null);
 
   // Photos not handed to a submitted receipt are deleted when the screen goes away, so no files are orphaned
   const photosRef = useRef(photos);
@@ -100,7 +112,11 @@ export default function ReceiveScreen() {
         return;
       }
       setPo(data);
+      setSheet(null);
       setCachedAt(cached ?? null);
+      // Receipts go onto a dock (the server then makes the putaway sheet); with a single usable dock there is nothing to scan
+      const docks = [...(locations?.values() ?? [])].filter((l) => l.location_type === "DOCK" && !l.is_locked);
+      if (docks.length === 1) setLocation(docks[0]);
       if (cached) {
         setNotice({
           kind: "warning",
@@ -121,18 +137,24 @@ export default function ReceiveScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once on mount
   }, []);
 
-  const scanLocation = (code: string) => {
-    const loc = findLocation(code);
+  const scanLocation = async (code: string) => {
+    const loc = findLocation(code) ?? (await findAfterUpdate(() => findLocation(code)));
     if (!loc) return setNotice({ kind: "error", text: `Location ${code} not found (for new locations, update master data on the home screen first)` });
     if (loc.is_locked) return setNotice({ kind: "error", text: `Location ${loc.code} is locked` });
+    if (loc.location_type !== "DOCK") {
+      return setNotice({
+        kind: "error",
+        text: `${loc.code} is a ${loc.location_type.toLowerCase()}; receive onto a dock, then put the goods away from the putaway sheet`,
+      });
+    }
     setNotice(null);
     haptic("tick");
     setLocation(loc);
   };
 
-  const scanItem = (code: string) => {
+  const scanItem = async (code: string) => {
     if (!po) return;
-    const match = findItem(code);
+    const match = findItem(code) ?? (await findAfterUpdate(() => findItem(code)));
     if (!match) return setNotice({ kind: "error", text: `Unknown barcode ${code} (for new items, update master data on the home screen first)` });
     const lines = po.lines.filter((l) => l.item.id === match.item.id);
     if (!lines.length) return setNotice({ kind: "error", text: `${match.item.sku_code} ${match.item.name} is not on this purchase order` });
@@ -207,12 +229,22 @@ export default function ReceiveScreen() {
       setNotice({ kind: "error", text: `Rejected: ${outcome.error}` });
       return;
     }
-    setNotice(
-      outcome.status === "done"
-        ? { kind: "success", text: `Received, document no. ${outcome.docNo}` }
-        : { kind: "warning", text: `Saved on this device; it will be submitted when back online (${outcome.reason})` },
-    );
     reset(true);
+    if (outcome.status === "queued") {
+      setNotice({
+        kind: "warning",
+        text: `Saved on this device; it will be submitted when back online (${outcome.reason}). The putaway sheet is made once it is posted.`,
+      });
+      return;
+    }
+    setNotice({ kind: "success", text: `Received, document no. ${outcome.docNo}` });
+    try {
+      const made = await putawayFor(outcome.docNo);
+      setSheet(made);
+      if (made) setNotice({ kind: "success", text: `Received, document no. ${outcome.docNo}; putaway sheet ${made.doc_no} is ready` });
+    } catch {
+      // The receipt is in either way; the sheet is also listed under Put away
+    }
   };
 
   const step = !po ? 0 : !location ? 1 : 2;
@@ -236,6 +268,15 @@ export default function ReceiveScreen() {
         ) : undefined
       }
     >
+      {!po && sheet && (
+        <Button
+          title={`Put away now (${sheet.doc_no})`}
+          icon="tray-arrow-down"
+          onPress={() => router.replace({ pathname: "/putaway", params: { doc: sheet.doc_no } })}
+          testID="start-putaway"
+        />
+      )}
+
       {!po && (
         <ScanInput label="Scan purchase order no." icon="file-document-outline" onScan={(c) => void scanPo(c)} active={!busy} testID="scan-po" />
       )}

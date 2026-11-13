@@ -21,6 +21,7 @@ export default function StockScreen() {
   const params = useLocalSearchParams<{ code?: string }>();
   const findItem = useMasterData((st) => st.findItem);
   const findLocation = useMasterData((st) => st.findLocation);
+  const findAfterUpdate = useMasterData((st) => st.findAfterUpdate);
   const subjectFor = (code: string): Subject | null => {
     const location = findLocation(code);
     if (location) return { kind: "location", id: location.id, title: location.code, subtitle: location.name };
@@ -43,7 +44,7 @@ export default function StockScreen() {
     );
 
   const show = async (code: string) => {
-    const next = subjectFor(code);
+    const next = subjectFor(code) ?? (await findAfterUpdate(() => subjectFor(code)));
     if (!next) return setNotice({ kind: "error", text: `${code} is not a known bin or item` });
     setSubject(next);
     setRows(null);

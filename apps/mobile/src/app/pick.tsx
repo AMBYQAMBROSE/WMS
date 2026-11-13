@@ -26,6 +26,7 @@ export default function PickScreen() {
   const { c } = useTheme();
   const s = useStyles(makeStyles);
   const findItem = useMasterData((st) => st.findItem);
+  const findAfterUpdate = useMasterData((st) => st.findAfterUpdate);
   const submitOp = useQueue((st) => st.submit);
 
   const params = useLocalSearchParams<{ doc?: string }>();
@@ -108,9 +109,9 @@ export default function PickScreen() {
     setStep("item");
   };
 
-  const scanItem = (code: string) => {
+  const scanItem = async (code: string) => {
     if (!current) return;
-    const match = findItem(code);
+    const match = findItem(code) ?? (await findAfterUpdate(() => findItem(code)));
     if (!match || match.item.id !== current.item.id) {
       return setNotice({ kind: "error", text: `Wrong item: pick ${current.item.sku_code} ${current.item.name}` });
     }

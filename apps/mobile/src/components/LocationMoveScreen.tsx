@@ -26,6 +26,7 @@ export default function LocationMoveScreen() {
   const { c } = useTheme();
   const s = useStyles(makeStyles);
   const findLocation = useMasterData((st) => st.findLocation);
+  const findAfterUpdate = useMasterData((st) => st.findAfterUpdate);
   const submitOp = useQueue((st) => st.submit);
 
   const [from, setFrom] = useState<MobileLocation | null>(null);
@@ -44,7 +45,7 @@ export default function LocationMoveScreen() {
   };
 
   const scanFrom = async (code: string) => {
-    const loc = findLocation(code);
+    const loc = findLocation(code) ?? (await findAfterUpdate(() => findLocation(code)));
     if (!loc) return setNotice({ kind: "error", text: `Location ${code} not found (for new locations, update master data on the home screen first)` });
     if (loc.is_locked) return setNotice({ kind: "error", text: `Location ${loc.code} is locked` });
     setBusy(true);
@@ -74,7 +75,7 @@ export default function LocationMoveScreen() {
 
   const scanTo = async (code: string) => {
     if (!from) return;
-    const to = findLocation(code);
+    const to = findLocation(code) ?? (await findAfterUpdate(() => findLocation(code)));
     if (!to) return setNotice({ kind: "error", text: `Location ${code} not found` });
     if (!TARGET_TYPES.includes(to.location_type)) return setNotice({ kind: "error", text: `${to.code} is not a bin or dock location` });
     if (to.is_locked) return setNotice({ kind: "error", text: `Target location ${to.code} is locked` });

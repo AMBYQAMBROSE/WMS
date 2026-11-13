@@ -37,6 +37,7 @@ export default function ShipScreen() {
   const s = useStyles(makeStyles);
   const params = useLocalSearchParams<{ doc?: string }>();
   const findItem = useMasterData((st) => st.findItem);
+  const findAfterUpdate = useMasterData((st) => st.findAfterUpdate);
   const baseFactor = useMasterData((st) => st.baseFactor);
   const submitOp = useQueue((st) => st.submit);
 
@@ -104,9 +105,9 @@ export default function ShipScreen() {
   const done = ship ? ship.lines.reduce((sum, l) => sum + (checked[l.id] ?? 0), 0) : 0;
   const complete = !!ship && ship.lines.every((l) => left(l) <= 0);
 
-  const scanPiece = (code: string) => {
+  const scanPiece = async (code: string) => {
     if (!ship) return;
-    const match = findItem(code);
+    const match = findItem(code) ?? (await findAfterUpdate(() => findItem(code)));
     if (!match) return setNotice({ kind: "error", text: `Unknown barcode ${code}` });
     const lot = match.lot;
     const sameLot = (l: { batch_no: string | null; expiry_date: string | null }) =>

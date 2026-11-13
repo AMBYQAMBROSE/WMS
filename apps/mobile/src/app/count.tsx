@@ -34,6 +34,7 @@ export default function CountScreen() {
   const s = useStyles(makeStyles);
   const findItem = useMasterData((st) => st.findItem);
   const findLocation = useMasterData((st) => st.findLocation);
+  const findAfterUpdate = useMasterData((st) => st.findAfterUpdate);
   const submitOp = useQueue((st) => st.submit);
   const eachScan = useSettings((st) => st.eachScanCountsOne);
 
@@ -97,9 +98,9 @@ export default function CountScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- load once on mount
   }, []);
 
-  const scanLocation = (code: string) => {
+  const scanLocation = async (code: string) => {
     if (!count) return;
-    const loc = findLocation(code);
+    const loc = findLocation(code) ?? (await findAfterUpdate(() => findLocation(code)));
     const inCount = loc && count.count_locations.some((cl) => cl.location.id === loc.id);
     if (!loc || !inCount) return setNotice({ kind: "error", text: `Location ${code} is not part of cycle count ${count.doc_no}` });
     setNotice(null);
@@ -125,8 +126,8 @@ export default function CountScreen() {
   const scanCounting =
     eachScan && !!editing && (editing.fixed || !(editing.item.is_batch_managed || editing.item.is_expiry_managed));
 
-  const scanItem = (code: string) => {
-    const match = findItem(code);
+  const scanItem = async (code: string) => {
+    const match = findItem(code) ?? (await findAfterUpdate(() => findItem(code)));
     if (!match) return setNotice({ kind: "error", text: `Unknown barcode ${code} (for new items, update master data on the home screen first)` });
     const item = match.item;
     if (editing) {

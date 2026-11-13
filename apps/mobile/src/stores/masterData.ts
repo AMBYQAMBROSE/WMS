@@ -44,6 +44,12 @@ interface MasterDataState {
   hydrate: () => Promise<void>;
   findItem: (code: string) => ItemMatch | null;
   findLocation: (code: string) => MobileLocation | null;
+  /**
+   * For a scan the local master data does not know: it may have been added (imported, created) since the last download,
+   * so download again and look once more. Online only; offline, or when it was downloaded moments ago, it just looks
+   * again. Call it as `find(code) ?? (await findAfterUpdate(() => find(code)))`, so a known code is handled at once.
+   */
+  findAfterUpdate: <T>(find: () => T | null) => Promise<T | null>;
   /** How many base units one unit of uomId is for the item (a carton barcode counts its pack size); null if unknown */
   baseFactor: (item: MobileItem, uomId: string) => number | null;
 }
@@ -51,6 +57,10 @@ interface MasterDataState {
 const STORAGE_KEY = "wms.masterData.v2";
 // Older versions stored it whole in AsyncStorage; delete it after upgrading to free space
 const LEGACY_KEY = "wms.masterData";
+// Unknown scans download the master data at most this often (a mistyped code must not download it on every try)
+const MISS_REFRESH_MS = 15_000;
+let missRefresh: Promise<void> | null = null;
+let lastMissRefresh = 0;
 
 function decode(c: CompactMasterData): MasterData {
   const table = (t: CompactTable) =>
@@ -150,6 +160,19 @@ export const useMasterData = create<MasterDataState>()((set, get) => ({
     return null;
   },
   findLocation: (raw) => get().indexes?.locations.get(raw.trim().toUpperCase()) ?? null,
+  findAfterUpdate: async (find) => {
+    if (!missRefresh && Date.now() - lastMissRefresh >= MISS_REFRESH_MS) {
+      lastMissRefresh = Date.now();
+      missRefresh = get()
+        .refresh()
+        .catch(() => undefined) // offline or refused: the cached master data stays in use
+        .finally(() => {
+          missRefresh = null;
+        });
+    }
+    if (missRefresh) await missRefresh;
+    return find();
+  },
   baseFactor: (item, uomId) => {
     if (uomId === item.base_uom_id) return 1;
     const conversions = get().data?.conversions ?? [];

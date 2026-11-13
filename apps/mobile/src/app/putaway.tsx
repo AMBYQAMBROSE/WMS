@@ -32,6 +32,7 @@ export default function PutawayScreen() {
   const params = useLocalSearchParams<{ doc?: string }>();
   const findItem = useMasterData((st) => st.findItem);
   const findLocation = useMasterData((st) => st.findLocation);
+  const findAfterUpdate = useMasterData((st) => st.findAfterUpdate);
   const submitOp = useQueue((st) => st.submit);
 
   const [sheets, setSheets] = useState<DocumentSummary[] | null>(null);
@@ -118,8 +119,8 @@ export default function PutawayScreen() {
   const total = sheet ? sheet.lines.reduce((sum, l) => sum + l.qty_planned, 0) : 0;
   const done = total - open.reduce((sum, l) => sum + left(l), 0);
 
-  const scanItem = (code: string) => {
-    const match = findItem(code);
+  const scanItem = async (code: string) => {
+    const match = findItem(code) ?? (await findAfterUpdate(() => findItem(code)));
     if (!match) return setNotice({ kind: "error", text: `Unknown barcode ${code}` });
     // The line on show first, then the first open line of that item (of the batch the code says, if it says one)
     const lot = match.lot;
@@ -136,9 +137,9 @@ export default function PutawayScreen() {
     setStep("bin");
   };
 
-  const scanBin = (code: string) => {
+  const scanBin = async (code: string) => {
     if (!current) return;
-    const location = findLocation(code);
+    const location = findLocation(code) ?? (await findAfterUpdate(() => findLocation(code)));
     if (!location) return setNotice({ kind: "error", text: `Unknown location ${code}` });
     if (location.location_type !== "BIN") return setNotice({ kind: "error", text: `${location.code} is not a bin; put away into bins only` });
     if (location.is_locked) return setNotice({ kind: "error", text: `Bin ${location.code} is locked` });

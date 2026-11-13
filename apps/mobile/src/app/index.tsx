@@ -101,6 +101,12 @@ export default function HomeScreen() {
         setNotice(null);
         return router.push(target);
       }
+      // Not a document either: perhaps a bin or item added since the master data was downloaded
+      if (!hits.length && (await useMasterData.getState().findAfterUpdate(() => findLocation(code) ?? findItem(code)))) {
+        haptic("tick");
+        setNotice(null);
+        return router.push({ pathname: "/stock", params: { code } });
+      }
       haptic("error");
       setNotice({
         kind: "error",

@@ -33,15 +33,37 @@ def test_receive_on_the_pda(page: Page, pda_url, client, admin_headers, unique):
     pda_sign_in(page, pda_url)
     page.get_by_test_id("menu-receive").click()
     scan(page, "scan-po", po["doc_no"])
+    # Goods are received onto a dock, never straight into a bin: putting away is the putaway sheet's job
+    scan(page, "scan-location", f"BIN{unique}")
+    expect(page.get_by_text("receive onto a dock")).to_be_visible()
     scan(page, "scan-location", f"IN{unique}")
     scan(page, "scan-item", f"PD{unique}")
     page.get_by_test_id("qty").fill("3")
     page.get_by_test_id("confirm-entry").click()
     page.get_by_test_id("submit-receive").click()
 
-    expect(page.get_by_text("Received, document no.")).to_be_visible(timeout=15_000)
+    # The receipt comes with its putaway sheet, which can be started from here
+    expect(page.get_by_text("is ready")).to_be_visible(timeout=15_000)
     grns = api.get("/grns", keyword=po["doc_no"])
     assert [(g["status"]) for g in grns] == ["POSTED"]
+    sheets = api.get("/putaways", ref_document_id=grns[0]["id"])
+    assert [s["status"] for s in sheets] == ["TO_PUT_AWAY"]
+    page.get_by_test_id("start-putaway").click()
+    expect(page.get_by_text(sheets[0]["doc_no"]).first).to_be_visible(timeout=15_000)
+
+
+def test_location_added_after_sign_in_is_recognised(page: Page, pda_url, client, admin_headers, unique):
+    """A dock imported or created after the PDA downloaded its master data: scanning it downloads the master data again"""
+    api = Api(client, admin_headers)
+    po, wh = _confirmed_po(api, unique)
+
+    pda_sign_in(page, pda_url)
+    api.post("/locations", {"code": f"NEW{unique}", "name": "New dock", "location_type": "DOCK", "parent_id": wh.warehouse})
+    page.get_by_test_id("menu-receive").click()
+    scan(page, "scan-po", po["doc_no"])
+    scan(page, "scan-location", f"NEW{unique}")
+    expect(page.get_by_test_id("scan-item")).to_be_visible(timeout=30_000)
+    expect(page.get_by_text("not found")).to_have_count(0)
 
 
 def _prepare_receipt(page: Page, po: dict, unique: str, qty: str) -> None:

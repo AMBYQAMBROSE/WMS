@@ -41,6 +41,7 @@ export default function TransferScreen({ kind }: { kind: keyof typeof CONFIG }) 
   const navigation = useNavigation();
   const findItem = useMasterData((st) => st.findItem);
   const findLocation = useMasterData((st) => st.findLocation);
+  const findAfterUpdate = useMasterData((st) => st.findAfterUpdate);
   const submitOp = useQueue((st) => st.submit);
 
   const [from, setFrom] = useState<MobileLocation | null>(null);
@@ -86,8 +87,8 @@ export default function TransferScreen({ kind }: { kind: keyof typeof CONFIG }) 
     }
   };
 
-  const scanFrom = (code: string) => {
-    const loc = findLocation(code);
+  const scanFrom = async (code: string) => {
+    const loc = findLocation(code) ?? (await findAfterUpdate(() => findLocation(code)));
     if (!loc) return setNotice({ kind: "error", text: `Location ${code} not found (for new locations, update master data on the home screen first)` });
     if (loc.is_locked) return setNotice({ kind: "error", text: `Location ${loc.code} is locked` });
     void loadFrom(loc);
@@ -100,8 +101,8 @@ export default function TransferScreen({ kind }: { kind: keyof typeof CONFIG }) 
     setNotice(null);
   };
 
-  const scanItem = (code: string) => {
-    const match = findItem(code);
+  const scanItem = async (code: string) => {
+    const match = findItem(code) ?? (await findAfterUpdate(() => findItem(code)));
     if (!match) return setNotice({ kind: "error", text: `Unknown barcode ${code} (for new items, update master data on the home screen first)` });
     const rows = balances.filter((b) => b.item.id === match.item.id && available(b) > 0);
     if (!rows.length) {
@@ -123,14 +124,14 @@ export default function TransferScreen({ kind }: { kind: keyof typeof CONFIG }) 
     setNotice({ kind: "info", text: "This item has several batches; choose the batch on the goods" }, { silent: true });
   };
 
-  const scanTarget = (code: string) => {
+  const scanTarget = async (code: string) => {
     if (!editing || !from) return;
     const qty = parseQty(qtyText);
     if (qty === null) return setNotice({ kind: "error", text: "Quantity must be a number greater than 0 (up to 4 decimals)" });
     if (qty > available(editing)) {
       return setNotice({ kind: "error", text: `Exceeds the available quantity ${fmtQty(available(editing))}` });
     }
-    const to = findLocation(code);
+    const to = findLocation(code) ?? (await findAfterUpdate(() => findLocation(code)));
     if (!to) return setNotice({ kind: "error", text: `Location ${code} not found` });
     if (!(cfg.targetTypes as readonly string[]).includes(to.location_type)) {
       return setNotice({ kind: "error", text: `${to.code} is not a ${cfg.targetName}; the target must be a ${cfg.targetName}` });

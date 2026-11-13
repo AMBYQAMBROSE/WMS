@@ -571,6 +571,11 @@ button:focus-visible,
 .wms-row-link {
   cursor: pointer;
 }
+/* Rows to flag (e.g. stock with nothing available): tint the whole row, hover included */
+.ant-table-tbody > tr.wms-row-warning > td,
+.ant-table-tbody > tr.wms-row-warning:hover > td {
+  background: var(--wms-tone-amber-bg);
+}
 /* Loading a new page of rows: keep the old rows, dim them slightly, no spinner */
 .wms-refreshing .ant-table-tbody {
   opacity: 0.6;

@@ -81,6 +81,7 @@ export default function StockPage() {
                 sticky={STICKY_HEADER}
                 scroll={{ x: "max-content" }}
                 dataSource={balances.data}
+                rowClassName={(r) => (r.qty_on_hand - r.qty_allocated <= 0 ? "wms-row-warning" : "")}
                 pagination={{ pageSize: 50, showSizeChanger: true, showTotal: (t) => `${t.toLocaleString()} balances` }}
                 columns={[
                   { title: "SKU", render: (_, r) => <span className="wms-mono">{r.item.sku_code}</span> },

@@ -230,7 +230,15 @@ function QuickJump({ open, onClose, menu }: { open: boolean; onClose: () => void
     [menu, can],
   );
   const needle = q.trim().toLowerCase();
-  const results = needle ? entries.filter((e) => `${e.label} ${e.hint}`.toLowerCase().includes(needle)) : entries;
+  // A page whose name matches comes before one that only mentions the word in its description ("Items" must not
+  // open the shopping cart because it "browses items"); the stable sort keeps the menu order within each rank
+  const rank = (e: PaletteEntry) => {
+    const label = e.label.toLowerCase();
+    return label.startsWith(needle) ? 0 : label.includes(needle) ? 1 : 2;
+  };
+  const results = needle
+    ? entries.filter((e) => `${e.label} ${e.hint}`.toLowerCase().includes(needle)).sort((a, b) => rank(a) - rank(b))
+    : entries;
 
   useEffect(() => {
     if (open) {

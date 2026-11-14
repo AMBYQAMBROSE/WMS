@@ -35,17 +35,24 @@ export default function TransferForm({
   targetTypes,
   targetLabel,
   sourceGrn,
+  remaining,
 }: {
   path: "putaways" | "moves";
   docLabel: string;
   targetTypes: string[];
   targetLabel: string;
   sourceGrn?: Document;
+  /** Per receipt line id, the quantity no putaway covers yet; lines with nothing left are not offered */
+  remaining?: Record<string, number>;
 }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [form] = Form.useForm<FormValues>();
   const unsaved = useUnsavedChanges();
+
+  const left = (l: Document["lines"][number]) => remaining?.[l.id] ?? l.qty_actual;
+  const open = sourceGrn?.lines.filter((l) => left(l) > 0) ?? [];
+  const nothingLeft = !!sourceGrn && sourceGrn.status === "POSTED" && open.length === 0;
 
   // Fill the form once per source document, not on every refetch (live updates, window focus): that would wipe the user's edits
   const filledFrom = useRef<string>(undefined);
@@ -54,17 +61,19 @@ export default function TransferForm({
       filledFrom.current = sourceGrn.id;
       form.setFieldValue(
         "lines",
-        sourceGrn.lines.map((l) => ({
-          item_id: l.item.id,
-          uom_id: l.uom.id,
-          qty: l.qty_actual,
-          batch_no: l.batch_no ?? undefined,
-          expiry_date: l.expiry_date ? dayjs(l.expiry_date) : undefined,
-          from_location_id: sourceGrn.location?.id,
-        })),
+        open.length
+          ? open.map((l) => ({
+              item_id: l.item.id,
+              uom_id: l.uom.id,
+              qty: left(l),
+              batch_no: l.batch_no ?? undefined,
+              expiry_date: l.expiry_date ? dayjs(l.expiry_date) : undefined,
+              from_location_id: sourceGrn.location?.id,
+            }))
+          : [{}],
       );
     }
-  }, [sourceGrn, form]);
+  }, [sourceGrn, form]); // filled once per receipt: `open` is read at that moment only
 
   const save = useMutation({
     mutationFn: async (values: FormValues) => {
@@ -94,6 +103,15 @@ export default function TransferForm({
     <Card title={sourceGrn ? `Create ${docLabel.toLowerCase()} from goods receipt ${sourceGrn.doc_no}` : `New ${docLabel.toLowerCase()}`}>
       {sourceGrn && sourceGrn.status !== "POSTED" && (
         <Alert type="warning" style={{ marginBottom: 16 }} title="The goods receipt is not posted yet and cannot be put away" />
+      )}
+      {nothingLeft && (
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+          title="Everything on this goods receipt is already on a putaway"
+          description="Nothing is prefilled. To move stock that is still on the dock, enter the lines yourself."
+        />
       )}
       <Form
         form={form}
@@ -137,7 +155,7 @@ export default function TransferForm({
                     title: "Unit",
                     render: (_, f) => (
                       <Form.Item name={[f.name, "uom_id"]} noStyle rules={[{ required: true }]}>
-                        <UomSelect style={{ width: 100 }} />
+                        <UomSelect item={itemOf(f.name)} style={{ width: 120 }} />
                       </Form.Item>
                     ),
                   },

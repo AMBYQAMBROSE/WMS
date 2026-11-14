@@ -102,7 +102,7 @@ def test_k_pda_full_flow(flow, unique, pda_url):
     page.get_by_test_id("finish-pick").click()
     page.wait_for_timeout(3000)
     flow.equal(api.get(f"/picks/{pick['id']}")["status"], "POSTED", "pick list posted from the PDA")
-    flow.equal(stock(api, s.item_a).get((s.code("ST"), None)), (15.0, 0.0), "staging after PDA pick")
+    flow.equal(stock(api, s.item_a).get((s.code("ST"), None)), (15.0, 15.0), "staging after PDA pick (reserved until shipped)")
 
     flow.step("K-03  PDA count: BB counted 4 (book 5)")
     cc = api.post("/cycle-counts", {"location_ids": [s.bin2]})

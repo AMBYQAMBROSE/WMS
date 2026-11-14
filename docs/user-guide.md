@@ -61,6 +61,8 @@ Pick → scan the pick list number (or choose it from the list) → go to the bi
 - **Short pick**: if you find less than requested, confirm the actual quantity. The difference goes back to the order as "unallocated" and can be allocated again once stock is replenished.
 - **Skip**: if you cannot find something right away, use "Skip this line, pick later".
 - **Finish**: when everything is picked, tap "Finish picking (post)". This needs the pick-posting permission; without it, a supervisor posts the pick list on the web.
+- **Picked goods stay reserved**: goods in staging belong to their order until they ship; they cannot be moved, adjusted or allocated to another order.
+- **Picked goods that will not ship** (the customer cancelled, the wrong goods were picked): on the web, open the posted pick list and use "Return goods to stock". The goods go back from staging to the bins they came from, the pick list becomes "Returned to stock" and the order's quantities are unallocated again, so the order can be allocated anew, closed or cancelled. This works only until the goods ship; after that, record a customer return.
 
 ## 6. Shipping
 
@@ -129,6 +131,7 @@ The cart is kept on the server, so it is still there after logging in on another
 |---|---|
 | An item is not in the dropdown | Type a more complete code or name. If it still does not show, the item may be inactive or not imported |
 | "Insufficient stock" | In stock enquiry, check the location's "available" (on hand − allocated); stock allocated to orders cannot be touched |
+| An order cannot be cancelled or closed because goods are picked | Ship the goods in staging, or return them to stock on the posted pick list ("Return goods to stock"); then cancel or close |
 | "Location is being counted" | Receiving and shipping resume after the count is posted or cancelled |
 | The PDA does not react to scans | Make sure the cursor is in the scan field; tap "Update master data" on the home screen and retry; new items must be created in the system first |
 | The PDA submit queue never empties | Check the network; open the queue to see why records failed (e.g. insufficient stock), fix the cause, then retry or delete the record |

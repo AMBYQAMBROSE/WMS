@@ -116,7 +116,7 @@ export default function AdjustmentCreatePage() {
                     title: "Unit",
                     render: (_, f) => (
                       <Form.Item name={[f.name, "uom_id"]} noStyle rules={[{ required: true }]}>
-                        <UomSelect style={{ width: 100 }} />
+                        <UomSelect item={itemOf(f.name)} style={{ width: 120 }} />
                       </Form.Item>
                     ),
                   },

@@ -108,3 +108,28 @@ def test_receipt_straight_into_a_bin_needs_no_sheet(client, admin_headers, uniqu
     grn = api.post("/grns", {"po_id": po["id"], "location_id": wh.bin, "lines": [{"po_line_id": po["lines"][0]["id"], "qty": 2}]})
     api.post(f"/grns/{grn['id']}/post")
     assert api.get("/putaways", ref_document_id=grn["id"]) == []
+
+
+def test_putaway_remaining_of_a_receipt(client, admin_headers, unique):
+    api = Api(client, admin_headers)
+    wh = make_warehouse(api, unique)
+    item = make_item(api, wh, f"RM{unique}")
+    grn = receive(api, wh, item, 10)
+
+    def remaining() -> list[float]:
+        return [float(r["qty"]) for r in api.get(f"/grns/{grn['id']}/putaway-remaining")]
+
+    assert remaining() == [10], "an untouched putaway sheet covers nothing yet"
+    putaway = api.post("/putaways", {"ref_document_id": grn["id"], "lines": [{
+        "item_id": item, "uom_id": wh.ea, "qty": 4, "from_location_id": wh.dock_in, "to_location_id": wh.bin,
+    }]})
+    assert remaining() == [6], "a drafted putaway already covers its quantity"
+    api.post(f"/putaways/{putaway['id']}/post")
+    assert remaining() == [6]
+
+    rest = api.post("/putaways", {"ref_document_id": grn["id"], "lines": [{
+        "item_id": item, "uom_id": wh.ea, "qty": 6, "from_location_id": wh.dock_in, "to_location_id": wh.bin,
+    }]})
+    assert remaining() == [0]
+    api.post(f"/putaways/{rest['id']}/cancel")
+    assert remaining() == [6], "a cancelled putaway covers nothing"

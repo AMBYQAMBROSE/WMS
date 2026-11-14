@@ -16,7 +16,11 @@ class StockLedger(Base, TenantScopedMixin):
 
     __tablename__ = "stock_ledger"
     # Reports scan the ledger by time range (in/out trend, turnover, partner ledger)
-    __table_args__ = (Index("ix_stock_ledger_tenant_time", "tenant_id", "occurred_at"),)
+    __table_args__ = (
+        Index("ix_stock_ledger_tenant_time", "tenant_id", "occurred_at"),
+        # Deleting a location makes SQL Server check the ledger for references
+        Index("ix_stock_ledger_location", "location_id"),
+    )
 
     item_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("item.id"), index=True, nullable=False)
     location_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("location.id"), nullable=False)
@@ -51,7 +55,8 @@ class StockBalance(Base, TenantScopedMixin):
     batch_no: Mapped[str | None] = mapped_column(Unicode(50), nullable=True)
     expiry_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     qty_on_hand: Mapped[Decimal] = mapped_column(Numeric(18, 4), default=Decimal(0), nullable=False)
-    # Allocated to outbound orders but not yet picked; available = qty_on_hand - qty_allocated, and always qty_on_hand >= qty_allocated
+    # Reserved for outbound orders: allocated in a bin but not yet picked, or picked and waiting in staging to ship.
+    # available = qty_on_hand - qty_allocated, and always qty_on_hand >= qty_allocated
     qty_allocated: Mapped[Decimal] = mapped_column(
         Numeric(18, 4), default=Decimal(0), server_default="0", nullable=False
     )

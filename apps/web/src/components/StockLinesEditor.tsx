@@ -2,7 +2,7 @@ import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import { Button, DatePicker, Form, Input, InputNumber, Radio, Table } from "antd";
 import type { FormInstance } from "antd";
 
-import { ItemSelect, LocationSelect, UomSelect, useItemRecords } from "@/components/selects";
+import { BaseQtyHint, ItemSelect, LocationSelect, UomSelect, useItemRecords } from "@/components/selects";
 
 /**
  * Line editor shared by customer returns, returns to supplier and repacks: item, unit, quantity, location, batch/expiry (shown per item settings).
@@ -23,7 +23,7 @@ export default function StockLinesEditor({
   withDisposition?: boolean;
   testId?: string;
 }) {
-  const lines = Form.useWatch(name, form) as { item_id?: string; disposition?: string }[] | undefined;
+  const lines = Form.useWatch(name, form) as { item_id?: string; uom_id?: string; qty?: number; disposition?: string }[] | undefined;
   const items = useItemRecords(lines?.map((l) => l?.item_id) ?? []);
   const itemOf = (i: number) => items?.find((it) => it.id === lines?.[i]?.item_id);
   const restock = (i: number) => !withDisposition || lines?.[i]?.disposition !== "SCRAP";
@@ -55,16 +55,19 @@ export default function StockLinesEditor({
                 title: "Unit",
                 render: (_, f) => (
                   <Form.Item name={[f.name, "uom_id"]} noStyle rules={[{ required: true }]}>
-                    <UomSelect style={{ width: 90 }} />
+                    <UomSelect item={itemOf(f.name)} style={{ width: 120 }} />
                   </Form.Item>
                 ),
               },
               {
                 title: "Quantity",
                 render: (_, f) => (
-                  <Form.Item name={[f.name, "qty"]} noStyle rules={[{ required: true }]}>
-                    <InputNumber min={0.0001} aria-label={`Quantity, line ${f.name + 1}`} />
-                  </Form.Item>
+                  <>
+                    <Form.Item name={[f.name, "qty"]} noStyle rules={[{ required: true }]}>
+                      <InputNumber min={0.0001} aria-label={`Quantity, line ${f.name + 1}`} />
+                    </Form.Item>
+                    <BaseQtyHint item={itemOf(f.name)} uomId={lines?.[f.name]?.uom_id} qty={lines?.[f.name]?.qty} />
+                  </>
                 ),
               },
               ...(withDisposition

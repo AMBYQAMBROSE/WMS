@@ -39,8 +39,13 @@ def test_b_purchase_orders(flow, unique):
         {"item_id": s.item_a, "uom_id": s.ea, "qty": -5}]}, "", "PO line negative qty")
 
     flow.step("B-03/B-04/B-05  Inactive supplier, customer as supplier, inactive item")
-    flow.choose("Supplier", f"SX{unique}")
-    flow.check(not page.get_by_label("Supplier").input_value(), "inactive supplier selectable in the dropdown")
+    # The inactive supplier must not be offered: type its code and expect no matching option
+    page.get_by_label("Supplier", exact=True).click()
+    page.keyboard.type(f"SX{unique}", delay=20)
+    page.wait_for_timeout(2500)
+    offered = page.locator(".ant-select-dropdown:not(.ant-select-dropdown-hidden) .ant-select-item-option", has_text=f"SX{unique}")
+    flow.check(offered.count() == 0, "inactive supplier selectable in the dropdown")
+    page.keyboard.press("Escape")
     flow.rejected("POST", "/purchase-orders", {"partner_id": s.inactive_supplier, "lines": [
         {"item_id": s.item_a, "uom_id": s.ea, "qty": 1}]}, "inactive", "PO for inactive supplier")
     flow.rejected("POST", "/purchase-orders", {"partner_id": s.customer, "lines": [
@@ -53,10 +58,14 @@ def test_b_purchase_orders(flow, unique):
     flow.choose("Supplier", s.supplier_code)
     row = page.locator(".wms-lines-row").nth(0)
     flow.choose_in(row, s.b)
-    flow.choose(row.locator(".ant-select").nth(1), "CTN")
-    page.get_by_label("Quantity, line 1").fill("2")
-    page.get_by_role("button", name="Save", exact=True).click()
-    flow.expect_rejected("no conversion", "PO line B in CTN")
+    # The unit dropdown offers only the item's base unit and packing units, so CTN is not there for B
+    row.locator(".ant-select").nth(1).click()
+    offered = page.locator(".ant-select-dropdown:not(.ant-select-dropdown-hidden) .ant-select-item-option")
+    expect(offered.first).to_be_visible()
+    flow.check(not any("CTN" in t for t in offered.all_inner_texts()), "CTN not offered for B, which has no carton packing")
+    page.keyboard.press("Escape")
+    flow.rejected("POST", "/purchase-orders", {"partner_id": s.supplier, "lines": [
+        {"item_id": s.item_b, "uom_id": s.ctn, "qty": 2}]}, "no conversion", "PO line B in CTN")
 
     flow.step("B-01/B-07  Create a draft and edit it (change qty, add a line)")
     flow.goto("/purchase-orders/new")
@@ -246,9 +255,11 @@ def test_c_receiving(flow, unique):
     flow.rejected("POST", f"/documents/{g['id']}/attachments",
                   {"content_base64": base64.b64encode(b"%PDF-1.4 fake").decode()}, "photo", "PDF as photo")
     flow.rejected("POST", f"/documents/{g['id']}/attachments", {"content_base64": "!!!"}, "", "invalid base64")
+    # Photos are behind the "Photos (n)" button next to the document number
     flow.goto(f"/grns/{g['id']}")
-    page.wait_for_timeout(800)
-    flow.visible(page.locator("img"), "photo visible on the GRN page")
+    flow.attempt("open the receipt's photos", page.get_by_role("button", name="Photos (1)").click, timeout=10_000)
+    flow.visible(page.get_by_test_id("document-photos").locator("img"), "photo visible in the receipt's photos")
+    page.keyboard.press("Escape")
 
     flow.step("C-21  Receiving into a location that is being counted")
     received(api, s, s.item_a, 1, location=s.bin2)

@@ -6,7 +6,7 @@ export default function PicksPage() {
   return (
     <DocumentListPage
       path="picks"
-      statuses={["OPEN", "POSTED", "CANCELLED"]}
+      statuses={["OPEN", "POSTED", "REVERSED", "CANCELLED"]}
       batchActions={[{ key: "cancel", label: "Cancel", perm: "pick.cancel", statuses: ["OPEN"], danger: true }]}
       columns={[
         {

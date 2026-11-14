@@ -54,7 +54,7 @@ export function useMasterActionsColumn<T extends { id: string }>({
         {canDelete && (
           <Popconfirm
             title={`Delete ${describe(record)}?`}
-            description="It disappears from lists and pickers. Refused while stock or open documents still use it."
+            description="It is permanently removed. Refused if stock, documents or users still refer to it; set it inactive instead."
             okText="Delete"
             okButtonProps={{ danger: true }}
             onConfirm={() => remove.mutateAsync(record).catch(() => undefined)}

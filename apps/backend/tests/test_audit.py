@@ -28,7 +28,10 @@ def test_item_create_update_delete(client, admin_headers, unique):
     assert changes(created)["base_uom_id"] == (None, "EA")
     # Only what changed, without bookkeeping columns
     assert changes(updated) == {"name": (f"Item AU{unique}", "Renamed")}
-    assert changes(deleted) == {"is_deleted": (False, True)}
+    # The row is removed from the database; the log keeps its last values
+    deleted_changes = changes(deleted)
+    assert deleted_changes["sku_code"] == (f"AU{unique}", None)
+    assert deleted_changes["name"] == ("Renamed", None)
 
 
 def test_document_history_includes_lines_and_status(client, admin_headers, unique):

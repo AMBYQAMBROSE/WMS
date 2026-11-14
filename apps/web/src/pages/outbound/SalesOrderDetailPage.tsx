@@ -131,6 +131,8 @@ export default function SalesOrderDetailPage() {
   const run = (name: string) => () => action.mutate(name);
   const fulfilling = FULFILLING.includes(so.status);
   const hasUnallocated = so.lines.some((l) => l.unallocated > 0);
+  // Something is picked and waiting in staging: only then is there anything to ship
+  const hasStaged = so.lines.some((l) => l.picked > l.shipped);
 
   return (
     <Space orientation="vertical" style={{ width: "100%" }}>
@@ -149,7 +151,7 @@ export default function SalesOrderDetailPage() {
                 Allocate stock
               </Button>
             )}
-            {SHIPPABLE.includes(so.status) && can("shipment.create") && (
+            {SHIPPABLE.includes(so.status) && hasStaged && can("shipment.create") && (
               <Button onClick={() => setShipping(true)}>Ship</Button>
             )}
             {feature("RETURNS") && RETURNABLE.includes(so.status) && can("return_in.create") && (

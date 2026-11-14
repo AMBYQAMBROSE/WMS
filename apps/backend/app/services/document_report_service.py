@@ -44,7 +44,7 @@ TITLES = {
 
 STATUS = {
     "DRAFT": "Draft", "CONFIRMED": "Confirmed", "PARTIALLY_RECEIVED": "Partially received", "RECEIVED": "Received",
-    "CLOSED": "Closed", "CANCELLED": "Cancelled", "POSTED": "Posted", "COUNTING": "Counting", "IN_PROGRESS": "In progress",
+    "CLOSED": "Closed", "CANCELLED": "Cancelled", "POSTED": "Posted", "REVERSED": "Returned to stock", "COUNTING": "Counting", "IN_PROGRESS": "In progress",
     "PARTIALLY_SHIPPED": "Partially shipped", "SHIPPED": "Shipped", "OPEN": "To pick", "TO_PUT_AWAY": "To put away",
 }
 

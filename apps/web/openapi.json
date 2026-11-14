@@ -2900,6 +2900,59 @@
         }
       }
     },
+    "/api/v1/grns/{grn_id}/putaway-remaining": {
+      "get": {
+        "tags": [
+          "grns"
+        ],
+        "summary": "Putaway Remaining",
+        "description": "Per receipt line, the quantity no putaway covers yet (in the line's unit): what a putaway planned by hand starts from",
+        "operationId": "putaway_remaining_api_v1_grns__grn_id__putaway_remaining_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "grn_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Grn Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PutawayRemaining"
+                  },
+                  "title": "Response Putaway Remaining Api V1 Grns  Grn Id  Putaway Remaining Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/grns/{grn_id}/post": {
       "post": {
         "tags": [
@@ -5817,6 +5870,55 @@
         ],
         "summary": "Post Pick",
         "operationId": "post_pick_api_v1_picks__pick_id__post_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pick_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Pick Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/picks/{pick_id}/reverse": {
+      "post": {
+        "tags": [
+          "picks"
+        ],
+        "summary": "Reverse Pick",
+        "description": "Return the goods of a posted pick from staging to their bins (status REVERSED), while they have not shipped.\nThe order's quantities become unallocated again.",
+        "operationId": "reverse_pick_api_v1_picks__pick_id__reverse_post",
         "security": [
           {
             "OAuth2PasswordBearer": []
@@ -8987,6 +9089,18 @@
             }
           },
           {
+            "name": "unavailable",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Only balances with nothing available (on hand minus allocated <= 0)",
+              "default": false,
+              "title": "Unavailable"
+            },
+            "description": "Only balances with nothing available (on hand minus allocated <= 0)"
+          },
+          {
             "name": "skip",
             "in": "query",
             "required": false,
@@ -9081,6 +9195,23 @@
                 }
               ],
               "title": "Location Id"
+            }
+          },
+          {
+            "name": "movement_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 30
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Movement Type"
             }
           },
           {
@@ -12690,6 +12821,18 @@
             ],
             "title": "Qty"
           },
+          "uom_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uom Id"
+          },
           "batch_no": {
             "anyOf": [
               {
@@ -13167,6 +13310,14 @@
             "type": "boolean",
             "title": "Is Active",
             "default": true
+          },
+          "packings": {
+            "items": {
+              "$ref": "#/components/schemas/ItemPackingIn"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Packings"
           }
         },
         "type": "object",
@@ -13221,6 +13372,51 @@
           "item_ids"
         ],
         "title": "ItemLabelRequest"
+      },
+      "ItemPackingIn": {
+        "properties": {
+          "uom_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Uom Id"
+          },
+          "factor": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Factor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "uom_id",
+          "factor"
+        ],
+        "title": "ItemPackingIn",
+        "description": "A packing unit of the item: one `uom_id` (carton, pallet...) holds `factor` base units"
+      },
+      "ItemPackingRead": {
+        "properties": {
+          "uom": {
+            "$ref": "#/components/schemas/UomBrief"
+          },
+          "factor": {
+            "type": "number",
+            "title": "Factor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "uom",
+          "factor"
+        ],
+        "title": "ItemPackingRead"
       },
       "ItemRead": {
         "properties": {
@@ -13298,6 +13494,14 @@
             "type": "string",
             "format": "uuid",
             "title": "Id"
+          },
+          "packings": {
+            "items": {
+              "$ref": "#/components/schemas/ItemPackingRead"
+            },
+            "type": "array",
+            "title": "Packings",
+            "default": []
           }
         },
         "type": "object",
@@ -13411,6 +13615,21 @@
               }
             ],
             "title": "Is Active"
+          },
+          "packings": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ItemPackingIn"
+                },
+                "type": "array",
+                "maxItems": 10
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Packings"
           }
         },
         "type": "object",
@@ -15697,6 +15916,26 @@
         ],
         "title": "PutawayPutIn",
         "description": "Quantity of a putaway sheet line placed in a bin (in the line's unit). Resend with the same Idempotency-Key\nwhen the response was lost: a plain resend would put the quantity twice"
+      },
+      "PutawayRemaining": {
+        "properties": {
+          "line_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Line Id"
+          },
+          "qty": {
+            "type": "number",
+            "title": "Qty"
+          }
+        },
+        "type": "object",
+        "required": [
+          "line_id",
+          "qty"
+        ],
+        "title": "PutawayRemaining",
+        "description": "Quantity of a goods receipt line not yet covered by a putaway, in the line's unit"
       },
       "ReasonBrief": {
         "properties": {

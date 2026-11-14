@@ -8,6 +8,7 @@ Checks are "soft": a failed check is recorded as an issue and the flow continues
 problem it meets; the test fails at the end with the whole list (also appended to test-recordings/ISSUES.md).
 """
 
+import contextlib
 import datetime
 import json
 import os
@@ -64,9 +65,11 @@ class Flow:
     # ---- narration -------------------------------------------------------------------------------------------
     def step(self, text: str) -> None:
         self.current = text
-        self.page.evaluate(
-            "t => { sessionStorage.setItem('__flow_step', t); window.__flowShow && window.__flowShow(); }", text
-        )
+        # No page open yet (about:blank has no sessionStorage): only the caption is lost
+        with contextlib.suppress(Exception):
+            self.page.evaluate(
+                "t => { sessionStorage.setItem('__flow_step', t); window.__flowShow && window.__flowShow(); }", text
+            )
 
     # ---- soft checks -----------------------------------------------------------------------------------------
     def check(self, condition: bool, what: str) -> bool:
@@ -262,7 +265,7 @@ def db_session():
 
 
 def add_conversion(item_id: str, from_uom_id: str, to_uom_id: str, factor: float) -> None:
-    """No API exists for unit conversions (see ISSUES.md), so tests write them directly"""
+    """Write a unit conversion straight to the database (the API sets packing units with the item: packings on POST/PUT /items)"""
     import uuid
 
     from app.models.item import Item, ItemUomConversion

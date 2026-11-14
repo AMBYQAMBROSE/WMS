@@ -232,6 +232,35 @@ class PutawayService(TransferService):
         self.db.flush()
         return sheet
 
+    def remaining_for_receipt(self, grn_id: uuid.UUID) -> dict[uuid.UUID, Decimal]:
+        """What is left to put away of each line of a posted receipt, in the line's unit: its received quantity less
+        what putaways made for this receipt already cover (posted or drafted by hand, or done on its putaway sheet).
+        Used to prefill a putaway planned by hand, so a receipt that is already put away offers nothing again."""
+        grn = get_document(self.db, self.tenant_id, DOC_GRN, grn_id)
+
+        def base(line: DocumentLine, qty: Decimal) -> Decimal:
+            return to_base_qty(self.db, self.tenant_id, line.item, line.uom_id, qty)
+
+        covered: dict[tuple, Decimal] = {}
+        for summary in self.list(ref_document_id=grn.id, limit=200):
+            if summary.status == TRANSFER_CANCELLED:
+                continue
+            for line in summary.lines:
+                # An open sheet line is replaced by the putaway planned by hand; only what is done on it counts
+                if summary.status == PUTAWAY_OPEN and line.confirmed_at is None:
+                    continue
+                key = (line.item_id, line.batch_no, line.expiry_date)
+                covered[key] = covered.get(key, Decimal(0)) + base(line, line.qty_actual)
+
+        remaining: dict[uuid.UUID, Decimal] = {}
+        for line in grn.lines:
+            key = (line.item_id, line.batch_no, line.expiry_date)
+            received = base(line, line.qty_actual)
+            done = min(covered.get(key, Decimal(0)), received)
+            covered[key] = covered.get(key, Decimal(0)) - done
+            remaining[line.id] = ((received - done) / base(line, Decimal(1))).quantize(Decimal("0.0001"))
+        return remaining
+
     def _suggest_bin(self, item_id: uuid.UUID, batch_no: str | None) -> uuid.UUID | None:
         """The usable bin already holding most of this item (a bin with the same batch first), so an item's stock stays
         together. None when the item is in no bin yet: the operator chooses a bin and scans it."""

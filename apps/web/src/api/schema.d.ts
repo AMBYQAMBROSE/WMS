@@ -616,6 +616,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/grns/{grn_id}/putaway-remaining": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Putaway Remaining
+         * @description Per receipt line, the quantity no putaway covers yet (in the line's unit): what a putaway planned by hand starts from
+         */
+        get: operations["putaway_remaining_api_v1_grns__grn_id__putaway_remaining_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/grns/{grn_id}/post": {
         parameters: {
             query?: never;
@@ -1270,6 +1290,27 @@ export interface paths {
         put?: never;
         /** Post Pick */
         post: operations["post_pick_api_v1_picks__pick_id__post_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/picks/{pick_id}/reverse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reverse Pick
+         * @description Return the goods of a posted pick from staging to their bins (status REVERSED), while they have not shipped.
+         *     The order's quantities become unallocated again.
+         */
+        post: operations["reverse_pick_api_v1_picks__pick_id__reverse_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3245,6 +3286,8 @@ export interface components {
             po_line_id: string;
             /** Qty */
             qty: number | string;
+            /** Uom Id */
+            uom_id?: string | null;
             /** Batch No */
             batch_no?: string | null;
             /** Expiry Date */
@@ -3413,6 +3456,8 @@ export interface components {
              * @default true
              */
             is_active: boolean;
+            /** Packings */
+            packings?: components["schemas"]["ItemPackingIn"][];
         };
         /** ItemLabelRequest */
         ItemLabelRequest: {
@@ -3430,6 +3475,25 @@ export interface components {
              * @default 0
              */
             skip: number;
+        };
+        /**
+         * ItemPackingIn
+         * @description A packing unit of the item: one `uom_id` (carton, pallet...) holds `factor` base units
+         */
+        ItemPackingIn: {
+            /**
+             * Uom Id
+             * Format: uuid
+             */
+            uom_id: string;
+            /** Factor */
+            factor: number | string;
+        };
+        /** ItemPackingRead */
+        ItemPackingRead: {
+            uom: components["schemas"]["UomBrief"];
+            /** Factor */
+            factor: number;
         };
         /** ItemRead */
         ItemRead: {
@@ -3475,6 +3539,11 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /**
+             * Packings
+             * @default []
+             */
+            packings: components["schemas"]["ItemPackingRead"][];
         };
         /** ItemUpdate */
         ItemUpdate: {
@@ -3499,6 +3568,8 @@ export interface components {
             shelf_life_days?: number | null;
             /** Is Active */
             is_active?: boolean | null;
+            /** Packings */
+            packings?: components["schemas"]["ItemPackingIn"][] | null;
         };
         /** JobDetail */
         JobDetail: {
@@ -4432,6 +4503,19 @@ export interface components {
             to_location_id: string;
             /** Qty */
             qty: number | string;
+        };
+        /**
+         * PutawayRemaining
+         * @description Quantity of a goods receipt line not yet covered by a putaway, in the line's unit
+         */
+        PutawayRemaining: {
+            /**
+             * Line Id
+             * Format: uuid
+             */
+            line_id: string;
+            /** Qty */
+            qty: number;
         };
         /** ReasonBrief */
         ReasonBrief: {
@@ -6926,6 +7010,37 @@ export interface operations {
             };
         };
     };
+    putaway_remaining_api_v1_grns__grn_id__putaway_remaining_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                grn_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PutawayRemaining"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     post_grn_api_v1_grns__grn_id__post_post: {
         parameters: {
             query?: never;
@@ -8381,6 +8496,37 @@ export interface operations {
         };
     };
     post_pick_api_v1_picks__pick_id__post_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pick_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PickRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reverse_pick_api_v1_picks__pick_id__reverse_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -9989,6 +10135,8 @@ export interface operations {
             query?: {
                 item_id?: string | null;
                 location_id?: string | null;
+                /** @description Only balances with nothing available (on hand minus allocated <= 0) */
+                unavailable?: boolean;
                 skip?: number;
                 limit?: number;
             };
@@ -10023,6 +10171,7 @@ export interface operations {
             query?: {
                 item_id?: string | null;
                 location_id?: string | null;
+                movement_type?: string | null;
                 skip?: number;
                 limit?: number;
             };

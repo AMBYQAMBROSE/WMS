@@ -1,108 +1,115 @@
-"""Checks before deleting master data: a record still in use must not disappear from under stock or open documents.
+"""Deleting master data: rows are removed from the database, not flagged.
 
-Deletes are soft (is_deleted), so history keeps its references; these checks only stop records that are still live from vanishing
-from pickers and lists while stock or unfinished work points at them."""
+A record that documents, stock or users still point at cannot be removed without breaking those records, so the delete is refused
+with a message naming what uses it; the way out is to set the record inactive. The checks below give readable messages for the usual
+cases, and the database's foreign keys remain the final word (anything they catch is refused the same way). The audit log keeps the
+deleted record's last values."""
 
 import uuid
 
-from sqlalchemy import false, func, or_, select
+from sqlalchemy import delete, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.errors import ConflictError
-from app.models.document import DocumentHeader, DocumentLine
+from app.models.business_partner import BusinessPartner
+from app.models.document import DocumentHeader, DocumentLine, DocumentLocation
+from app.models.item import Item, ItemBarcode, ItemUomConversion
 from app.models.location import Location
+from app.models.reason_code import ReasonCode
 from app.models.returnable_asset import ReturnableAssetTxn
-from app.models.stock import StockBalance
+from app.models.stock import StockBalance, StockLedger
 from app.models.user import User
 
-# Document statuses after which a document no longer needs its master data to stay live
-DONE_STATUSES = ("POSTED", "CANCELLED", "CLOSED", "SHIPPED", "RECEIVED")
+INACTIVE_HINT = "Set it inactive instead to hide it from new work."
 
 
-def _open_doc_numbers(db: Session, tenant_id: uuid.UUID, *conditions, via_lines: bool = False) -> list[str]:
-    stmt = select(DocumentHeader.doc_no).where(
-        DocumentHeader.tenant_id == tenant_id,
-        DocumentHeader.is_deleted == false(),
-        DocumentHeader.status.not_in(DONE_STATUSES),
-    )
+def _doc_numbers(db: Session, tenant_id: uuid.UUID, *conditions, via_lines: bool = False) -> list[str]:
+    """Documents of any status (finished ones included: they keep pointing at the record)"""
+    stmt = select(DocumentHeader.doc_no).where(DocumentHeader.tenant_id == tenant_id)
     if via_lines:
-        stmt = stmt.join(DocumentLine, DocumentLine.document_id == DocumentHeader.id).where(DocumentLine.is_deleted == false())
+        stmt = stmt.join(DocumentLine, DocumentLine.document_id == DocumentHeader.id)
     return list(db.scalars(stmt.where(*conditions).distinct().order_by(DocumentHeader.doc_no).limit(5)))
 
 
-def _refuse_if_open_docs(what: str, docs: list[str]) -> None:
+def _refuse_if_docs(what: str, docs: list[str]) -> None:
     if docs:
         more = " and others" if len(docs) == 5 else ""
-        raise ConflictError(
-            f"{what} is used by open documents ({', '.join(docs)}{more}). Finish or cancel them first, or set it inactive instead."
-        )
+        raise ConflictError(f"{what} is used by documents ({', '.join(docs)}{more}), so it cannot be deleted. {INACTIVE_HINT}")
 
 
-def _has_stock(db: Session, tenant_id: uuid.UUID, *conditions) -> bool:
-    return (
-        db.scalar(
-            select(StockBalance.id)
-            .where(
-                StockBalance.tenant_id == tenant_id,
-                or_(StockBalance.qty_on_hand != 0, StockBalance.qty_allocated != 0),
-                *conditions,
-            )
-            .limit(1)
-        )
-        is not None
-    )
+def _exists(db: Session, stmt) -> bool:
+    return db.scalar(stmt.limit(1)) is not None
 
 
-def check_item_deletable(db: Session, tenant_id: uuid.UUID, item_id: uuid.UUID, label: str) -> None:
-    what = f"Item {label}"
-    if _has_stock(db, tenant_id, StockBalance.item_id == item_id):
-        raise ConflictError(f"{what} still has stock. Adjust or ship it to zero first, or set the item inactive instead.")
-    _refuse_if_open_docs(what, _open_doc_numbers(db, tenant_id, DocumentLine.item_id == item_id, via_lines=True))
+def _remove(db: Session, obj, what: str) -> None:
+    """Delete the row inside a savepoint, so a reference the checks missed fails cleanly instead of breaking the request"""
+    try:
+        with db.begin_nested():
+            db.delete(obj)
+            db.flush()
+    except IntegrityError:
+        raise ConflictError(f"{what} is still referenced by other records, so it cannot be deleted. {INACTIVE_HINT}") from None
 
 
-def check_location_deletable(db: Session, tenant_id: uuid.UUID, location_id: uuid.UUID, label: str) -> None:
-    what = f"Location {label}"
+def delete_item(db: Session, item: Item) -> None:
+    what = f"Item {item.sku_code}"
+    t = item.tenant_id
+    if _exists(db, select(StockBalance.id).where(StockBalance.tenant_id == t, StockBalance.item_id == item.id)) or _exists(
+        db, select(StockLedger.id).where(StockLedger.tenant_id == t, StockLedger.item_id == item.id)
+    ):
+        raise ConflictError(f"{what} has stock or stock history, so it cannot be deleted. {INACTIVE_HINT}")
+    _refuse_if_docs(what, _doc_numbers(db, t, DocumentLine.item_id == item.id, via_lines=True))
+    # Barcodes and unit conversions belong to the item and go with it
+    db.execute(delete(ItemBarcode).where(ItemBarcode.tenant_id == t, ItemBarcode.item_id == item.id))
+    db.execute(delete(ItemUomConversion).where(ItemUomConversion.tenant_id == t, ItemUomConversion.item_id == item.id))
+    _remove(db, item, what)
+
+
+def delete_location(db: Session, location: Location) -> None:
+    what = f"Location {location.code}"
+    t = location.tenant_id
     child = db.scalar(
         select(Location.code)
-        .where(Location.tenant_id == tenant_id, Location.parent_id == location_id, Location.is_deleted == false())
+        .where(Location.tenant_id == t, Location.parent_id == location.id)
+        .order_by(Location.is_deleted, Location.code)
         .limit(1)
     )
     if child is not None:
-        raise ConflictError(f"{what} still contains other locations (such as {child}). Delete or empty those first.")
-    if _has_stock(db, tenant_id, StockBalance.location_id == location_id):
-        raise ConflictError(f"{what} still holds stock. Move it elsewhere first, or lock the location instead.")
-    _refuse_if_open_docs(what, _open_doc_numbers(db, tenant_id, DocumentHeader.location_id == location_id))
-    _refuse_if_open_docs(
+        raise ConflictError(f"{what} still contains other locations (such as {child}). Delete those first.")
+    if _exists(db, select(StockBalance.id).where(StockBalance.tenant_id == t, StockBalance.location_id == location.id)) or _exists(
+        db, select(StockLedger.id).where(StockLedger.tenant_id == t, StockLedger.location_id == location.id)
+    ):
+        raise ConflictError(f"{what} has stock or stock history, so it cannot be deleted. Lock it or set it inactive instead.")
+    _refuse_if_docs(what, _doc_numbers(db, t, DocumentHeader.location_id == location.id))
+    _refuse_if_docs(
         what,
-        _open_doc_numbers(
-            db,
-            tenant_id,
-            or_(DocumentLine.from_location_id == location_id, DocumentLine.to_location_id == location_id),
-            via_lines=True,
+        _doc_numbers(
+            db, t, or_(DocumentLine.from_location_id == location.id, DocumentLine.to_location_id == location.id), via_lines=True
         ),
     )
-
-
-def check_partner_deletable(db: Session, tenant_id: uuid.UUID, partner_id: uuid.UUID, label: str) -> None:
-    what = f"Business partner {label}"
-    _refuse_if_open_docs(what, _open_doc_numbers(db, tenant_id, DocumentHeader.partner_id == partner_id))
-    user = db.scalar(
-        select(User.username)
-        .where(User.tenant_id == tenant_id, User.partner_id == partner_id, User.is_deleted == false())
-        .limit(1)
+    _refuse_if_docs(
+        what,
+        _doc_numbers(
+            db, t, DocumentHeader.id.in_(select(DocumentLocation.document_id).where(DocumentLocation.location_id == location.id))
+        ),
     )
+    _remove(db, location, what)
+
+
+def delete_partner(db: Session, partner: BusinessPartner) -> None:
+    what = f"Business partner {partner.code}"
+    t = partner.tenant_id
+    _refuse_if_docs(what, _doc_numbers(db, t, DocumentHeader.partner_id == partner.id))
+    user = db.scalar(select(User.username).where(User.tenant_id == t, User.partner_id == partner.id).limit(1))
     if user is not None:
         raise ConflictError(f"{what} is linked to user account {user}. Remove the link in Users first.")
-    outstanding = db.scalar(
-        select(func.coalesce(func.sum(ReturnableAssetTxn.qty_change), 0)).where(
-            ReturnableAssetTxn.tenant_id == tenant_id,
-            ReturnableAssetTxn.partner_id == partner_id,
-            ReturnableAssetTxn.is_deleted == false(),
-        )
-    )
-    if outstanding:
-        raise ConflictError(f"{what} still has returnable assets (pallets, crates…) outstanding. Record their return first.")
+    if _exists(db, select(ReturnableAssetTxn.id).where(ReturnableAssetTxn.tenant_id == t, ReturnableAssetTxn.partner_id == partner.id)):
+        raise ConflictError(f"{what} has returnable asset history (pallets, crates…), so it cannot be deleted. {INACTIVE_HINT}")
+    _remove(db, partner, what)
 
 
-def check_reason_deletable(db: Session, tenant_id: uuid.UUID, reason_id: uuid.UUID, label: str) -> None:
-    _refuse_if_open_docs(f"Reason code {label}", _open_doc_numbers(db, tenant_id, DocumentHeader.reason_code_id == reason_id))
+def delete_reason(db: Session, reason: ReasonCode) -> None:
+    what = f"Reason code {reason.code}"
+    _refuse_if_docs(what, _doc_numbers(db, reason.tenant_id, DocumentHeader.reason_code_id == reason.id))
+    _remove(db, reason, what)

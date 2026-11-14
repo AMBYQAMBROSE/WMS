@@ -31,6 +31,14 @@ class Item(Base, TenantScopedMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     base_uom: Mapped[Uom] = relationship(foreign_keys=[base_uom_id], lazy="joined")
+    # Packing units (carton, pallet...): conversions to the base unit, smallest first. Read-only here; ItemService keeps them
+    packings: Mapped[list["ItemUomConversion"]] = relationship(
+        primaryjoin="and_(Item.id == ItemUomConversion.item_id, ItemUomConversion.to_uom_id == Item.base_uom_id,"
+        " ItemUomConversion.is_deleted == False)",
+        order_by="ItemUomConversion.factor",
+        viewonly=True,
+        lazy="selectin",
+    )
 
 
 class ItemBarcode(Base, TenantScopedMixin):
@@ -53,3 +61,5 @@ class ItemUomConversion(Base, TenantScopedMixin):
     from_uom_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("uom.id"), nullable=False)
     to_uom_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("uom.id"), nullable=False)
     factor: Mapped[Decimal] = mapped_column(Numeric(18, 6), nullable=False)
+
+    from_uom: Mapped[Uom] = relationship(foreign_keys=[from_uom_id], lazy="joined")

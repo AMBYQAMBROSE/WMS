@@ -31,6 +31,9 @@ MOVE_COUNT_GAIN = "COUNT_GAIN"
 MOVE_COUNT_LOSS = "COUNT_LOSS"
 MOVE_PICK_OUT = "PICK_OUT"
 MOVE_PICK_IN = "PICK_IN"
+# Picked goods returned from staging to their bin (a posted pick reversed)
+MOVE_UNPICK_OUT = "UNPICK_OUT"
+MOVE_UNPICK_IN = "UNPICK_IN"
 MOVE_SHIP_OUT = "SHIP_OUT"
 MOVE_RETURN_IN = "RETURN_IN"
 MOVE_RETURN_OUT = "RETURN_OUT"
@@ -255,12 +258,16 @@ def list_balances(
     location_id: uuid.UUID | None = None,
     skip: int = 0,
     limit: int = 50,
+    *,
+    unavailable: bool = False,
 ) -> list[StockBalance]:
     stmt = select(StockBalance).where(StockBalance.tenant_id == tenant_id)
     if item_id:
         stmt = stmt.where(StockBalance.item_id == item_id)
     if location_id:
         stmt = stmt.where(StockBalance.location_id == location_id)
+    if unavailable:
+        stmt = stmt.where(StockBalance.qty_on_hand - StockBalance.qty_allocated <= 0)
     stmt = stmt.order_by(StockBalance.created_at, StockBalance.id).offset(skip).limit(limit)
     return list(db.scalars(stmt).unique())
 
@@ -272,6 +279,8 @@ def list_ledger(
     location_id: uuid.UUID | None = None,
     skip: int = 0,
     limit: int = 50,
+    *,
+    movement_type: str | None = None,
 ) -> list[StockLedger]:
     stmt = (
         select(StockLedger)
@@ -282,5 +291,7 @@ def list_ledger(
         stmt = stmt.where(StockLedger.item_id == item_id)
     if location_id:
         stmt = stmt.where(StockLedger.location_id == location_id)
+    if movement_type:
+        stmt = stmt.where(StockLedger.movement_type == movement_type)
     stmt = stmt.order_by(StockLedger.occurred_at.desc(), StockLedger.id).offset(skip).limit(limit)
     return list(db.scalars(stmt).unique())

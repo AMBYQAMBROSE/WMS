@@ -190,6 +190,8 @@ class ShipmentService:
                     qty_change=-line.qty_actual,
                     movement_type=MOVE_SHIP_OUT,
                     ref_line_id=line.id,
+                    # Staged goods were reserved for the order when they were picked
+                    allocated_change=-line.qty_actual,
                 )
             )
             shipped[line.ref_line_id] += line.qty_actual

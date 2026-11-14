@@ -111,6 +111,8 @@ class PurchaseOrderIn(ExpectedVersion):
 class GrnLineIn(BaseModel):
     po_line_id: uuid.UUID
     qty: PositiveQty
+    # Unit the quantity is counted in (e.g. pallets against an order in eaches); defaults to the order line's unit
+    uom_id: uuid.UUID | None = None
     batch_no: str | None = Field(default=None, max_length=50)
     expiry_date: date | None = None
 
@@ -142,6 +144,13 @@ class PutawayPutIn(BaseModel):
 
     to_location_id: uuid.UUID
     qty: PositiveQty
+
+
+class PutawayRemaining(BaseModel):
+    """Quantity of a goods receipt line not yet covered by a putaway, in the line's unit"""
+
+    line_id: uuid.UUID
+    qty: Qty
 
 
 class TransferIn(BaseModel):

@@ -48,7 +48,11 @@ export default function PickDetailPage() {
     onSuccess: (updated, name) => {
       onPick(updated);
       queryClient.invalidateQueries({ queryKey: ["stock"] });
-      message.success(name === "confirm-all" ? "All lines confirmed at the allocated quantity" : "Done");
+      message.success(
+        name === "confirm-all" ? "All lines confirmed at the allocated quantity"
+          : name === "reverse" ? "Goods returned to their bins; the order quantities are unallocated again"
+            : "Done",
+      );
     },
     onError: showError,
   });
@@ -70,7 +74,15 @@ export default function PickDetailPage() {
       <Card
         title={<DocTitle label={"Pick list"} no={pick.doc_no} status={pick.status} historyOf={pick.id} />}
         extra={
-          open && (
+          pick.status === "POSTED" ? (
+            <ActionButton
+              perm="pick.cancel"
+              label="Return goods to stock"
+              confirm="Use this when the picked goods will not ship (order cancelled, wrong goods picked). They go back from staging to the bins they came from and the order quantities become unallocated again. Only possible before the goods ship. Continue?"
+              onConfirm={() => action.mutate("reverse")}
+              loading={action.isPending}
+            />
+          ) : open && (
             <Space wrap>
               {canConfirm && pending > 0 && (
                 <Button loading={action.isPending} onClick={() => action.mutate("confirm-all")}>

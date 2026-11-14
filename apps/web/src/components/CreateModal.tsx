@@ -16,6 +16,8 @@ interface Props<T> {
   /** When set, the modal edits this record (PUT {path}/{id} with its row_version) instead of creating one */
   record?: { id: string; row_version: number } | null;
   onClose: () => void;
+  /** Reshape the form values before they are sent */
+  transform?: (values: T) => object;
   children: (form: FormInstance<T>) => ReactNode;
 }
 
@@ -31,15 +33,18 @@ export default function CreateModal<T extends object>({
   initialValues,
   record,
   onClose,
+  transform,
   children,
 }: Props<T>) {
   const [form] = Form.useForm<T>();
   const queryClient = useQueryClient();
   const mutation = useMutation({
-    mutationFn: (values: T): Promise<unknown> =>
-      record
+    mutationFn: (formValues: T): Promise<unknown> => {
+      const values = transform ? transform(formValues) : formValues;
+      return record
         ? apiClient.put(`${path}/${record.id}`, { ...clearedAsNull(values), row_version: record.row_version })
-        : apiClient.post(path, values),
+        : apiClient.post(path, values);
+    },
     onSuccess: () => {
       message.success(record ? "Saved" : "Created");
       queryClient.invalidateQueries({ queryKey: [queryKey] });

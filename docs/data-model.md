@@ -271,7 +271,7 @@ Stock changes only through `stock_service.apply_movements`, which writes a ledge
 | `batch_no` | nvarchar(50) | Nullable |
 | `expiry_date` | date | Nullable |
 | `qty_change` | decimal(18,4) | Positive in, negative out |
-| `movement_type` | nvarchar(30) | `RECEIVE`, `PUTAWAY_OUT`/`PUTAWAY_IN`, `MOVE_OUT`/`MOVE_IN`, `ADJUST_IN`/`ADJUST_OUT`, `COUNT_GAIN`/`COUNT_LOSS`, `PICK_OUT`/`PICK_IN`, `SHIP_OUT`, `RETURN_IN`/`RETURN_OUT`, `REPACK_OUT`/`REPACK_IN` |
+| `movement_type` | nvarchar(30) | `RECEIVE`, `PUTAWAY_OUT`/`PUTAWAY_IN`, `MOVE_OUT`/`MOVE_IN`, `ADJUST_IN`/`ADJUST_OUT`, `COUNT_GAIN`/`COUNT_LOSS`, `PICK_OUT`/`PICK_IN`, `UNPICK_OUT`/`UNPICK_IN`, `SHIP_OUT`, `RETURN_IN`/`RETURN_OUT`, `REPACK_OUT`/`REPACK_IN` |
 | `ref_document_line_id` | FK→document_line (nullable) | The document line that triggered the entry |
 | `occurred_at` | datetime2 | Business time (may be later than created_at) |
 

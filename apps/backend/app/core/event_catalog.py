@@ -22,6 +22,7 @@ EVENTS: list[tuple[str, str, str, str]] = [
     ("sales_order.closed", "SO", "CLOSED", "Sales order closed"),
     ("sales_order.cancelled", "SO", "CANCELLED", "Sales order cancelled"),
     ("pick.posted", "PICK", "POSTED", "Pick list posted"),
+    ("pick.reversed", "PICK", "REVERSED", "Picked goods returned to stock"),
     ("shipment.posted", "SHIP", "POSTED", "Shipment posted (goods left the warehouse)"),
     ("return_in.posted", "RETURN_IN", "POSTED", "Customer return posted"),
     ("return_out.posted", "RETURN_OUT", "POSTED", "Return to supplier posted"),

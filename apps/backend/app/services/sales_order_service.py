@@ -49,6 +49,8 @@ SO_FULFILLING = (SO_CONFIRMED, SO_IN_PROGRESS, SO_PARTIALLY_SHIPPED)
 PICK_OPEN = "OPEN"
 PICK_POSTED = "POSTED"
 PICK_CANCELLED = "CANCELLED"
+# A posted pick whose goods went back from staging to their bins (the order no longer counts them as picked)
+PICK_REVERSED = "REVERSED"
 
 SHIP_DRAFT = "DRAFT"
 SHIP_POSTED = "POSTED"
@@ -220,6 +222,9 @@ class SalesOrderService:
                 need -= take
                 if need <= 0:
                     break
+            # The next line may be the same item: its balances are re-read from the database, which must already
+            # hold the reservations just made, or the same stock would be reserved twice
+            self.db.flush()
             if need > 0:
                 shortages.append(
                     ShortageRead(
@@ -269,7 +274,10 @@ class SalesOrderService:
         if any(p.allocated > 0 for p in progress):
             raise DomainError("The order has open pick lists; cancel them first")
         if any(p.picked > 0 or p.shipped > 0 for p in progress):
-            raise DomainError("The order already has picks or shipments and cannot be cancelled; close it instead")
+            raise DomainError(
+                "The order already has picked or shipped goods and cannot be cancelled. Return the picked goods to stock "
+                "(on the posted pick list) and cancel, or close the order to stop shipping the rest"
+            )
         so.status = SO_CANCELLED
         self._touch(so)
         self.db.flush()
@@ -285,7 +293,9 @@ class SalesOrderService:
         if self._has_draft_shipment(so.id):
             raise DomainError("The order has unposted shipments; post or cancel them first")
         if any(p.staged > 0 for p in progress):
-            raise DomainError("There are picked but unshipped goods in staging; ship them first")
+            raise DomainError(
+                "There are picked but unshipped goods in staging; ship them, or return them to stock on the posted pick list"
+            )
         so.status = SO_CLOSED
         self._touch(so)
         self.db.flush()

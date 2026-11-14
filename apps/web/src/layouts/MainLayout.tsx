@@ -28,6 +28,7 @@ import { Avatar, Breadcrumb, Button, Drawer, Dropdown, Grid, Input, Layout, Menu
 import { Link, Navigate, Outlet, useLocation, useNavigate } from "react-router";
 
 import { useCan, useFeature, useMe } from "@/api/me";
+import PrintPreview from "@/components/PrintPreview";
 import TopLoader from "@/components/TopLoader";
 import { BackLink, BrandMark, EmptyState, PageHeader } from "@/components/ui";
 import { useLiveStore, useLiveUpdates, type LiveStatus } from "@/api/live";
@@ -576,6 +577,7 @@ export default function MainLayout() {
 
       <Layout>
         <TopLoader />
+        <PrintPreview />
         <Header className="wms-header">
           {mobile && <Button type="text" icon={<MenuOutlined />} onClick={() => setDrawerOpen(true)} aria-label="Open navigation" />}
           <Breadcrumb

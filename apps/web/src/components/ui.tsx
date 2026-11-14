@@ -296,7 +296,7 @@ export function DocTitle({ label, no, status, historyOf }: { label: string; no: 
       {status && <StatusTag status={status} />}
       {historyOf && <HistoryButton entityId={historyOf} title={`${label} ${no}`} />}
       {historyOf && <PhotosButton documentId={historyOf} title={`${label} ${no}`} />}
-      {historyOf && <PrintButton documentId={historyOf} />}
+      {historyOf && <PrintButton documentId={historyOf} docNo={no} />}
     </div>
   );
 }

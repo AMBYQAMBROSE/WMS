@@ -1,3 +1,5 @@
+import { useRef } from "react";
+
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button, Card, Col, Form, Input, Row, message } from "antd";
 import type { Dayjs } from "dayjs";
@@ -7,7 +9,7 @@ import { apiClient } from "@/api/client";
 import { showError } from "@/api/errors";
 import type { Document } from "@/api/types";
 import StockLinesEditor, { toLinePayload } from "@/components/StockLinesEditor";
-import { preventEnterSubmit } from "@/components/documents";
+import { CreateButtons, announcePosted, postDraft, preventEnterSubmit } from "@/components/documents";
 import { ReasonSelect, SupplierSelect } from "@/components/selects";
 import { FormFooter, FormSection, useUnsavedChanges } from "@/components/ui";
 
@@ -24,13 +26,19 @@ export default function ReturnOutCreatePage() {
   const [form] = Form.useForm<FormValues>();
   const unsaved = useUnsavedChanges();
 
+  const postNow = useRef(false);
+
   const save = useMutation({
-    mutationFn: async (values: FormValues) =>
-      (await apiClient.post<Document>("/returns-out", { ...values, lines: values.lines.map(toLinePayload) })).data,
-    onSuccess: (doc) => {
+    mutationFn: async (values: FormValues) => {
+      const draft = (await apiClient.post<Document>("/returns-out", { ...values, lines: values.lines.map(toLinePayload) })).data;
+      return postNow.current ? postDraft("returns-out", draft) : { doc: draft, posted: false };
+    },
+    onSuccess: ({ doc, posted }) => {
       unsaved.reset();
-      message.success(`Created return to supplier ${doc.doc_no}; post it once the goods are handed over`);
+      if (posted) announcePosted(doc);
+      else if (!postNow.current) message.success(`Created return to supplier ${doc.doc_no}; post it once the goods are handed over`);
       queryClient.invalidateQueries({ queryKey: ["returns-out"] });
+      queryClient.invalidateQueries({ queryKey: ["stock"] });
       navigate(`/returns-out/${doc.id}`);
     },
     onError: showError,
@@ -58,13 +66,11 @@ export default function ReturnOutCreatePage() {
             </Col>
           </Row>
         </FormSection>
-        <FormSection title="Lines" description="Goods leave from the location chosen on each line.">
-          <StockLinesEditor form={form} name="lines" locationLabel="From location" />
+        <FormSection title="Lines" description="Choose the location the goods leave from: its item, batch and free quantity are filled in.">
+          <StockLinesEditor form={form} name="lines" locationLabel="From location" stockSource />
         </FormSection>
-        <FormFooter note="Created as a draft; post it once the goods are handed over">
-          <Button type="primary" htmlType="submit" loading={save.isPending}>
-            Create return to supplier
-          </Button>
+        <FormFooter note="Post once the goods are handed over: posting takes them out of stock">
+          <CreateButtons label="Create return to supplier" postPerm="return_out.post" postNow={postNow} loading={save.isPending} />
           <Button onClick={() => navigate(-1)}>Cancel</Button>
         </FormFooter>
       </Form>

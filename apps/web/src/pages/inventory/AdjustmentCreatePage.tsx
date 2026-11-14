@@ -1,3 +1,5 @@
+import { useRef } from "react";
+
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import { Button, Card, Col, DatePicker, Form, Input, InputNumber, Radio, Row, Table, Tooltip, message } from "antd";
@@ -7,8 +9,9 @@ import { useNavigate } from "react-router";
 import { apiClient } from "@/api/client";
 import { showError } from "@/api/errors";
 import type { Document } from "@/api/types";
-import { preventEnterSubmit } from "@/components/documents";
+import { CreateButtons, announcePosted, postDraft, preventEnterSubmit } from "@/components/documents";
 import { ItemSelect, LocationSelect, ReasonSelect, UomSelect, useItemRecords } from "@/components/selects";
+import { useStockAutofill } from "@/components/stockAutofill";
 import { FormFooter, FormSection, useUnsavedChanges } from "@/components/ui";
 
 interface LineValues {
@@ -37,6 +40,10 @@ export default function AdjustmentCreatePage() {
   const items = useItemRecords(watchedLines?.map((l) => l?.item_id) ?? []);
   const itemOf = (index: number) => items?.find((i) => i.id === watchedLines?.[index]?.item_id);
   const unsaved = useUnsavedChanges();
+  const postNow = useRef(false);
+  // An adjustment may also add an item the location never held, so the item dropdown stays unrestricted and no
+  // quantity is filled: only the item, batch and expiry that the location's stock makes certain
+  const autofill = useStockAutofill(form);
 
   const save = useMutation({
     mutationFn: async (values: FormValues) => {
@@ -47,12 +54,15 @@ export default function AdjustmentCreatePage() {
         batch_no: l.batch_no || null,
         expiry_date: l.expiry_date?.format("YYYY-MM-DD") ?? null,
       }));
-      return (await apiClient.post<Document>("/adjustments", { ...values, lines })).data;
+      const draft = (await apiClient.post<Document>("/adjustments", { ...values, lines })).data;
+      return postNow.current ? postDraft("adjustments", draft) : { doc: draft, posted: false };
     },
-    onSuccess: (doc) => {
+    onSuccess: ({ doc, posted }) => {
       unsaved.reset();
-      message.success(`Created adjustment ${doc.doc_no}; it takes effect once someone with approval rights posts it`);
+      if (posted) announcePosted(doc);
+      else if (!postNow.current) message.success(`Created adjustment ${doc.doc_no}; it takes effect once someone with approval rights posts it`);
       queryClient.invalidateQueries({ queryKey: ["adjustments"] });
+      queryClient.invalidateQueries({ queryKey: ["stock"] });
       navigate(`/adjustments/${doc.id}`);
     },
     onError: showError,
@@ -82,7 +92,7 @@ export default function AdjustmentCreatePage() {
             </Col>
           </Row>
         </FormSection>
-        <FormSection title="Lines" description="Choose Increase or Decrease per line, then the quantity (always positive).">
+        <FormSection title="Lines" description="Choosing a location fills in the item, batch and expiry found there. Choose Increase or Decrease per line, then the quantity (always positive).">
         <Form.List name="lines">
           {(fields, { add, remove }) => (
             <>
@@ -97,7 +107,7 @@ export default function AdjustmentCreatePage() {
                     title: "Location",
                     render: (_, f) => (
                       <Form.Item name={[f.name, "location_id"]} noStyle rules={[{ required: true }]}>
-                        <LocationSelect types={["BIN", "DOCK"]} style={{ width: 170 }} />
+                        <LocationSelect types={["BIN", "DOCK"]} style={{ width: 170 }} onRecordChange={() => void autofill(["lines", f.name])} />
                       </Form.Item>
                     ),
                   },
@@ -107,7 +117,11 @@ export default function AdjustmentCreatePage() {
                       <Form.Item name={[f.name, "item_id"]} noStyle rules={[{ required: true }]}>
                         <ItemSelect
                           style={{ width: 220 }}
-                          onRecordChange={(item) => item && form.setFieldValue(["lines", f.name, "uom_id"], item.base_uom_id)}
+                          onRecordChange={(item) => {
+                            if (!item) return;
+                            form.setFieldValue(["lines", f.name, "uom_id"], item.base_uom_id);
+                            void autofill(["lines", f.name]);
+                          }}
                         />
                       </Form.Item>
                     ),
@@ -180,9 +194,7 @@ export default function AdjustmentCreatePage() {
         </Form.List>
         </FormSection>
         <FormFooter note="Takes effect once someone with approval rights posts it">
-          <Button type="primary" htmlType="submit" loading={save.isPending}>
-            Create adjustment
-          </Button>
+          <CreateButtons label="Create adjustment" postPerm="adjustment.post" postNow={postNow} loading={save.isPending} />
           <Button onClick={() => navigate(-1)}>Cancel</Button>
         </FormFooter>
       </Form>

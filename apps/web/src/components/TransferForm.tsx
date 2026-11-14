@@ -9,8 +9,9 @@ import { useNavigate } from "react-router";
 import { apiClient } from "@/api/client";
 import { showError } from "@/api/errors";
 import type { Document } from "@/api/types";
-import { preventEnterSubmit } from "@/components/documents";
-import { ItemSelect, LocationSelect, UomSelect, useItemRecords } from "@/components/selects";
+import { CreateButtons, announcePosted, postDraft, preventEnterSubmit } from "@/components/documents";
+import { LocationSelect, UomSelect, useItemRecords } from "@/components/selects";
+import { StockItemSelect, useStockAutofill } from "@/components/stockAutofill";
 import { FormFooter, FormSection, useUnsavedChanges } from "@/components/ui";
 
 interface LineValues {
@@ -49,6 +50,9 @@ export default function TransferForm({
   const queryClient = useQueryClient();
   const [form] = Form.useForm<FormValues>();
   const unsaved = useUnsavedChanges();
+  const postNow = useRef(false);
+  const autofill = useStockAutofill(form);
+  const SOURCE = { locationField: "from_location_id", source: true };
 
   const left = (l: Document["lines"][number]) => remaining?.[l.id] ?? l.qty_actual;
   const open = sourceGrn?.lines.filter((l) => left(l) > 0) ?? [];
@@ -82,14 +86,17 @@ export default function TransferForm({
         batch_no: l.batch_no || null,
         expiry_date: l.expiry_date?.format("YYYY-MM-DD") ?? null,
       }));
-      return (
+      const draft = (
         await apiClient.post<Document>(`/${path}`, { ...values, ref_document_id: sourceGrn?.id ?? null, lines })
       ).data;
+      return postNow.current ? postDraft(path, draft) : { doc: draft, posted: false };
     },
-    onSuccess: (doc) => {
+    onSuccess: ({ doc, posted }) => {
       unsaved.reset();
-      message.success(`Created ${docLabel.toLowerCase()} ${doc.doc_no}; post it once the goods are moved`);
+      if (posted) announcePosted(doc);
+      else if (!postNow.current) message.success(`Created ${docLabel.toLowerCase()} ${doc.doc_no}; post it once the goods are moved`);
       queryClient.invalidateQueries({ queryKey: [path] });
+      queryClient.invalidateQueries({ queryKey: ["stock"] });
       navigate(`/${path}/${doc.id}`);
     },
     onError: showError,
@@ -128,7 +135,7 @@ export default function TransferForm({
         </FormSection>
         <FormSection
           title="Lines"
-          description={sourceGrn ? "Prefilled from the goods receipt. Split a line to put one batch into several bins." : "One line per item, batch and location pair."}
+          description={sourceGrn ? "Prefilled from the goods receipt. Split a line to put one batch into several bins." : "One line per item, batch and location pair. Choosing the from location fills in the item, batch and free quantity found there."}
         >
         <Form.List name="lines">
           {(fields, { add, remove }) => (
@@ -144,9 +151,14 @@ export default function TransferForm({
                     title: "Item",
                     render: (_, f) => (
                       <Form.Item name={[f.name, "item_id"]} noStyle rules={[{ required: true }]}>
-                        <ItemSelect
+                        <StockItemSelect
                           style={{ width: 220 }}
-                          onRecordChange={(item) => item && form.setFieldValue(["lines", f.name, "uom_id"], item.base_uom_id)}
+                          locationId={watchedLines?.[f.name]?.from_location_id}
+                          onRecordChange={(item) => {
+                            if (!item) return;
+                            form.setFieldValue(["lines", f.name, "uom_id"], item.base_uom_id);
+                            void autofill(["lines", f.name], SOURCE);
+                          }}
                         />
                       </Form.Item>
                     ),
@@ -193,7 +205,7 @@ export default function TransferForm({
                     title: "From location",
                     render: (_, f) => (
                       <Form.Item name={[f.name, "from_location_id"]} noStyle rules={[{ required: true }]}>
-                        <LocationSelect types={["DOCK", "BIN"]} style={{ width: 170 }} />
+                        <LocationSelect types={["DOCK", "BIN"]} style={{ width: 170 }} onRecordChange={() => void autofill(["lines", f.name], { ...SOURCE, locationChanged: true })} />
                       </Form.Item>
                     ),
                   },
@@ -246,15 +258,14 @@ export default function TransferForm({
           )}
         </Form.List>
         </FormSection>
-        <FormFooter note="Created as a draft; post it once the goods are moved">
-          <Button
-            type="primary"
-            htmlType="submit"
+        <FormFooter note="Post once the goods are at the target location: posting moves the stock">
+          <CreateButtons
+            label={`Create ${docLabel.toLowerCase()}`}
+            postPerm={`${path === "putaways" ? "putaway" : "move"}.post`}
+            postNow={postNow}
             loading={save.isPending}
             disabled={!!sourceGrn && sourceGrn.status !== "POSTED"}
-          >
-            Create {docLabel.toLowerCase()}
-          </Button>
+          />
           <Button onClick={() => navigate(-1)}>Cancel</Button>
         </FormFooter>
       </Form>

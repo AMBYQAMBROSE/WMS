@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Card, Checkbox, Col, Descriptions, Form, Input, Modal, Row, Space, Table, Typography, message } from "antd";
@@ -11,8 +11,9 @@ import type { DocumentSummary, Pick, SalesOrder, SalesOrderLine, Shipment, Short
 import StatusTag from "@/components/StatusTag";
 import { DESC_COLUMNS, DetailSkeleton, DocTitle, ErrorState, QtyProgress, emptyLocale, formatQty } from "@/components/ui";
 import { SalesOrderSteps } from "@/components/workflows";
-import { ActionButton, formatDateTime, useDocumentAction } from "@/components/documents";
+import { ActionButton, formatDateTime, offerPrint, useDocumentAction } from "@/components/documents";
 import { LocationSelect } from "@/components/selects";
+import { useLastLocation } from "@/components/stockAutofill";
 
 const FULFILLING = ["CONFIRMED", "IN_PROGRESS", "PARTIALLY_SHIPPED"];
 const SHIPPABLE = ["IN_PROGRESS", "PARTIALLY_SHIPPED"];
@@ -62,6 +63,11 @@ export default function SalesOrderDetailPage() {
   const [crossDock, setCrossDock] = useState(false);
   const [sourceId, setSourceId] = useState<string>();
   const [shipForm] = Form.useForm<ShipForm>();
+  // Picked goods nearly always go to the same staging area: start with the one used last time
+  const [lastStaging, rememberStaging] = useLastLocation("staging");
+  useEffect(() => {
+    if (lastStaging) setStagingId((current) => current ?? lastStaging);
+  }, [lastStaging]);
 
   const { data: so, isLoading, error, refetch } = useQuery({
     queryKey: ["sales-orders", id],
@@ -94,8 +100,20 @@ export default function SalesOrderDetailPage() {
       ).data,
     onSuccess: ({ pick, shortages }) => {
       setAllocating(false);
+      rememberStaging(stagingId);
       refresh();
-      message.success(`Created pick list ${pick.doc_no}`);
+      message.success({
+        key: `pick-${pick.id}`,
+        duration: 8,
+        content: (
+          <span>
+            {/* Not a <Link>: messages render outside the router */}
+            Created pick list <a onClick={() => navigate(`/picks/${pick.id}`)} data-testid="open-pick">{pick.doc_no}</a>
+          </span>
+        ),
+      });
+      // The picker works from the paper list: bring it up, ready to print
+      offerPrint(pick);
       if (shortages.length) {
         Modal.warning({
           title: "Some items are short; not everything could be allocated",
@@ -129,6 +147,9 @@ export default function SalesOrderDetailPage() {
   if (isLoading) return <DetailSkeleton />;
   if (!so) return <ErrorState title="Could not load this sales order" error={error} onRetry={() => refetch()} back={{ to: "/sales-orders", label: "Back to sales orders" }} />;
   const run = (name: string) => () => action.mutate(name);
+  // Confirming is followed by allocating: go straight on to it instead of leaving the user to find the next button
+  const confirmOrder = () =>
+    action.mutate("confirm", { onSuccess: () => can("sales_order.allocate") && setAllocating(true) });
   const fulfilling = FULFILLING.includes(so.status);
   const hasUnallocated = so.lines.some((l) => l.unallocated > 0);
   // Something is picked and waiting in staging: only then is there anything to ship
@@ -143,7 +164,7 @@ export default function SalesOrderDetailPage() {
             {so.status === "DRAFT" && (
               <>
                 {can("sales_order.update") && <Button onClick={() => navigate(`/sales-orders/${id}/edit`)}>Edit</Button>}
-                <ActionButton perm="sales_order.confirm" type="primary" label="Confirm" confirm="The order cannot be edited after confirmation. Continue?" onConfirm={run("confirm")} loading={action.isPending} />
+                <ActionButton perm="sales_order.confirm" type="primary" label="Confirm" confirm="The order cannot be edited after confirmation. Continue?" onConfirm={confirmOrder} loading={action.isPending} />
               </>
             )}
             {fulfilling && hasUnallocated && can("sales_order.allocate") && (

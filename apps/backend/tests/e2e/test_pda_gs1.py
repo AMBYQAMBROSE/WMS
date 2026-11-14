@@ -2,7 +2,7 @@
 
 from playwright.sync_api import Page, expect
 
-from tests.e2e.test_labels import expect_pdf_tab, shot
+from tests.e2e.test_labels import expect_pdf_preview, shot
 from tests.e2e.test_pda import pda_sign_in, scan
 from tests.e2e.test_smoke import sign_in
 from tests.helpers import Api, make_warehouse
@@ -59,7 +59,7 @@ def test_stock_label_printed_on_the_web_drives_the_putaway(page: Page, pda_url, 
     page.get_by_test_id("print-stock-labels").click()
     dialog = page.get_by_role("dialog")
     dialog.get_by_test_id("qty-per-label").fill("10")
-    expect_pdf_tab(page, lambda: dialog.get_by_role("button", name="Print").click())
+    expect_pdf_preview(page, lambda: dialog.get_by_role("button", name="Print").click())
 
     # PDA: scanning the label of the second batch picks that batch's line and offers the carton quantity
     sheet = api.get("/putaways", ref_document_id=grn["id"], status="TO_PUT_AWAY")[0]

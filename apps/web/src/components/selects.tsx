@@ -150,10 +150,18 @@ export function PartnerSelect(props: Props) {
   return <RemoteSelect<BusinessPartner> resource={PARTNERS} toOption={partnerOption} {...props} />;
 }
 
-export function ItemSelect(props: Props & { onRecordChange?: (item: Item | undefined) => void }) {
+export function ItemSelect({
+  stockedIds,
+  ...props
+}: Props & {
+  onRecordChange?: (item: Item | undefined) => void;
+  /** Offer only these items (the ones stocked at the line's location); see StockItemSelect */
+  stockedIds?: string[];
+}) {
   return (
     <RemoteSelect<Item>
       resource={ITEMS}
+      params={stockedIds ? { ids: stockedIds } : undefined}
       toOption={(i) => ({ value: i.id, label: `${i.sku_code} ${i.name}` })}
       {...props}
     />
@@ -219,7 +227,13 @@ export function LocationSelect({
   types,
   allowLocked = false,
   ...props
-}: Props & { types?: string[]; /** cycle counts may select locked locations */ allowLocked?: boolean }) {
+}: Props & {
+  types?: string[];
+  /** cycle counts may select locked locations */
+  allowLocked?: boolean;
+  /** Receives the full record after selection (e.g. to fill the line from the location's stock) */
+  onRecordChange?: (location: Location | undefined) => void;
+}) {
   return (
     <RemoteSelect<Location>
       resource={LOCATIONS}

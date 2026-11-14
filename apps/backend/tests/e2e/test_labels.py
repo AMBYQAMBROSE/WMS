@@ -16,18 +16,28 @@ def shot(page: Page, name: str) -> None:
         page.screenshot(path=os.path.join(SHOTS, f"{name}.png"))
 
 
-def expect_pdf_tab(page: Page, click, method: str = "POST") -> None:
-    """A click opens a new tab and fetches a PDF for it. (Headless Chromium has no PDF viewer, so the tab's own
-    navigation to the PDF is not checked: it turns into a download.)"""
+def expect_pdf_preview(page: Page, click=None, method: str = "POST", tabs: list[str] | None = None, shot_as: str | None = None) -> None:
+    """A PDF is fetched and shown in the print preview, with Print ready to click; the preview is then closed.
+    `click`: what brings it up (nothing when it opens by itself); `tabs`: the PDFs expected in it, when several.
+    (Headless Chromium has no PDF viewer, so what the frame shows is not checked.)"""
     def is_pdf_request(r) -> bool:
         return r.request.method == method and "/api/v1/" in r.url and ("/print" in r.url or "label" in r.url)
 
-    with page.context.expect_page() as popup, page.expect_response(is_pdf_request) as response:
-        click()
-    assert response.value.status == 200, response.value.text()
-    assert response.value.headers["content-type"] == "application/pdf"
-    assert response.value.body().startswith(b"%PDF")
-    popup.value.close()
+    if click:
+        with page.expect_response(is_pdf_request) as response:
+            click()
+        assert response.value.status == 200, response.value.text()
+        assert response.value.headers["content-type"] == "application/pdf"
+        assert response.value.body().startswith(b"%PDF")
+    expect(page.get_by_test_id("print-preview-print")).to_be_visible()
+    expect(page.get_by_test_id("print-preview-print")).to_be_focused()
+    for name in tabs or []:
+        expect(page.get_by_role("tab", name=name)).to_be_visible()
+    expect(page.get_by_test_id("print-preview-frame")).to_have_count(len(tabs) if tabs else 1)
+    if shot_as:
+        shot(page, shot_as)
+    page.locator(".wms-print-footer").get_by_role("button", name="Close").click()
+    expect(page.get_by_test_id("print-preview-print")).to_be_hidden()
 
 
 def test_label_layout_set_up_and_test_print(page: Page, errors, unique):
@@ -44,7 +54,7 @@ def test_label_layout_set_up_and_test_print(page: Page, errors, unique):
     dialog.get_by_label("Labels down").fill("9")
     expect(dialog.get_by_text("36 labels per page")).to_be_visible()
     shot(page, "label-editor")
-    expect_pdf_tab(page, lambda: dialog.get_by_test_id("label-test-print").click())
+    expect_pdf_preview(page, lambda: dialog.get_by_test_id("label-test-print").click())
     dialog.get_by_test_id("label-save").click()
     expect(page.get_by_role("cell", name=f"Roll {unique}", exact=True)).to_be_visible()
     shot(page, "label-settings")
@@ -68,7 +78,7 @@ def test_print_item_and_location_labels(page: Page, errors, client, admin_header
     dialog = page.get_by_role("dialog")
     dialog.get_by_test_id("label-copies").fill("3")
     shot(page, "item-print")
-    expect_pdf_tab(page, lambda: dialog.get_by_role("button", name="Print").click())
+    expect_pdf_preview(page, lambda: dialog.get_by_role("button", name="Print").click())
     expect(dialog).to_be_hidden()
 
     page.goto("/locations")
@@ -77,5 +87,5 @@ def test_print_item_and_location_labels(page: Page, errors, client, admin_header
     dialog = page.get_by_role("dialog")
     dialog.get_by_label("Area").fill(f"PW{unique}")
     page.get_by_title(f"PW{unique} Print warehouse").click()
-    expect_pdf_tab(page, lambda: dialog.get_by_role("button", name="Print").click())
+    expect_pdf_preview(page, lambda: dialog.get_by_role("button", name="Print").click())
     assert not errors

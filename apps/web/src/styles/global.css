@@ -1028,6 +1028,24 @@ a.wms-list-row:hover {
   color: var(--ant-color-text-tertiary);
 }
 
+/* Print preview: the PDF fills the dialog; the footer keeps Print on the far right */
+.wms-print-frame {
+  display: block;
+  width: 100%;
+  height: min(72vh, 900px);
+  border: 1px solid var(--wms-surface-border);
+  border-radius: var(--wms-radius-lg);
+  background: var(--ant-color-fill-quaternary);
+}
+
+.wms-print-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+}
+
 /* Line-entry rows in order forms */
 .wms-lines {
   border: 1px solid var(--wms-surface-border);

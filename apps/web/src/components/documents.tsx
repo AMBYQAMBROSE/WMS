@@ -8,10 +8,10 @@ import dayjs from "dayjs";
 import { Link, useNavigate } from "react-router";
 
 import { apiClient } from "@/api/client";
-import { showError } from "@/api/errors";
+import { getErrorMessage, showError } from "@/api/errors";
 import { useCan } from "@/api/me";
 import { usePreference } from "@/api/preferences";
-import { printDocument } from "@/api/print";
+import { printDocuments, type Printable } from "@/api/print";
 import type { Document, DocumentLine, DocumentSummary } from "@/api/types";
 import {
   ColumnSettings,
@@ -27,6 +27,7 @@ import {
 import StatusTag from "@/components/StatusTag";
 import { ErrorState, STICKY_HEADER, Toolbar, formatQty } from "@/components/ui";
 import { STATUS_LABELS } from "@/constants/labels";
+import { useUiStore } from "@/stores/uiStore";
 
 // Lists load the newest documents matching the filters, up to this many
 const LIST_LIMIT = 200;
@@ -51,9 +52,104 @@ export function useDocument(path: string, id: string | undefined) {
   });
 }
 
-interface Printable {
-  id: string;
-  doc_no: string;
+/**
+ * After a document is posted: say so, and bring up its printout. The paper copy is usually wanted right then (receipt
+ * for the supplier, delivery note for the driver), so the print preview opens by itself with Print focused; `made`
+ * are documents the posting created that are printed with it (a receipt's putaway sheet), one tab each.
+ * With the preview switched off (its "Open this after posting" checkbox) the links in the message open it instead.
+ */
+export function announcePosted(doc: Printable, made: Printable[] = []) {
+  const printable = [doc, ...made];
+  const link = (target: Printable, testId: string) => (
+    <a key={target.id} data-testid={testId} style={{ marginLeft: 8 }} onClick={() => void printDocuments(printable.filter((d) => d.id === target.id))}>
+      Print {target.doc_no}
+    </a>
+  );
+  if (useUiStore.getState().printAfterPosting) {
+    message.success({ key: `posted-${doc.id}`, content: `Posted ${doc.doc_no}` });
+    void printDocuments(printable, { quiet: true });
+    return;
+  }
+  message.success({
+    key: `posted-${doc.id}`,
+    duration: made.length ? 15 : 8,
+    content: (
+      <span>
+        Posted.
+        {link(doc, "print-after-post")}
+        {made.map((m) => link(m, "print-made-by-post"))}
+      </span>
+    ),
+  });
+}
+
+/** The printout of a document that work starts from (a new pick list), opened by itself unless the user switched that off */
+export function offerPrint(doc: Printable) {
+  if (useUiStore.getState().printAfterPosting) void printDocuments([doc], { quiet: true });
+}
+
+/**
+ * Post a draft that was just created, for "Create and post" buttons: one click instead of create, open, post, confirm.
+ * When posting is refused (not enough stock, a locked location) the draft stays: the reason is shown and the caller
+ * opens the draft, where it can be corrected or cancelled.
+ */
+export async function postDraft(path: string, draft: Document): Promise<{ doc: Document; posted: boolean }> {
+  try {
+    return { doc: (await apiClient.post<Document>(`/${path}/${draft.id}/post`)).data, posted: true };
+  } catch (error) {
+    message.warning(`${draft.doc_no} was created but could not be posted: ${getErrorMessage(error)}`, 10);
+    return { doc: draft, posted: false };
+  }
+}
+
+/**
+ * The two submit buttons of a document entry form: "Create and post" (primary, for users who may post) does the whole
+ * job in one click; the button named after the document keeps a draft to check and post later. The form's onFinish
+ * reads `postNow`.
+ */
+export function CreateButtons({
+  label,
+  postPerm,
+  postNow,
+  loading,
+  disabled,
+}: {
+  /** e.g. "Create goods receipt" */
+  label: string;
+  postPerm: string;
+  /** Set by the button that was clicked, before the form submits */
+  postNow: { current: boolean };
+  loading: boolean;
+  disabled?: boolean;
+}) {
+  const can = useCan();
+  const canPost = can(postPerm);
+  return (
+    <>
+      {canPost && (
+        <Button
+          type="primary"
+          htmlType="submit"
+          loading={loading && postNow.current}
+          disabled={disabled || (loading && !postNow.current)}
+          onClick={() => (postNow.current = true)}
+          data-testid="create-and-post"
+        >
+          Create and post
+        </Button>
+      )}
+      <Button
+        type={canPost ? "default" : "primary"}
+        htmlType="submit"
+        loading={loading && !postNow.current}
+        disabled={disabled || (loading && postNow.current)}
+        title={canPost ? "Saves a draft, to be checked and posted later" : undefined}
+        onClick={() => (postNow.current = false)}
+      >
+        {label}
+      </Button>
+    </>
+  );
 }
 
 export function useDocumentAction(
@@ -71,30 +167,7 @@ export function useDocumentAction(
     onSuccess: async (doc, action) => {
       if (action === "post") {
         const made = options?.madeByPosting ? await options.madeByPosting(doc).catch(() => []) : [];
-        // The paper copy is usually wanted right after posting (receipt for the supplier, DO for the driver). Offered
-        // as a link rather than opened automatically: a tab opened without a click is blocked as a pop-up.
-        const key = `posted-${doc.id}`;
-        const link = (target: Printable, testId: string) => (
-          <a
-            key={target.id}
-            data-testid={testId}
-            style={{ marginLeft: 8 }}
-            onClick={() => void printDocument(target.id)}
-          >
-            Print {target.doc_no}
-          </a>
-        );
-        message.success({
-          key,
-          duration: made.length ? 15 : 8,
-          content: (
-            <span>
-              Posted.
-              {link(doc, "print-after-post")}
-              {made.map((m) => link(m, "print-made-by-post"))}
-            </span>
-          ),
-        });
+        announcePosted(doc, made);
       } else {
         message.success("Done");
       }

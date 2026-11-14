@@ -9,8 +9,9 @@ import { useNavigate, useSearchParams } from "react-router";
 import { apiClient } from "@/api/client";
 import { showError } from "@/api/errors";
 import type { Document, DocumentLine, DocumentSummary } from "@/api/types";
-import { preventEnterSubmit, useDocument } from "@/components/documents";
+import { CreateButtons, announcePosted, postDraft, preventEnterSubmit, useDocument } from "@/components/documents";
 import { BaseQtyHint, LocationSelect, UomSelect, useItemRecords } from "@/components/selects";
+import { useLastLocation } from "@/components/stockAutofill";
 import { EmptyState, FormFooter, FormSection, formatQty, useUnsavedChanges } from "@/components/ui";
 
 interface GrnLineValues {
@@ -37,6 +38,12 @@ export default function GrnCreatePage() {
   const [form] = Form.useForm<FormValues>();
   const { data: po } = useDocument("purchase-orders", poId);
   const unsaved = useUnsavedChanges();
+  const postNow = useRef(false);
+  // Receipts nearly always arrive at the same dock: start with the one used last time
+  const [lastDock, rememberDock] = useLastLocation("receiving");
+  useEffect(() => {
+    if (po && lastDock && !form.getFieldValue("location_id")) form.setFieldValue("location_id", lastDock);
+  }, [po, lastDock, form]);
 
   const { data: receivablePos, isLoading: posLoading } = useQuery({
     queryKey: ["purchase-orders", "receivable"],
@@ -66,12 +73,27 @@ export default function GrnCreatePage() {
         .filter((l) => l.qty > 0)
         .map((l) => ({ ...l, expiry_date: l.expiry_date?.format("YYYY-MM-DD") ?? null }));
       if (!lines.length) throw new Error("Nothing to receive");
-      return (await apiClient.post<Document>("/grns", { ...values, po_id: poId, lines })).data;
+      const draft = (await apiClient.post<Document>("/grns", { ...values, po_id: poId, lines })).data;
+      rememberDock(values.location_id);
+      if (!postNow.current) return { doc: draft, posted: false, sheets: [] as DocumentSummary[] };
+      const result = await postDraft("grns", draft);
+      // Posting into a dock makes a putaway sheet: it is printed with the receipt
+      const sheets = result.posted
+        ? await apiClient
+            .get<DocumentSummary[]>("/putaways", { params: { ref_document_id: draft.id, status: "TO_PUT_AWAY" } })
+            .then((r) => r.data)
+            .catch(() => [])
+        : [];
+      return { ...result, sheets };
     },
-    onSuccess: (grn) => {
+    onSuccess: ({ doc: grn, posted, sheets }) => {
       unsaved.reset();
-      message.success(`Created goods receipt ${grn.doc_no}; post it once checked`);
+      if (posted) announcePosted(grn, sheets);
+      else if (!postNow.current) message.success(`Created goods receipt ${grn.doc_no}; post it once checked`);
       queryClient.invalidateQueries({ queryKey: ["grns"] });
+      queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["putaways"] });
+      queryClient.invalidateQueries({ queryKey: ["stock"] });
       navigate(`/grns/${grn.id}`);
     },
     onError: showError,
@@ -225,10 +247,8 @@ export default function GrnCreatePage() {
             </Form.List>
             </FormSection>
 
-            <FormFooter note="Created as a draft; posting adds the stock">
-              <Button type="primary" htmlType="submit" loading={save.isPending}>
-                Create goods receipt
-              </Button>
+            <FormFooter note="Posting adds the stock and cannot be undone; the receipt and its putaway sheet then open for printing">
+              <CreateButtons label="Create goods receipt" postPerm="grn.post" postNow={postNow} loading={save.isPending} />
               <Button onClick={() => navigate(-1)}>Cancel</Button>
             </FormFooter>
           </Form>

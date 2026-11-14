@@ -2,11 +2,15 @@ import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import { Button, DatePicker, Form, Input, InputNumber, Radio, Table } from "antd";
 import type { FormInstance } from "antd";
 
-import { BaseQtyHint, ItemSelect, LocationSelect, UomSelect, useItemRecords } from "@/components/selects";
+import { BaseQtyHint, LocationSelect, UomSelect, useItemRecords } from "@/components/selects";
+import { StockItemSelect, useStockAutofill } from "@/components/stockAutofill";
 
 /**
  * Line editor shared by customer returns, returns to supplier and repacks: item, unit, quantity, location, batch/expiry (shown per item settings).
  * withDisposition: customer returns only; each line chooses restock or scrap, and scrap lines need no location, batch or expiry.
+ * stockSource: the lines take stock out of their location (return to supplier, repack consumption). The location then
+ * comes first: choosing it fills the item, batch, expiry and free quantity found there, and the item dropdown offers
+ * what that location holds.
  */
 export default function StockLinesEditor({
   form,
@@ -14,6 +18,7 @@ export default function StockLinesEditor({
   locationLabel,
   locationTypes = ["BIN", "DOCK"],
   withDisposition = false,
+  stockSource = false,
   testId,
 }: {
   form: FormInstance;
@@ -21,12 +26,31 @@ export default function StockLinesEditor({
   locationLabel: string;
   locationTypes?: string[];
   withDisposition?: boolean;
+  stockSource?: boolean;
   testId?: string;
 }) {
-  const lines = Form.useWatch(name, form) as { item_id?: string; uom_id?: string; qty?: number; disposition?: string }[] | undefined;
+  const lines = Form.useWatch(name, form) as { item_id?: string; uom_id?: string; qty?: number; disposition?: string; location_id?: string }[] | undefined;
+  const autofill = useStockAutofill(form);
   const items = useItemRecords(lines?.map((l) => l?.item_id) ?? []);
   const itemOf = (i: number) => items?.find((it) => it.id === lines?.[i]?.item_id);
   const restock = (i: number) => !withDisposition || lines?.[i]?.disposition !== "SCRAP";
+
+  // First column when the lines take stock out of the location (it then fills the rest of the line), after the quantity otherwise
+  const locationColumn = {
+    title: locationLabel,
+    render: (_: unknown, f: { name: number }) =>
+      restock(f.name) ? (
+        <Form.Item name={[f.name, "location_id"]} noStyle rules={[{ required: true, message: "Required" }]}>
+          <LocationSelect
+            types={locationTypes}
+            style={{ width: 170 }}
+            onRecordChange={() => stockSource && void autofill([name, f.name], { source: true, locationChanged: true })}
+          />
+        </Form.Item>
+      ) : (
+        <span className="wms-empty-value">Not stocked</span>
+      ),
+  };
 
   return (
     <Form.List name={name}>
@@ -40,13 +64,19 @@ export default function StockLinesEditor({
             scroll={{ x: true }}
             data-testid={testId}
             columns={[
+              ...(stockSource ? [locationColumn] : []),
               {
                 title: "Item",
-                render: (_, f) => (
+                render: (_: unknown, f: { name: number }) => (
                   <Form.Item name={[f.name, "item_id"]} noStyle rules={[{ required: true }]}>
-                    <ItemSelect
+                    <StockItemSelect
                       style={{ width: 220 }}
-                      onRecordChange={(item) => item && form.setFieldValue([name, f.name, "uom_id"], item.base_uom_id)}
+                      locationId={stockSource ? lines?.[f.name]?.location_id : undefined}
+                      onRecordChange={(item) => {
+                        if (!item) return;
+                        form.setFieldValue([name, f.name, "uom_id"], item.base_uom_id);
+                        if (stockSource) void autofill([name, f.name], { source: true });
+                      }}
                     />
                   </Form.Item>
                 ),
@@ -85,17 +115,7 @@ export default function StockLinesEditor({
                     },
                   ]
                 : []),
-              {
-                title: locationLabel,
-                render: (_, f) =>
-                  restock(f.name) ? (
-                    <Form.Item name={[f.name, "location_id"]} noStyle rules={[{ required: true, message: "Required" }]}>
-                      <LocationSelect types={locationTypes} style={{ width: 170 }} />
-                    </Form.Item>
-                  ) : (
-                    <span className="wms-empty-value">Not stocked</span>
-                  ),
-              },
+              ...(stockSource ? [] : [locationColumn]),
               {
                 title: "Batch no.",
                 render: (_, f) =>

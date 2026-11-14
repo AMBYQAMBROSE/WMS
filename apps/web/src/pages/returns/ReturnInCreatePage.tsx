@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Button, Card, Col, Form, Input, Row, message } from "antd";
@@ -9,7 +9,7 @@ import { apiClient } from "@/api/client";
 import { showError } from "@/api/errors";
 import type { Document, SalesOrder } from "@/api/types";
 import StockLinesEditor, { toLinePayload } from "@/components/StockLinesEditor";
-import { preventEnterSubmit } from "@/components/documents";
+import { CreateButtons, announcePosted, postDraft, preventEnterSubmit } from "@/components/documents";
 import { CustomerSelect, ReasonSelect } from "@/components/selects";
 import { DetailSkeleton, FormFooter, FormSection, useUnsavedChanges } from "@/components/ui";
 
@@ -60,18 +60,24 @@ export default function ReturnInCreatePage() {
     form.setFieldsValue({ partner_id: so.partner?.id, lines: lines.length ? lines : [{ disposition: "RESTOCK" }] });
   }, [so, form]);
 
+  const postNow = useRef(false);
+
   const save = useMutation({
     mutationFn: async (values: FormValues) => {
       const lines = values.lines.map((l) => {
         const payload = toLinePayload(l);
         return l.disposition === "SCRAP" ? { ...payload, location_id: null } : payload;
       });
-      return (await apiClient.post<Document>("/returns-in", { ...values, ref_document_id: soId ?? null, lines })).data;
+      const draft = (await apiClient.post<Document>("/returns-in", { ...values, ref_document_id: soId ?? null, lines })).data;
+      return postNow.current ? postDraft("returns-in", draft) : { doc: draft, posted: false };
     },
-    onSuccess: (doc) => {
+    onSuccess: ({ doc, posted }) => {
       unsaved.reset();
-      message.success(`Created customer return ${doc.doc_no}; post it after inspection`);
+      if (posted) announcePosted(doc);
+      else if (!postNow.current) message.success(`Created customer return ${doc.doc_no}; post it after inspection`);
       queryClient.invalidateQueries({ queryKey: ["returns-in"] });
+      queryClient.invalidateQueries({ queryKey: ["sales-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["stock"] });
       navigate(`/returns-in/${doc.id}`);
     },
     onError: showError,
@@ -123,10 +129,8 @@ export default function ReturnInCreatePage() {
         <FormSection title="Lines" description="Restock puts goods back into a location; scrap only records them.">
           <StockLinesEditor form={form} name="lines" locationLabel="Restock location" withDisposition />
         </FormSection>
-        <FormFooter note="Created as a draft; post it after inspection">
-          <Button type="primary" htmlType="submit" loading={save.isPending}>
-            Create return
-          </Button>
+        <FormFooter note="Post after inspection: posting puts the restocked goods into stock">
+          <CreateButtons label="Create return" postPerm="return_in.post" postNow={postNow} loading={save.isPending} />
           <Button onClick={() => navigate(-1)}>Cancel</Button>
         </FormFooter>
       </Form>

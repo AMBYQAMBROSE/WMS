@@ -2,18 +2,19 @@ import { useState } from "react";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Card, Descriptions, InputNumber, Space, Table, Typography, message } from "antd";
-import { Link, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 
 import { apiClient } from "@/api/client";
 import { showError } from "@/api/errors";
 import { useCan } from "@/api/me";
-import type { Pick, PickLine } from "@/api/types";
+import type { Pick, PickLine, Shipment } from "@/api/types";
 import { DESC_COLUMNS, DetailSkeleton, DocTitle, ErrorState, Pill, QtyProgress, formatQty } from "@/components/ui";
 import { ActionButton, formatDateTime } from "@/components/documents";
 
 export default function PickDetailPage() {
   const { id = "" } = useParams();
   const can = useCan();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [drafts, setDrafts] = useState<Record<string, number | null>>({});
   const queryKey = ["picks", id];
@@ -44,15 +45,37 @@ export default function PickDetailPage() {
   });
 
   const action = useMutation({
-    mutationFn: async (name: string) => (await apiClient.post<Pick>(`/picks/${id}/${name}`)).data,
+    mutationFn: async (name: string) => {
+      // "Pick all and post": confirm what is still open at the allocated quantity, then post, in one click
+      if (name === "post-all") await apiClient.post<Pick>(`/picks/${id}/confirm-all`);
+      return (await apiClient.post<Pick>(`/picks/${id}/${name === "post-all" ? "post" : name}`)).data;
+    },
     onSuccess: (updated, name) => {
       onPick(updated);
       queryClient.invalidateQueries({ queryKey: ["stock"] });
+      // No printout here: the pick list is paper to pick from, and that work is now done
       message.success(
+        name === "post" || name === "post-all" ? "Posted; the goods are in staging, ready to ship" :
         name === "confirm-all" ? "All lines confirmed at the allocated quantity"
           : name === "reverse" ? "Goods returned to their bins; the order quantities are unallocated again"
             : "Done",
       );
+    },
+    // "Pick all and post" may have confirmed the lines before posting was refused: show what the server has now
+    onError: (error) => {
+      showError(error);
+      void queryClient.invalidateQueries({ queryKey });
+    },
+  });
+
+  // The goods are in staging: the next step is the shipment, so it is one click from here
+  const ship = useMutation({
+    mutationFn: async () => (await apiClient.post<Shipment>("/shipments", { so_id: pick?.ref_document?.id })).data,
+    onSuccess: (doc) => {
+      queryClient.invalidateQueries({ queryKey: ["shipments"] });
+      queryClient.invalidateQueries({ queryKey: ["sales-orders"] });
+      message.success(`Created shipment ${doc.doc_no}; post it once loading is done`);
+      navigate(`/shipments/${doc.id}`);
     },
     onError: showError,
   });
@@ -75,6 +98,12 @@ export default function PickDetailPage() {
         title={<DocTitle label={"Pick list"} no={pick.doc_no} status={pick.status} historyOf={pick.id} />}
         extra={
           pick.status === "POSTED" ? (
+            <Space wrap>
+            {pick.ref_document && can("shipment.create") && (
+              <Button type="primary" loading={ship.isPending} onClick={() => ship.mutate()} title="Creates the shipment for everything of this order that is picked and waiting in staging" data-testid="ship-from-pick">
+                Create shipment
+              </Button>
+            )}
             <ActionButton
               perm="pick.cancel"
               label="Return goods to stock"
@@ -82,6 +111,7 @@ export default function PickDetailPage() {
               onConfirm={() => action.mutate("reverse")}
               loading={action.isPending}
             />
+            </Space>
           ) : open && (
             <Space wrap>
               {canConfirm && pending > 0 && (
@@ -89,14 +119,25 @@ export default function PickDetailPage() {
                   Confirm all unconfirmed lines at the allocated quantity ({pending})
                 </Button>
               )}
-              <ActionButton
-                perm="pick.post"
-                type="primary"
-                label="Post pick list"
-                confirm="Are all goods in staging? Posting moves the stock from the bins to staging and releases the reservation of short-picked quantities."
-                onConfirm={() => action.mutate("post")}
-                loading={action.isPending}
-              />
+              {canConfirm && pending > 0 ? (
+                <ActionButton
+                  perm="pick.post"
+                  type="primary"
+                  label={`Pick all and post (${pending} to confirm)`}
+                  confirm={`Is everything picked in full and in staging? The ${pending} unconfirmed line${pending === 1 ? " is" : "s are"} confirmed at the allocated quantity and the pick list is posted: the stock moves from the bins to staging. Enter short picks on their lines first.`}
+                  onConfirm={() => action.mutate("post-all")}
+                  loading={action.isPending}
+                />
+              ) : (
+                <ActionButton
+                  perm="pick.post"
+                  type="primary"
+                  label="Post pick list"
+                  confirm="Are all goods in staging? Posting moves the stock from the bins to staging and releases the reservation of short-picked quantities."
+                  onConfirm={() => action.mutate("post")}
+                  loading={action.isPending}
+                />
+              )}
               <ActionButton
                 perm="pick.cancel"
                 danger

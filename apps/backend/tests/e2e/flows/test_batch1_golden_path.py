@@ -140,8 +140,10 @@ def test_golden_path(flow, unique):
 
     # ---------------------------------------------------------------- A-07 allocate
     def allocate():
-        page.get_by_role("button", name="Allocate stock").click()
         dialog = page.get_by_role("dialog")
+        # Confirming an order goes straight on to the allocation dialog; later allocations start from the button
+        if not dialog.is_visible():
+            page.get_by_role("button", name="Allocate stock").click()
         flow.choose_in(dialog, s.code("ST"))
         dialog.get_by_role("button", name="Allocate").click()
         expect(dialog).to_be_hidden(timeout=15_000)

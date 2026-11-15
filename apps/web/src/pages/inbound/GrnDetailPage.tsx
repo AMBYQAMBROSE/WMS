@@ -113,7 +113,14 @@ export default function GrnDetailPage() {
         </Form.Item>
       </PrintLabelsModal>
 
-      <Card title="Lines">
+      <Card
+        title="Lines"
+        extra={
+          grn.status === "POSTED" && grn.lines.some((l) => l.batch_no) && (
+            <Link to={`/trace?doc=${encodeURIComponent(grn.doc_no)}`}>Trace batches</Link>
+          )
+        }
+      >
         <DocumentLinesTable
           lines={grn.lines}
           columns={[

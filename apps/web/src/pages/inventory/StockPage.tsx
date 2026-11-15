@@ -92,7 +92,16 @@ function BalancesTab() {
           { title: "SKU", render: (_, r) => <span className="wms-mono">{r.item.sku_code}</span> },
           { title: "Item", render: (_, r) => r.item.name },
           { title: "Location", render: (_, r) => <span className="wms-mono">{r.location.code}</span> },
-          { title: "Batch no.", dataIndex: "batch_no", render: (v: string | null) => v ?? <span className="wms-empty-value">—</span> },
+          {
+            title: "Batch no.",
+            dataIndex: "batch_no",
+            render: (v: string | null, r) =>
+              v ? (
+                <Link className="wms-mono" to={`/trace?item=${r.item.id}&batch=${encodeURIComponent(v)}`} title="Trace this batch">{v}</Link>
+              ) : (
+                <span className="wms-empty-value">—</span>
+              ),
+          },
           { title: "Expiry", dataIndex: "expiry_date", render: (v: string | null) => <ExpiryCell date={v} /> },
           { title: "On hand", dataIndex: "qty_on_hand", align: "right", render: formatQty, sorter: (a, b) => a.qty_on_hand - b.qty_on_hand },
           {

@@ -135,7 +135,17 @@ export default function ShipmentDetailPage() {
         </Card>
       )}
 
-      <Card title="Shipment lines" extra={<span style={{ color: "var(--ant-color-text-tertiary)", fontSize: 13 }}>Base units</span>}>
+      <Card
+        title="Shipment lines"
+        extra={
+          <Space size={12}>
+            <span style={{ color: "var(--ant-color-text-tertiary)", fontSize: 13 }}>Base units</span>
+            {ship.lines.some((l) => l.batch_no) && (
+              <Link to={`/trace?doc=${encodeURIComponent(ship.doc_no)}`}>Trace batches</Link>
+            )}
+          </Space>
+        }
+      >
         <DocumentLinesTable
           lines={ship.lines}
           columns={[

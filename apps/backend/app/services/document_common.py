@@ -27,6 +27,8 @@ DOC_SHIP = "SHIP"
 DOC_RETURN_IN = "RETURN_IN"
 DOC_RETURN_OUT = "RETURN_OUT"
 DOC_REPACK = "REPACK"
+# Batch recall: holds a batch (no allocation, no shipping) until released
+DOC_RECALL = "RECALL"
 
 # Status of a cycle count in progress: locations covered by such a count are frozen for stock movements
 COUNT_IN_PROGRESS = "COUNTING"
@@ -45,6 +47,7 @@ DEFAULT_PREFIXES = {
     DOC_RETURN_IN: "RI",
     DOC_RETURN_OUT: "RO",
     DOC_REPACK: "RP",
+    DOC_RECALL: "RC",
 }
 
 from app.core.feature_catalog import FEATURE_ALLOW_OVER_RECEIPT  # noqa: E402,F401  still exported from here

@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { SwapOutlined } from "@ant-design/icons";
 import { Alert, Button, Card, Descriptions, Form, Table } from "antd";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 
 import { apiClient } from "@/api/client";
 import { getErrorMessage } from "@/api/errors";
@@ -26,7 +26,9 @@ type Result = { type: "success" | "error"; text: string; doc?: Document };
 export default function MoveCreatePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [fromId, setFromId] = useState<string>();
+  // ?from=<location id>: opened from the warehouse map with location A already chosen
+  const [params] = useSearchParams();
+  const [fromId, setFromId] = useState<string | undefined>(params.get("from") ?? undefined);
   const [toId, setToId] = useState<string>();
   const [result, setResult] = useState<Result | null>(null);
 

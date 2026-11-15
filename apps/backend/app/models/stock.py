@@ -20,6 +20,8 @@ class StockLedger(Base, TenantScopedMixin):
         Index("ix_stock_ledger_tenant_time", "tenant_id", "occurred_at"),
         # Deleting a location makes SQL Server check the ledger for references
         Index("ix_stock_ledger_location", "location_id"),
+        # Batch traceability looks a batch up by its number, with or without the item
+        Index("ix_stock_ledger_batch", "tenant_id", "batch_no", "item_id"),
     )
 
     item_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("item.id"), index=True, nullable=False)

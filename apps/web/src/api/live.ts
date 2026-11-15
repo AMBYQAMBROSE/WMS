@@ -71,6 +71,9 @@ const RELATED: Record<string, string[]> = {
   SO: ["picks", "shipments", "cart"],
   RETURN_IN: ["sales-orders"],
   RETURN_OUT: ["purchase-orders"],
+  // A recall drafts a quarantine move; posting that move changes what the recall shows
+  RECALL: ["moves"],
+  MOVE: ["recalls"],
 };
 
 export function keysFor(events: ChangeEvent[]): Set<string> | "all" {

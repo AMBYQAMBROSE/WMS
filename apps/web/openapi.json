@@ -9264,6 +9264,781 @@
         }
       }
     },
+    "/api/v1/stock/map": {
+      "get": {
+        "tags": [
+          "warehouse map"
+        ],
+        "summary": "Warehouse Map",
+        "description": "Every location of one warehouse as a tree, with stock, allocation, nearest expiry, locks, counts, recalls and pick frequency",
+        "operationId": "warehouse_map_api_v1_stock_map_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "warehouse_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Defaults to the first warehouse by code",
+              "title": "Warehouse Id"
+            },
+            "description": "Defaults to the first warehouse by code"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WarehouseMap"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stock/map/activity": {
+      "get": {
+        "tags": [
+          "warehouse map"
+        ],
+        "summary": "Warehouse Activity",
+        "description": "Stock movements and PDA confirmations in the warehouse, oldest first (the newest `limit` when there are more)",
+        "operationId": "warehouse_activity_api_v1_stock_map_activity_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "warehouse_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Warehouse Id"
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "UTC; defaults to 15 minutes before until",
+              "title": "Since"
+            },
+            "description": "UTC; defaults to 15 minutes before until"
+          },
+          {
+            "name": "until",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "UTC; defaults to now. At most 2 days after since",
+              "title": "Until"
+            },
+            "description": "UTC; defaults to now. At most 2 days after since"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 5000,
+              "minimum": 1,
+              "default": 5000,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapActivityPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stock/map/locations/{location_id}": {
+      "get": {
+        "tags": [
+          "warehouse map"
+        ],
+        "summary": "Warehouse Map Location",
+        "operationId": "warehouse_map_location_api_v1_stock_map_locations__location_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "location_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Location Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapBinDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/trace/batches": {
+      "get": {
+        "tags": [
+          "traceability"
+        ],
+        "summary": "Search Batches",
+        "operationId": "search_batches_api_v1_trace_batches_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 50
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Start of the batch number",
+              "title": "Q"
+            },
+            "description": "Start of the batch number"
+          },
+          {
+            "name": "item_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BatchHit"
+                  },
+                  "title": "Response Search Batches Api V1 Trace Batches Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/trace/batch": {
+      "get": {
+        "tags": [
+          "traceability"
+        ],
+        "summary": "Trace Batch",
+        "description": "Suppliers and receipts the batch came from, where it is now, and the shipments and customers it went to",
+        "operationId": "trace_batch_api_v1_trace_batch_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
+            }
+          },
+          {
+            "name": "batch_no",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50,
+              "title": "Batch No"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchTrace"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/trace/documents/lookup": {
+      "get": {
+        "tags": [
+          "traceability"
+        ],
+        "summary": "Trace Document By Number",
+        "description": "Batches on a document found by its number (only document types the user may read)",
+        "operationId": "trace_document_by_number_api_v1_trace_documents_lookup_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "doc_no",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50,
+              "title": "Doc No"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentTrace"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/trace/documents/{document_id}": {
+      "get": {
+        "tags": [
+          "traceability"
+        ],
+        "summary": "Trace Document",
+        "description": "Reverse trace: the batches on a document (e.g. a delivery order a customer complains about), their suppliers and spread",
+        "operationId": "trace_document_api_v1_trace_documents__document_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Document Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentTrace"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/recalls": {
+      "get": {
+        "tags": [
+          "recalls"
+        ],
+        "summary": "List Recalls",
+        "operationId": "list_recalls_api_v1_recalls_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "keyword",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Part of the document or source document number, partner code/name or remark",
+              "title": "Keyword"
+            },
+            "description": "Part of the document or source document number, partner code/name or remark"
+          },
+          {
+            "name": "created_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "First day (business time zone), inclusive",
+              "title": "Created From"
+            },
+            "description": "First day (business time zone), inclusive"
+          },
+          {
+            "name": "created_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Last day (business time zone), inclusive",
+              "title": "Created To"
+            },
+            "description": "Last day (business time zone), inclusive"
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DocumentSummary"
+                  },
+                  "title": "Response List Recalls Api V1 Recalls Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "recalls"
+        ],
+        "summary": "Create Recall",
+        "description": "Holds the batch at once (no allocation, no shipping) and, with a quarantine location, drafts the move there",
+        "operationId": "create_recall_api_v1_recalls_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecallIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecallRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/recalls/{recall_id}": {
+      "get": {
+        "tags": [
+          "recalls"
+        ],
+        "summary": "Get Recall",
+        "operationId": "get_recall_api_v1_recalls__recall_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "recall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Recall Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecallRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/recalls/{recall_id}/release": {
+      "post": {
+        "tags": [
+          "recalls"
+        ],
+        "summary": "Release Recall",
+        "operationId": "release_recall_api_v1_recalls__recall_id__release_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "recall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Recall Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecallRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/recalls/{recall_id}/customers.csv": {
+      "get": {
+        "tags": [
+          "recalls"
+        ],
+        "summary": "Recall Customers Csv",
+        "description": "Customers to notify: one row per delivery order that took the batch out (UTF-8 CSV with BOM, opens in Excel)",
+        "operationId": "recall_customers_csv_api_v1_recalls__recall_id__customers_csv_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "recall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Recall Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/mobile/master-data": {
       "get": {
         "tags": [
@@ -10857,6 +11632,139 @@
         ],
         "title": "Backlog"
       },
+      "BatchHit": {
+        "properties": {
+          "item": {
+            "$ref": "#/components/schemas/ItemBrief"
+          },
+          "batch_no": {
+            "type": "string",
+            "title": "Batch No"
+          },
+          "first_seen": {
+            "type": "string",
+            "format": "date-time",
+            "title": "First Seen"
+          },
+          "last_seen": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Seen"
+          },
+          "qty_on_hand": {
+            "type": "number",
+            "title": "Qty On Hand"
+          },
+          "recalled": {
+            "type": "boolean",
+            "title": "Recalled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "item",
+          "batch_no",
+          "first_seen",
+          "last_seen",
+          "qty_on_hand",
+          "recalled"
+        ],
+        "title": "BatchHit"
+      },
+      "BatchTrace": {
+        "properties": {
+          "item": {
+            "$ref": "#/components/schemas/ItemBrief"
+          },
+          "batch_no": {
+            "type": "string",
+            "title": "Batch No"
+          },
+          "expiry_dates": {
+            "items": {
+              "type": "string",
+              "format": "date"
+            },
+            "type": "array",
+            "title": "Expiry Dates"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/TraceSummary"
+          },
+          "inbound": {
+            "items": {
+              "$ref": "#/components/schemas/TraceFlow"
+            },
+            "type": "array",
+            "title": "Inbound"
+          },
+          "outbound": {
+            "items": {
+              "$ref": "#/components/schemas/TraceFlow"
+            },
+            "type": "array",
+            "title": "Outbound"
+          },
+          "stock": {
+            "items": {
+              "$ref": "#/components/schemas/TraceStock"
+            },
+            "type": "array",
+            "title": "Stock"
+          },
+          "pending_shipments": {
+            "items": {
+              "$ref": "#/components/schemas/TraceFlow"
+            },
+            "type": "array",
+            "title": "Pending Shipments"
+          },
+          "movements": {
+            "items": {
+              "$ref": "#/components/schemas/TraceMovement"
+            },
+            "type": "array",
+            "title": "Movements"
+          },
+          "movements_total": {
+            "type": "integer",
+            "title": "Movements Total"
+          },
+          "recalls": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentBrief"
+            },
+            "type": "array",
+            "title": "Recalls"
+          },
+          "active_recall": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentBrief"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "item",
+          "batch_no",
+          "expiry_dates",
+          "summary",
+          "inbound",
+          "outbound",
+          "stock",
+          "pending_shipments",
+          "movements",
+          "movements_total",
+          "recalls",
+          "active_recall"
+        ],
+        "title": "BatchTrace"
+      },
       "Body_login_api_v1_auth_login_post": {
         "properties": {
           "grant_type": {
@@ -12150,6 +13058,86 @@
         ],
         "title": "DatabaseStatus"
       },
+      "DocumentBatch": {
+        "properties": {
+          "item": {
+            "$ref": "#/components/schemas/ItemBrief"
+          },
+          "batch_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batch No"
+          },
+          "expiry_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expiry Date"
+          },
+          "qty": {
+            "type": "number",
+            "title": "Qty"
+          },
+          "suppliers": {
+            "items": {
+              "$ref": "#/components/schemas/PartnerBrief"
+            },
+            "type": "array",
+            "title": "Suppliers"
+          },
+          "receipts": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentBrief"
+            },
+            "type": "array",
+            "title": "Receipts"
+          },
+          "other_customers": {
+            "type": "integer",
+            "title": "Other Customers"
+          },
+          "qty_on_hand": {
+            "type": "number",
+            "title": "Qty On Hand"
+          },
+          "active_recall": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentBrief"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "item",
+          "batch_no",
+          "expiry_date",
+          "qty",
+          "suppliers",
+          "receipts",
+          "other_customers",
+          "qty_on_hand",
+          "active_recall"
+        ],
+        "title": "DocumentBatch",
+        "description": "A batch on a document, with where it came from and where else it went"
+      },
       "DocumentBrief": {
         "properties": {
           "id": {
@@ -12586,6 +13574,50 @@
           "row_version"
         ],
         "title": "DocumentSummary"
+      },
+      "DocumentTrace": {
+        "properties": {
+          "document": {
+            "$ref": "#/components/schemas/DocumentBrief"
+          },
+          "partner": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PartnerBrief"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "posted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Posted At"
+          },
+          "batches": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentBatch"
+            },
+            "type": "array",
+            "title": "Batches"
+          }
+        },
+        "type": "object",
+        "required": [
+          "document",
+          "partner",
+          "posted_at",
+          "batches"
+        ],
+        "title": "DocumentTrace"
       },
       "EventTypeRead": {
         "properties": {
@@ -15161,6 +16193,412 @@
         "type": "object",
         "title": "LocationUpdate"
       },
+      "MapActivity": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "location_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Location Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "movement_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Movement Type"
+          },
+          "doc_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Type"
+          },
+          "doc_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc No"
+          },
+          "document_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Id"
+          },
+          "sku_code": {
+            "type": "string",
+            "title": "Sku Code"
+          },
+          "qty": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qty"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          },
+          "user_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "location_id",
+          "kind",
+          "movement_type",
+          "doc_type",
+          "doc_no",
+          "document_id",
+          "sku_code",
+          "qty",
+          "user_id",
+          "user_name"
+        ],
+        "title": "MapActivity",
+        "description": "Something that happened at a location: a stock movement, or a line confirmed on a PDA (pick, put, count)"
+      },
+      "MapActivityPage": {
+        "properties": {
+          "since": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Since"
+          },
+          "until": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Until"
+          },
+          "truncated": {
+            "type": "boolean",
+            "title": "Truncated"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/MapActivity"
+            },
+            "type": "array",
+            "title": "Events"
+          }
+        },
+        "type": "object",
+        "required": [
+          "since",
+          "until",
+          "truncated",
+          "events"
+        ],
+        "title": "MapActivityPage"
+      },
+      "MapBinDetail": {
+        "properties": {
+          "location": {
+            "$ref": "#/components/schemas/LocationBrief"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "is_locked": {
+            "type": "boolean",
+            "title": "Is Locked"
+          },
+          "is_counting": {
+            "type": "boolean",
+            "title": "Is Counting"
+          },
+          "counting_doc": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentBrief"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "capacity_qty": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capacity Qty"
+          },
+          "stock": {
+            "items": {
+              "$ref": "#/components/schemas/MapBinStock"
+            },
+            "type": "array",
+            "title": "Stock"
+          },
+          "recent": {
+            "items": {
+              "$ref": "#/components/schemas/MapActivity"
+            },
+            "type": "array",
+            "title": "Recent"
+          }
+        },
+        "type": "object",
+        "required": [
+          "location",
+          "path",
+          "is_locked",
+          "is_counting",
+          "counting_doc",
+          "capacity_qty",
+          "stock",
+          "recent"
+        ],
+        "title": "MapBinDetail"
+      },
+      "MapBinStock": {
+        "properties": {
+          "item": {
+            "$ref": "#/components/schemas/ItemBrief"
+          },
+          "batch_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batch No"
+          },
+          "expiry_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expiry Date"
+          },
+          "qty_on_hand": {
+            "type": "number",
+            "title": "Qty On Hand"
+          },
+          "qty_allocated": {
+            "type": "number",
+            "title": "Qty Allocated"
+          },
+          "recall": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentBrief"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "item",
+          "batch_no",
+          "expiry_date",
+          "qty_on_hand",
+          "qty_allocated",
+          "recall"
+        ],
+        "title": "MapBinStock"
+      },
+      "MapNode": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "location_type": {
+            "type": "string",
+            "title": "Location Type"
+          },
+          "is_pickable": {
+            "type": "boolean",
+            "title": "Is Pickable"
+          },
+          "is_locked": {
+            "type": "boolean",
+            "title": "Is Locked"
+          },
+          "is_counting": {
+            "type": "boolean",
+            "title": "Is Counting"
+          },
+          "capacity_qty": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capacity Qty"
+          },
+          "qty_on_hand": {
+            "type": "number",
+            "title": "Qty On Hand"
+          },
+          "qty_allocated": {
+            "type": "number",
+            "title": "Qty Allocated"
+          },
+          "sku_count": {
+            "type": "integer",
+            "title": "Sku Count"
+          },
+          "nearest_expiry": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nearest Expiry"
+          },
+          "has_recalled": {
+            "type": "boolean",
+            "title": "Has Recalled"
+          },
+          "picks": {
+            "type": "integer",
+            "title": "Picks"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "parent_id",
+          "code",
+          "name",
+          "location_type",
+          "is_pickable",
+          "is_locked",
+          "is_counting",
+          "capacity_qty",
+          "qty_on_hand",
+          "qty_allocated",
+          "sku_count",
+          "nearest_expiry",
+          "has_recalled",
+          "picks"
+        ],
+        "title": "MapNode",
+        "description": "One location of the warehouse tree; containers (zone, aisle, rack) carry no stock of their own"
+      },
+      "MapWarehouse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "name"
+        ],
+        "title": "MapWarehouse"
+      },
       "MeResponse": {
         "properties": {
           "id": {
@@ -16068,6 +17506,112 @@
           "row_version"
         ],
         "title": "ReasonCodeRead"
+      },
+      "RecallIn": {
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Item Id"
+          },
+          "batch_no": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Batch No"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 400,
+            "minLength": 1,
+            "title": "Reason"
+          },
+          "quarantine_location_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quarantine Location Id"
+          },
+          "client_request_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Request Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "item_id",
+          "batch_no",
+          "reason"
+        ],
+        "title": "RecallIn"
+      },
+      "RecallRead": {
+        "properties": {
+          "document": {
+            "$ref": "#/components/schemas/DocumentRead"
+          },
+          "moves": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentBrief"
+            },
+            "type": "array",
+            "title": "Moves"
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/RecallSkipped"
+            },
+            "type": "array",
+            "title": "Skipped"
+          },
+          "trace": {
+            "$ref": "#/components/schemas/BatchTrace"
+          }
+        },
+        "type": "object",
+        "required": [
+          "document",
+          "moves",
+          "skipped",
+          "trace"
+        ],
+        "title": "RecallRead"
+      },
+      "RecallSkipped": {
+        "properties": {
+          "location": {
+            "$ref": "#/components/schemas/LocationBrief"
+          },
+          "qty": {
+            "type": "number",
+            "title": "Qty"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "location",
+          "qty",
+          "reason"
+        ],
+        "title": "RecallSkipped"
       },
       "RecountIn": {
         "properties": {
@@ -17825,6 +19369,292 @@
         ],
         "title": "ToolCall"
       },
+      "TraceFlow": {
+        "properties": {
+          "document": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentBrief"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentBrief"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "partner": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TracePartner"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "movement_type": {
+            "type": "string",
+            "title": "Movement Type"
+          },
+          "qty": {
+            "type": "number",
+            "title": "Qty"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "vehicle_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vehicle No"
+          },
+          "driver_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Driver Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "document",
+          "source",
+          "partner",
+          "movement_type",
+          "qty",
+          "at"
+        ],
+        "title": "TraceFlow",
+        "description": "Quantity of the batch that one document brought in or took out"
+      },
+      "TraceMovement": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "movement_type": {
+            "type": "string",
+            "title": "Movement Type"
+          },
+          "qty": {
+            "type": "number",
+            "title": "Qty"
+          },
+          "location": {
+            "$ref": "#/components/schemas/LocationBrief"
+          },
+          "document": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentBrief"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "user_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "movement_type",
+          "qty",
+          "location",
+          "document",
+          "user_name"
+        ],
+        "title": "TraceMovement"
+      },
+      "TracePartner": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "contact_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Name"
+          },
+          "contact_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Phone"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "name"
+        ],
+        "title": "TracePartner"
+      },
+      "TraceStock": {
+        "properties": {
+          "location": {
+            "$ref": "#/components/schemas/LocationBrief"
+          },
+          "expiry_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expiry Date"
+          },
+          "qty_on_hand": {
+            "type": "number",
+            "title": "Qty On Hand"
+          },
+          "qty_allocated": {
+            "type": "number",
+            "title": "Qty Allocated"
+          }
+        },
+        "type": "object",
+        "required": [
+          "location",
+          "expiry_date",
+          "qty_on_hand",
+          "qty_allocated"
+        ],
+        "title": "TraceStock"
+      },
+      "TraceSummary": {
+        "properties": {
+          "received": {
+            "type": "number",
+            "title": "Received"
+          },
+          "returned_in": {
+            "type": "number",
+            "title": "Returned In"
+          },
+          "other_in": {
+            "type": "number",
+            "title": "Other In"
+          },
+          "shipped": {
+            "type": "number",
+            "title": "Shipped"
+          },
+          "returned_out": {
+            "type": "number",
+            "title": "Returned Out"
+          },
+          "other_out": {
+            "type": "number",
+            "title": "Other Out"
+          },
+          "qty_on_hand": {
+            "type": "number",
+            "title": "Qty On Hand"
+          },
+          "qty_allocated": {
+            "type": "number",
+            "title": "Qty Allocated"
+          },
+          "customers": {
+            "type": "integer",
+            "title": "Customers"
+          },
+          "shipments": {
+            "type": "integer",
+            "title": "Shipments"
+          },
+          "suppliers": {
+            "type": "integer",
+            "title": "Suppliers"
+          }
+        },
+        "type": "object",
+        "required": [
+          "received",
+          "returned_in",
+          "other_in",
+          "shipped",
+          "returned_out",
+          "other_out",
+          "qty_on_hand",
+          "qty_allocated",
+          "customers",
+          "shipments",
+          "suppliers"
+        ],
+        "title": "TraceSummary"
+      },
       "Transcript": {
         "properties": {
           "id": {
@@ -18338,6 +20168,52 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "WarehouseMap": {
+        "properties": {
+          "warehouses": {
+            "items": {
+              "$ref": "#/components/schemas/MapWarehouse"
+            },
+            "type": "array",
+            "title": "Warehouses"
+          },
+          "warehouse": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MapWarehouse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/MapNode"
+            },
+            "type": "array",
+            "title": "Nodes"
+          },
+          "pick_window_days": {
+            "type": "integer",
+            "title": "Pick Window Days"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "warehouses",
+          "warehouse",
+          "nodes",
+          "pick_window_days",
+          "generated_at"
+        ],
+        "title": "WarehouseMap"
       },
       "WorkerStatus": {
         "properties": {

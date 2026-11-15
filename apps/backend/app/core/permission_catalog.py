@@ -89,5 +89,8 @@ PERMISSIONS: list[tuple[str, str, str]] = [
     ("integration.read", "integration", "View integration settings and delivery log"),
     ("integration.manage", "integration", "Configure external system connectors, redeliver"),
     ("audit.read", "system", "View the audit log (who changed what, with old and new values)"),
+    ("recall.read", "inventory", "View batch recalls"),
+    ("recall.create", "inventory", "Start batch recalls (holds the batch and drafts a quarantine move)"),
+    ("recall.close", "inventory", "Release batch recalls (the batch can be allocated and shipped again)"),
     ("ai.assistant", "report", "Ask the AI assistant (read-only: it sees only what this user may see)"),
 ]

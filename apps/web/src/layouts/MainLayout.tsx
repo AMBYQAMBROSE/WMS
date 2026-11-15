@@ -103,6 +103,9 @@ const MENU: MenuGroup[] = [
     icon: <DatabaseOutlined />,
     children: [
       { key: "/stock", label: "Stock", description: "Balances by item, location and batch, with the full ledger", perm: "stock.read" },
+      { key: "/warehouse-map", label: "Warehouse map", description: "Every bin live: fill, pick heat, expiry and locks, with a replay of the day", perm: "stock.read", ownHeader: true },
+      { key: "/trace", label: "Batch trace", description: "Where a batch came from, where it is and which customers received it", perm: "stock.read" },
+      { key: "/recalls", label: "Recalls", description: "Batches on hold: no allocation, no shipping, quarantine and customers to notify", perm: "recall.read" },
       { key: "/moves", label: "Moves", description: "Bin-to-bin transfers", perm: "move.read", create: { label: "New move", perm: "move.create" } },
       { key: "/adjustments", label: "Stock adjustments", description: "Correct quantities with a reason", perm: "adjustment.read", create: { label: "New adjustment", perm: "adjustment.create" } },
       { key: "/cycle-counts", label: "Cycle counts", description: "Count bins and reconcile differences", perm: "cycle_count.read", create: { label: "Start cycle count", perm: "cycle_count.create" } },

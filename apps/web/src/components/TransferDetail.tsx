@@ -73,6 +73,11 @@ export default function TransferDetail({ path, docLabel }: { path: "putaways" | 
               {doc.ref_document ? <Link className="wms-mono" to={`/grns/${doc.ref_document.id}`}>{doc.ref_document.doc_no}</Link> : <span className="wms-empty-value">None</span>}
             </Descriptions.Item>
           )}
+          {path === "moves" && doc.ref_document?.doc_type === "RECALL" && (
+            <Descriptions.Item label="Recall">
+              <Link className="wms-mono" to={`/recalls/${doc.ref_document.id}`}>{doc.ref_document.doc_no}</Link>
+            </Descriptions.Item>
+          )}
           {sheet && doc.location && <Descriptions.Item label="Take from">{doc.location.code} {doc.location.name}</Descriptions.Item>}
           {sheet && (
             <Descriptions.Item label="Put away">

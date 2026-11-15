@@ -369,6 +369,17 @@ Feature flags are stored in `tenant_feature_flag` and switched under "System →
   - Outstanding quantities are summed per partner × type.
   - Recording locks the partner row, and returns cannot exceed what is outstanding.
 
+- **Batch recall** (`RECALL`, prefix `RC`; core, no feature flag):
+  - One line: item + batch. `qty_planned` is the quantity on hand when the recall started, `qty_actual` the quantity already shipped then.
+  - `ACTIVE` holds the batch: allocation skips it (`allocatable_balances`) and a shipment carrying it cannot be posted. Stock already allocated or picked stays put until it is returned to stock.
+  - `location_id` is the optional quarantine bin or dock. Starting the recall drafts a `MOVE` (with `ref_document_id` = the recall) for everything that can move there now.
+  - Releasing sets `RELEASED` and `posted_at`; the hold ends at once. Recalls are never cancelled, so their history stays.
+  - Permissions: `recall.read`, `recall.create`, `recall.close` (release). Roles created before this change do not have them: grant them under System > Roles.
+
+**Batch traceability** reads only the ledger: every row of a batch, joined to its document line and document, gives supplier, receipt and purchase order on one side and shipment, sales order, vehicle and customer on the other (index `ix_stock_ledger_batch`).
+
+**Warehouse map** is drawn from the location tree; activity comes from the ledger and from confirmed lines (`document_line.confirmed_at`: picks at `from_location_id`, putaway puts and counts at `to_location_id`).
+
 **Location types**: `WAREHOUSE` / `ZONE` / `AISLE` / `RACK` / `BIN` / `DOCK`.
 - Only `BIN` (storage bin) and `DOCK` (receiving/shipping staging) hold stock.
 - Locked, inactive or counting locations cannot receive or issue stock.

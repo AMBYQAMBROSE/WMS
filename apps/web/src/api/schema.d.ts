@@ -2097,6 +2097,215 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/stock/map": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Warehouse Map
+         * @description Every location of one warehouse as a tree, with stock, allocation, nearest expiry, locks, counts, recalls and pick frequency
+         */
+        get: operations["warehouse_map_api_v1_stock_map_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stock/map/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Warehouse Activity
+         * @description Stock movements and PDA confirmations in the warehouse, oldest first (the newest `limit` when there are more)
+         */
+        get: operations["warehouse_activity_api_v1_stock_map_activity_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stock/map/locations/{location_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Warehouse Map Location */
+        get: operations["warehouse_map_location_api_v1_stock_map_locations__location_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trace/batches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search Batches */
+        get: operations["search_batches_api_v1_trace_batches_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trace/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Trace Batch
+         * @description Suppliers and receipts the batch came from, where it is now, and the shipments and customers it went to
+         */
+        get: operations["trace_batch_api_v1_trace_batch_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trace/documents/lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Trace Document By Number
+         * @description Batches on a document found by its number (only document types the user may read)
+         */
+        get: operations["trace_document_by_number_api_v1_trace_documents_lookup_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trace/documents/{document_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Trace Document
+         * @description Reverse trace: the batches on a document (e.g. a delivery order a customer complains about), their suppliers and spread
+         */
+        get: operations["trace_document_api_v1_trace_documents__document_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recalls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Recalls */
+        get: operations["list_recalls_api_v1_recalls_get"];
+        put?: never;
+        /**
+         * Create Recall
+         * @description Holds the batch at once (no allocation, no shipping) and, with a quarantine location, drafts the move there
+         */
+        post: operations["create_recall_api_v1_recalls_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recalls/{recall_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Recall */
+        get: operations["get_recall_api_v1_recalls__recall_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recalls/{recall_id}/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Release Recall */
+        post: operations["release_recall_api_v1_recalls__recall_id__release_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recalls/{recall_id}/customers.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Recall Customers Csv
+         * @description Customers to notify: one row per delivery order that took the batch out (UTF-8 CSV with BOM, opens in Excel)
+         */
+        get: operations["recall_customers_csv_api_v1_recalls__recall_id__customers_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/mobile/master-data": {
         parameters: {
             query?: never;
@@ -2622,6 +2831,50 @@ export interface components {
             /** Shortage Lines */
             shortage_lines: number;
         };
+        /** BatchHit */
+        BatchHit: {
+            item: components["schemas"]["ItemBrief"];
+            /** Batch No */
+            batch_no: string;
+            /**
+             * First Seen
+             * Format: date-time
+             */
+            first_seen: string;
+            /**
+             * Last Seen
+             * Format: date-time
+             */
+            last_seen: string;
+            /** Qty On Hand */
+            qty_on_hand: number;
+            /** Recalled */
+            recalled: boolean;
+        };
+        /** BatchTrace */
+        BatchTrace: {
+            item: components["schemas"]["ItemBrief"];
+            /** Batch No */
+            batch_no: string;
+            /** Expiry Dates */
+            expiry_dates: string[];
+            summary: components["schemas"]["TraceSummary"];
+            /** Inbound */
+            inbound: components["schemas"]["TraceFlow"][];
+            /** Outbound */
+            outbound: components["schemas"]["TraceFlow"][];
+            /** Stock */
+            stock: components["schemas"]["TraceStock"][];
+            /** Pending Shipments */
+            pending_shipments: components["schemas"]["TraceFlow"][];
+            /** Movements */
+            movements: components["schemas"]["TraceMovement"][];
+            /** Movements Total */
+            movements_total: number;
+            /** Recalls */
+            recalls: components["schemas"]["DocumentBrief"][];
+            active_recall: components["schemas"]["DocumentBrief"] | null;
+        };
         /** Body_login_api_v1_auth_login_post */
         Body_login_api_v1_auth_login_post: {
             /** Grant Type */
@@ -3073,6 +3326,28 @@ export interface components {
             /** Read Committed Snapshot */
             read_committed_snapshot: boolean | null;
         };
+        /**
+         * DocumentBatch
+         * @description A batch on a document, with where it came from and where else it went
+         */
+        DocumentBatch: {
+            item: components["schemas"]["ItemBrief"];
+            /** Batch No */
+            batch_no: string | null;
+            /** Expiry Date */
+            expiry_date: string | null;
+            /** Qty */
+            qty: number;
+            /** Suppliers */
+            suppliers: components["schemas"]["PartnerBrief"][];
+            /** Receipts */
+            receipts: components["schemas"]["DocumentBrief"][];
+            /** Other Customers */
+            other_customers: number;
+            /** Qty On Hand */
+            qty_on_hand: number;
+            active_recall: components["schemas"]["DocumentBrief"] | null;
+        };
         /** DocumentBrief */
         DocumentBrief: {
             /**
@@ -3197,6 +3472,15 @@ export interface components {
             created_at: string;
             /** Row Version */
             row_version: number;
+        };
+        /** DocumentTrace */
+        DocumentTrace: {
+            document: components["schemas"]["DocumentBrief"];
+            partner: components["schemas"]["PartnerBrief"] | null;
+            /** Posted At */
+            posted_at: string | null;
+            /** Batches */
+            batches: components["schemas"]["DocumentBatch"][];
         };
         /** EventTypeRead */
         EventTypeRead: {
@@ -4238,6 +4522,138 @@ export interface components {
             /** Is Active */
             is_active?: boolean | null;
         };
+        /**
+         * MapActivity
+         * @description Something that happened at a location: a stock movement, or a line confirmed on a PDA (pick, put, count)
+         */
+        MapActivity: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /**
+             * Location Id
+             * Format: uuid
+             */
+            location_id: string;
+            /** Kind */
+            kind: string;
+            /** Movement Type */
+            movement_type: string | null;
+            /** Doc Type */
+            doc_type: string | null;
+            /** Doc No */
+            doc_no: string | null;
+            /** Document Id */
+            document_id: string | null;
+            /** Sku Code */
+            sku_code: string;
+            /** Qty */
+            qty: number | null;
+            /** User Id */
+            user_id: string | null;
+            /** User Name */
+            user_name: string | null;
+        };
+        /** MapActivityPage */
+        MapActivityPage: {
+            /**
+             * Since
+             * Format: date-time
+             */
+            since: string;
+            /**
+             * Until
+             * Format: date-time
+             */
+            until: string;
+            /** Truncated */
+            truncated: boolean;
+            /** Events */
+            events: components["schemas"]["MapActivity"][];
+        };
+        /** MapBinDetail */
+        MapBinDetail: {
+            location: components["schemas"]["LocationBrief"];
+            /** Path */
+            path: string;
+            /** Is Locked */
+            is_locked: boolean;
+            /** Is Counting */
+            is_counting: boolean;
+            counting_doc: components["schemas"]["DocumentBrief"] | null;
+            /** Capacity Qty */
+            capacity_qty: number | null;
+            /** Stock */
+            stock: components["schemas"]["MapBinStock"][];
+            /** Recent */
+            recent: components["schemas"]["MapActivity"][];
+        };
+        /** MapBinStock */
+        MapBinStock: {
+            item: components["schemas"]["ItemBrief"];
+            /** Batch No */
+            batch_no: string | null;
+            /** Expiry Date */
+            expiry_date: string | null;
+            /** Qty On Hand */
+            qty_on_hand: number;
+            /** Qty Allocated */
+            qty_allocated: number;
+            recall: components["schemas"]["DocumentBrief"] | null;
+        };
+        /**
+         * MapNode
+         * @description One location of the warehouse tree; containers (zone, aisle, rack) carry no stock of their own
+         */
+        MapNode: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Parent Id */
+            parent_id: string | null;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Location Type */
+            location_type: string;
+            /** Is Pickable */
+            is_pickable: boolean;
+            /** Is Locked */
+            is_locked: boolean;
+            /** Is Counting */
+            is_counting: boolean;
+            /** Capacity Qty */
+            capacity_qty: number | null;
+            /** Qty On Hand */
+            qty_on_hand: number;
+            /** Qty Allocated */
+            qty_allocated: number;
+            /** Sku Count */
+            sku_count: number;
+            /** Nearest Expiry */
+            nearest_expiry: string | null;
+            /** Has Recalled */
+            has_recalled: boolean;
+            /** Picks */
+            picks: number;
+        };
+        /** MapWarehouse */
+        MapWarehouse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+        };
         /** MeResponse */
         MeResponse: {
             /**
@@ -4572,6 +4988,39 @@ export interface components {
             is_active: boolean;
             /** Row Version */
             row_version: number;
+        };
+        /** RecallIn */
+        RecallIn: {
+            /**
+             * Item Id
+             * Format: uuid
+             */
+            item_id: string;
+            /** Batch No */
+            batch_no: string;
+            /** Reason */
+            reason: string;
+            /** Quarantine Location Id */
+            quarantine_location_id?: string | null;
+            /** Client Request Id */
+            client_request_id?: string | null;
+        };
+        /** RecallRead */
+        RecallRead: {
+            document: components["schemas"]["DocumentRead"];
+            /** Moves */
+            moves: components["schemas"]["DocumentBrief"][];
+            /** Skipped */
+            skipped: components["schemas"]["RecallSkipped"][];
+            trace: components["schemas"]["BatchTrace"];
+        };
+        /** RecallSkipped */
+        RecallSkipped: {
+            location: components["schemas"]["LocationBrief"];
+            /** Qty */
+            qty: number;
+            /** Reason */
+            reason: string;
         };
         /** RecountIn */
         RecountIn: {
@@ -5150,6 +5599,97 @@ export interface components {
             /** Error */
             error: string | null;
         };
+        /**
+         * TraceFlow
+         * @description Quantity of the batch that one document brought in or took out
+         */
+        TraceFlow: {
+            document: components["schemas"]["DocumentBrief"] | null;
+            source: components["schemas"]["DocumentBrief"] | null;
+            partner: components["schemas"]["TracePartner"] | null;
+            /** Movement Type */
+            movement_type: string;
+            /** Qty */
+            qty: number;
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Vehicle No */
+            vehicle_no?: string | null;
+            /** Driver Name */
+            driver_name?: string | null;
+        };
+        /** TraceMovement */
+        TraceMovement: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Movement Type */
+            movement_type: string;
+            /** Qty */
+            qty: number;
+            location: components["schemas"]["LocationBrief"];
+            document: components["schemas"]["DocumentBrief"] | null;
+            /** User Name */
+            user_name: string | null;
+        };
+        /** TracePartner */
+        TracePartner: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Contact Name */
+            contact_name?: string | null;
+            /** Contact Phone */
+            contact_phone?: string | null;
+            /** Address */
+            address?: string | null;
+        };
+        /** TraceStock */
+        TraceStock: {
+            location: components["schemas"]["LocationBrief"];
+            /** Expiry Date */
+            expiry_date: string | null;
+            /** Qty On Hand */
+            qty_on_hand: number;
+            /** Qty Allocated */
+            qty_allocated: number;
+        };
+        /** TraceSummary */
+        TraceSummary: {
+            /** Received */
+            received: number;
+            /** Returned In */
+            returned_in: number;
+            /** Other In */
+            other_in: number;
+            /** Shipped */
+            shipped: number;
+            /** Returned Out */
+            returned_out: number;
+            /** Other Out */
+            other_out: number;
+            /** Qty On Hand */
+            qty_on_hand: number;
+            /** Qty Allocated */
+            qty_allocated: number;
+            /** Customers */
+            customers: number;
+            /** Shipments */
+            shipments: number;
+            /** Suppliers */
+            suppliers: number;
+        };
         /** Transcript */
         Transcript: {
             /**
@@ -5334,6 +5874,21 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /** WarehouseMap */
+        WarehouseMap: {
+            /** Warehouses */
+            warehouses: components["schemas"]["MapWarehouse"][];
+            warehouse: components["schemas"]["MapWarehouse"] | null;
+            /** Nodes */
+            nodes: components["schemas"]["MapNode"][];
+            /** Pick Window Days */
+            pick_window_days: number;
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
         };
         /** WorkerStatus */
         WorkerStatus: {
@@ -10188,6 +10743,397 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StockLedgerRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    warehouse_map_api_v1_stock_map_get: {
+        parameters: {
+            query?: {
+                /** @description Defaults to the first warehouse by code */
+                warehouse_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehouseMap"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    warehouse_activity_api_v1_stock_map_activity_get: {
+        parameters: {
+            query?: {
+                warehouse_id?: string | null;
+                /** @description UTC; defaults to 15 minutes before until */
+                since?: string | null;
+                /** @description UTC; defaults to now. At most 2 days after since */
+                until?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MapActivityPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    warehouse_map_location_api_v1_stock_map_locations__location_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                location_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MapBinDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_batches_api_v1_trace_batches_get: {
+        parameters: {
+            query?: {
+                /** @description Start of the batch number */
+                q?: string | null;
+                item_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchHit"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    trace_batch_api_v1_trace_batch_get: {
+        parameters: {
+            query: {
+                item_id: string;
+                batch_no: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchTrace"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    trace_document_by_number_api_v1_trace_documents_lookup_get: {
+        parameters: {
+            query: {
+                doc_no: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentTrace"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    trace_document_api_v1_trace_documents__document_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentTrace"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_recalls_api_v1_recalls_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                /** @description Part of the document or source document number, partner code/name or remark */
+                keyword?: string | null;
+                /** @description First day (business time zone), inclusive */
+                created_from?: string | null;
+                /** @description Last day (business time zone), inclusive */
+                created_to?: string | null;
+                skip?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_recall_api_v1_recalls_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecallIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecallRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_recall_api_v1_recalls__recall_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recall_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecallRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    release_recall_api_v1_recalls__recall_id__release_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recall_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecallRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    recall_customers_csv_api_v1_recalls__recall_id__customers_csv_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recall_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

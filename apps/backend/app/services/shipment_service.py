@@ -31,6 +31,7 @@ from app.services.sales_order_service import (
     SO_SHIPPED,
     SalesOrderService,
 )
+from app.services.batch_hold import active_recall
 from app.services.stock_service import MOVE_SHIP_OUT, Movement, apply_movements
 
 SHIP_CANCELLED = "CANCELLED"
@@ -174,6 +175,13 @@ class ShipmentService:
                 self.db, tenant_id=self.tenant_id, entity_type="document", entity_id=ship.id,
                 entity_label=f"{ship.doc_type} {ship.doc_no}", changes={"posted_without_full_scan": [None, summary]},
             )
+        for line in ship.lines:
+            recall = active_recall(self.db, self.tenant_id, line.item_id, line.batch_no)
+            if recall is not None:
+                raise DomainError(
+                    f"Batch {line.batch_no} of {line.item.sku_code} is held by recall {recall.doc_no} and cannot ship. "
+                    "Take it off the vehicle and return it to stock, or release the recall first"
+                )
         so = self.orders.get(ship.ref_document_id, lock=True)
         require_status(so, (SO_IN_PROGRESS, SO_PARTIALLY_SHIPPED), "ship")
 

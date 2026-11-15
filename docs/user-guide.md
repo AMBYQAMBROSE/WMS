@@ -88,6 +88,21 @@ Pick → scan the pick list number (or choose it from the list) → go to the bi
 - **Reports**: stock turnover, picker performance, expiring stock and partner ledger. After choosing dates, use "Export CSV" to open the data in Excel. With large data sets the page shows only the first 1000 rows; export for the full data.
 - **Importing orders**: Inbound → Purchase orders or Outbound → Sales orders → "Import from Excel". Download the template, enter one row per order line (rows with the same order ref become one order), then Validate and Import. Orders arrive as drafts: review them, tick them in the list and confirm them together.
 - **Cart orders**: orders placed from the shopping cart arrive in Sales orders as drafts, created by the person who ordered. Check and confirm them as usual; the person who ordered can withdraw a draft until it is confirmed.
+- **Warehouse map** (Inventory → Warehouse map): every zone, aisle, rack and bin of the warehouse on one screen, drawn from the location structure.
+  - Colour the bins by **Fill** (quantity against capacity), **Pick heat** (pick lines in the last 30 days), **Expiry** (earliest expiry) or **Status** (locked, being counted, recalled batch, fully allocated).
+  - A bin pulses as stock moves or a PDA confirms work there. The initials of each person working show on the bin they last worked at, and the panel on the right lists what happened in the last 15 minutes.
+  - "Where is an item?" dims every bin that does not hold the chosen item.
+  - Click a bin for its stock, batches and the last two days of activity, or to move its stock elsewhere.
+  - **Replay a day**: choose a date and press Play. The day plays back fast and the bins take a colour by how often they were touched, which shows where the work really happened.
+- **Batch trace** (Inventory → Batch trace): type a batch number, or choose an item to list its batches.
+  - The diagram shows where the batch came from (suppliers and receipts), the batch itself, and where it went (customers and delivery orders) or still is (bins). The tabs below list customers with contact and address, receipts, other outflows, stock and every movement.
+  - "From a document": enter the number of the delivery order a customer complains about, or of a receipt. Each batch on it is listed with its supplier, its receipts and how many other customers received it.
+  - Batch numbers on the Stock page and in the map open the trace; receipts and shipments have a "Trace batches" link.
+- **Recalling a batch** (permission "Start batch recalls"): on the batch trace, "Recall this batch", give a reason and optionally a quarantine bin.
+  - The batch is on hold at once: it is no longer allocated to orders, and a shipment carrying it cannot be posted. The bins holding it get a red ring on the warehouse map.
+  - With a quarantine bin, a draft move takes everything that can move now; post it once the goods are there. Picked goods in staging must first go back to stock from their pick list ("Return goods to stock").
+  - The recall page (Inventory → Recalls) shows what is not yet in quarantine, the shipments it stopped and the customers to notify. "Download list" gives them as a spreadsheet. "Print" gives a recall notice.
+  - "Release hold" (permission "Release batch recalls") ends the hold when the batch is cleared.
 - **Shortages**: Outbound → Shortages. "Available warehouse-wide" greater than 0 means re-allocating after replenishment will cover the order.
 - **Printing documents**: every document (purchase order, receipt, putaway, pick list, delivery order, adjustment, count sheet, returns, repack) has a **Print** button next to its number. It opens an A4 PDF with the document's details, lines, totals and signature boxes; the document number is printed as a barcode on every page. After posting, the success message offers "Print <document no.>" directly. Each print is recorded in the document's History.
   - Delivery order: customer, address, vehicle, driver and seal number, with signature boxes for the warehouse, the driver and the customer.

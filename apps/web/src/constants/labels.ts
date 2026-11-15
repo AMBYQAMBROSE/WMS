@@ -13,6 +13,8 @@ export const STATUS_LABELS: Record<string, { text: string; color: string }> = {
   SHIPPED: { text: "Shipped", color: "green" },
   OPEN: { text: "To pick", color: "blue" },
   TO_PUT_AWAY: { text: "To put away", color: "blue" },
+  ACTIVE: { text: "On hold", color: "red" },
+  RELEASED: { text: "Released", color: "default" },
 };
 
 export const PARTNER_TYPE_LABELS: Record<string, string> = {
@@ -67,6 +69,7 @@ export const PERMISSION_MODULE_LABELS: Record<string, string> = {
 export const DOC_TYPE_LABELS: Record<string, string> = {
   PO: "Purchase order", GRN: "Goods receipt", PUTAWAY: "Putaway", MOVE: "Move", ADJUST: "Stock adjustment", COUNT: "Cycle count",
   SO: "Sales order", PICK: "Pick list", SHIP: "Shipment", RETURN_IN: "Customer return", RETURN_OUT: "Return to supplier", REPACK: "Repack",
+  RECALL: "Batch recall",
 };
 
 /** Document type in the stock ledger -> frontend route, for linking document numbers to their detail page */
@@ -83,6 +86,7 @@ export const DOC_PATHS: Record<string, string> = {
   RETURN_IN: "returns-in",
   RETURN_OUT: "returns-out",
   REPACK: "repacks",
+  RECALL: "recalls",
 };
 
 /** Audit log entity types (app/models/audit.py) */

@@ -40,12 +40,14 @@ TITLES = {
     "RETURN_IN": "Customer Return",
     "RETURN_OUT": "Return to Supplier",
     "REPACK": "Repack",
+    "RECALL": "Batch Recall Notice",
 }
 
 STATUS = {
     "DRAFT": "Draft", "CONFIRMED": "Confirmed", "PARTIALLY_RECEIVED": "Partially received", "RECEIVED": "Received",
     "CLOSED": "Closed", "CANCELLED": "Cancelled", "POSTED": "Posted", "REVERSED": "Returned to stock", "COUNTING": "Counting", "IN_PROGRESS": "In progress",
     "PARTIALLY_SHIPPED": "Partially shipped", "SHIPPED": "Shipped", "OPEN": "To pick", "TO_PUT_AWAY": "To put away",
+    "ACTIVE": "On hold", "RELEASED": "Released",
 }
 
 SIGNATURES = {
@@ -61,11 +63,12 @@ SIGNATURES = {
     "RETURN_IN": ["Returned by (customer)", "Received by", "Checked by"],
     "RETURN_OUT": ["Released by (warehouse)", "Collected by (supplier)"],
     "REPACK": ["Repacked by", "Checked by"],
+    "RECALL": ["Raised by", "Quality approval", "Released by"],
 }
 
 PARTNER_LABEL = {"PO": "Supplier", "GRN": "Supplier", "RETURN_OUT": "Supplier", "SO": "Customer", "SHIP": "Customer", "RETURN_IN": "Customer", "PICK": "Customer"}
 REF_LABEL = {"GRN": "Purchase order", "PUTAWAY": "Goods receipt", "PICK": "Sales order", "SHIP": "Sales order", "RETURN_IN": "Sales order", "RETURN_OUT": "Purchase order"}
-LOCATION_LABEL = {"GRN": "Received at", "PICK": "Stage at", "SO": "Staging location", "PUTAWAY": "Take from"}
+LOCATION_LABEL = {"GRN": "Received at", "PICK": "Stage at", "SO": "Staging location", "PUTAWAY": "Take from", "RECALL": "Quarantine"}
 DATE_LABEL = {"PO": "Expected date", "SO": "Requested date"}
 
 LineValue = Callable[[DocumentLine], Cell]
@@ -275,6 +278,12 @@ class DocumentReportService:
             item_columns()
             tracking_columns()
             add("Change", 0.9, lambda line: _signed(line.qty_actual), "R")
+            add("Unit", 0.6, uom)
+        elif t == "RECALL":
+            item_columns()
+            tracking_columns()
+            add("On hand at recall", 1.1, total_of := qty(lambda line: line.qty_planned), "R")
+            add("Already shipped", 1.1, qty(lambda line: line.qty_actual), "R")
             add("Unit", 0.6, uom)
         elif t == "REPACK":
             lines.sort(key=lambda line: (line.from_location_id is None, line.line_no))

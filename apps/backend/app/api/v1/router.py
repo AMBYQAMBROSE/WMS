@@ -33,6 +33,7 @@ from app.api.v1 import (
     shipments,
     stock,
     system,
+    trace,
     transfers,
     uoms,
     users,
@@ -69,6 +70,9 @@ api_router.include_router(integration.router)
 api_router.include_router(reports.router)
 api_router.include_router(imports.router)
 api_router.include_router(stock.router)
+api_router.include_router(trace.map_router)
+api_router.include_router(trace.trace_router)
+api_router.include_router(trace.recall_router)
 api_router.include_router(mobile.router)
 api_router.include_router(audit.router)
 api_router.include_router(system.router)

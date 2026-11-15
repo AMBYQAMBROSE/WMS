@@ -12,6 +12,7 @@ from app.models.document import DocumentHeader, DocumentLine, DocumentLocation
 from app.models.item import Item, ItemUomConversion
 from app.models.location import Location
 from app.models.stock import StockBalance, StockLedger
+from app.services.batch_hold import held
 from app.services.document_common import (
     COUNT_IN_PROGRESS,
     DOC_COUNT,
@@ -116,7 +117,7 @@ def allocatable_balances(
     """Candidate stock for outbound allocation, taking update locks on the balances read (concurrent allocations of an item queue up and never double-reserve).
 
     Normal: bins (BIN) only; cross-dock: only the given receiving dock (DOCK) source_location_id.
-    Always excluded: locked/inactive locations, locations being counted, expired batches.
+    Always excluded: locked/inactive locations, locations being counted, expired batches, batches under an active recall.
     Order: first expiry first out (no expiry last) -> pickable bins first -> first in first out -> location code.
     """
     location_filter = (
@@ -147,6 +148,7 @@ def allocatable_balances(
             Location.is_deleted == false(),
             Location.id.not_in(counting),
             or_(StockBalance.expiry_date.is_(None), StockBalance.expiry_date >= today),
+            ~held(tenant_id, StockBalance.item_id, StockBalance.batch_no),
         )
         .order_by(
             case((StockBalance.expiry_date.is_(None), 1), else_=0),

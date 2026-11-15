@@ -14,6 +14,7 @@ from app.services.document_common import (
     DOC_GRN,
     DOC_MOVE,
     DOC_PUTAWAY,
+    DOC_RECALL,
     find_by_client_request,
     get_active_item,
     get_document,
@@ -342,3 +343,11 @@ class MoveService(TransferService):
     target_types = STOCK_LOCATION_TYPES
     movement_out = MOVE_MOVE_OUT
     movement_in = MOVE_MOVE_IN
+
+    def validate_ref_document(self, ref_document_id: uuid.UUID | None) -> None:
+        """A move may come from a recall (moving the recalled batch to quarantine); nothing else"""
+        if ref_document_id is None:
+            return
+        source = self.db.get(DocumentHeader, ref_document_id)
+        if source is None or source.tenant_id != self.tenant_id or source.doc_type != DOC_RECALL:
+            raise DomainError("A move can only be made from a recall")

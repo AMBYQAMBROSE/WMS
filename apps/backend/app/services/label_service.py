@@ -1,15 +1,28 @@
 import json
 import uuid
+from datetime import UTC
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import false, or_, select, true
 from sqlalchemy.orm import Session
 
 from app.core.errors import DomainError, NotFoundError
+from app.core.formatting import qty_text
 from app.models.item import Item
 from app.models.label import LabelProfile
 from app.models.location import STOCK_LOCATION_TYPES, Location
+from app.models.tenant import Tenant
 from app.repositories.base import BaseRepository, check_version
-from app.schemas.label import ItemLabelRequest, LabelLayout, LabelProfileIn, LabelProfileRead, LabelProfileUpdate, LocationLabelRequest
+from app.schemas.label import (
+    ItemLabelRequest,
+    LabelLayout,
+    LabelProfileIn,
+    LabelProfileRead,
+    LabelProfileUpdate,
+    LocationLabelRequest,
+    StockLabelRequest,
+)
+from app.services.document_common import DOC_GRN, get_document
 from app.services.printing import labels as label_pdf
 from app.services.printing.labels import LabelContent
 
@@ -135,6 +148,44 @@ class LabelService:
             contents.extend([content] * data.copies)
         return label_pdf.render(layout, contents, data.skip, title="Location labels")
 
+
+    def stock_labels(self, data: StockLabelRequest) -> bytes:
+        """Labels for the cartons or pallets of a posted receipt, so later scans need no typing of batch or expiry"""
+        layout, _ = self.layout("STOCK", data.profile_id)
+        grn = get_document(self.db, self.tenant_id, DOC_GRN, data.grn_id)
+        if grn.status != "POSTED":
+            raise DomainError(f"Goods receipt {grn.doc_no} is not posted yet; print stock labels once the goods are received")
+        # Stored as naive UTC; the label shows the warehouse's own date
+        tenant = self.db.get(Tenant, self.tenant_id)
+        received = (grn.posted_at or grn.created_at).replace(tzinfo=UTC).astimezone(ZoneInfo(tenant.default_timezone if tenant else "UTC"))
+        source = f"{grn.doc_no} · {received:%Y-%m-%d}"
+        contents = []
+        for line in grn.lines:
+            item = line.item
+            sizes = self._split(line.qty_actual, data.qty_per_label)
+            for size in sizes:
+                code = label_pdf.stock_code(item.barcode or item.sku_code, line.batch_no, line.expiry_date, size)
+                content = LabelContent(code, {
+                    "name": item.name,
+                    "sku": item.sku_code,
+                    "batch": f"Batch {line.batch_no}" if line.batch_no else "",
+                    "expiry": f"Exp {line.expiry_date:%Y-%m-%d}" if line.expiry_date else "",
+                    "qty": f"{qty_text(size)} {line.uom.code}",
+                    "source": source,
+                })
+                contents.extend([content] * data.copies)
+        if not contents:
+            raise DomainError(f"Goods receipt {grn.doc_no} has no lines")
+        self._check_count(len(contents))
+        return label_pdf.render(layout, contents, data.skip, title=f"Stock labels {grn.doc_no}")
+
+    @staticmethod
+    def _split(qty, per_label):
+        """Quantities of the labels for one line: all of it, or full cartons of per_label and the rest"""
+        if not per_label or per_label >= qty:
+            return [qty]
+        full, rest = divmod(qty, per_label)
+        return [per_label] * int(full) + ([rest] if rest else [])
 
     def test_print(self, layout: LabelLayout) -> bytes:
         """One page (a few labels on a roll) of sample labels with each label's edge drawn, to line up a new

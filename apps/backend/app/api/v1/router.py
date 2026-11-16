@@ -9,6 +9,7 @@ from app.api.v1 import (
     audit,
     auth,
     business_partners,
+    cart,
     cycle_counts,
     document_print,
     events,
@@ -32,6 +33,7 @@ from app.api.v1 import (
     shipments,
     stock,
     system,
+    trace,
     transfers,
     uoms,
     users,
@@ -56,6 +58,7 @@ api_router.include_router(transfers.move_router)
 api_router.include_router(adjustments.router)
 api_router.include_router(cycle_counts.router)
 api_router.include_router(sales_orders.router)
+api_router.include_router(cart.router)
 api_router.include_router(picks.router)
 api_router.include_router(shipments.router)
 api_router.include_router(extensions.return_in_router)
@@ -67,6 +70,9 @@ api_router.include_router(integration.router)
 api_router.include_router(reports.router)
 api_router.include_router(imports.router)
 api_router.include_router(stock.router)
+api_router.include_router(trace.map_router)
+api_router.include_router(trace.trace_router)
+api_router.include_router(trace.recall_router)
 api_router.include_router(mobile.router)
 api_router.include_router(audit.router)
 api_router.include_router(system.router)

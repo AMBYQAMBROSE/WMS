@@ -45,7 +45,7 @@ type Message = { kind: "events"; events: ChangeEvent[] } | { kind: "status"; sta
 
 /** Query keys (first segment) to refetch per kind of change; documents also move stock and the dashboard */
 const MASTER_KEYS: Record<string, string[]> = {
-  item: ["items"],
+  item: ["items", "cart"],
   item_barcode: ["items"],
   item_uom_conversion: ["items"],
   location: ["locations", "reports"],
@@ -66,11 +66,14 @@ const DOCUMENT_TYPES = new Set(["document", "document_line", "shipment_info", "c
 const RELATED: Record<string, string[]> = {
   GRN: ["purchase-orders", "putaways"],
   PUTAWAY: ["grns"],
-  PICK: ["sales-orders", "shipments"],
-  SHIP: ["sales-orders", "picks"],
-  SO: ["picks", "shipments"],
+  PICK: ["sales-orders", "shipments", "cart"],
+  SHIP: ["sales-orders", "picks", "cart"],
+  SO: ["picks", "shipments", "cart"],
   RETURN_IN: ["sales-orders"],
   RETURN_OUT: ["purchase-orders"],
+  // A recall drafts a quarantine move; posting that move changes what the recall shows
+  RECALL: ["moves"],
+  MOVE: ["recalls"],
 };
 
 export function keysFor(events: ChangeEvent[]): Set<string> | "all" {

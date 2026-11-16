@@ -29,18 +29,11 @@ const CONFIG = {
     targetTypes: ["BIN"],
     targetName: "bin",
   },
-  move: {
-    verb: "Move",
-    fromLabel: "Scan source location",
-    targetLabel: "Scan target location",
-    targetTypes: ["BIN", "DOCK"],
-    targetName: "location",
-  },
 } as const;
 
 let nextKey = 1;
 
-/** Shared by putaway and move: scan source location -> scan item (choose batch if several) -> quantity -> scan target location -> submit */
+/** Free putaway: scan source location -> scan item (choose batch if several) -> quantity -> scan target location -> submit */
 export default function TransferScreen({ kind }: { kind: keyof typeof CONFIG }) {
   const cfg = CONFIG[kind];
   const { c } = useTheme();
@@ -48,6 +41,7 @@ export default function TransferScreen({ kind }: { kind: keyof typeof CONFIG }) 
   const navigation = useNavigation();
   const findItem = useMasterData((st) => st.findItem);
   const findLocation = useMasterData((st) => st.findLocation);
+  const findAfterUpdate = useMasterData((st) => st.findAfterUpdate);
   const submitOp = useQueue((st) => st.submit);
 
   const [from, setFrom] = useState<MobileLocation | null>(null);
@@ -93,8 +87,8 @@ export default function TransferScreen({ kind }: { kind: keyof typeof CONFIG }) 
     }
   };
 
-  const scanFrom = (code: string) => {
-    const loc = findLocation(code);
+  const scanFrom = async (code: string) => {
+    const loc = findLocation(code) ?? (await findAfterUpdate(() => findLocation(code)));
     if (!loc) return setNotice({ kind: "error", text: `Location ${code} not found (for new locations, update master data on the home screen first)` });
     if (loc.is_locked) return setNotice({ kind: "error", text: `Location ${loc.code} is locked` });
     void loadFrom(loc);
@@ -107,28 +101,37 @@ export default function TransferScreen({ kind }: { kind: keyof typeof CONFIG }) 
     setNotice(null);
   };
 
-  const scanItem = (code: string) => {
-    const match = findItem(code);
+  const scanItem = async (code: string) => {
+    const match = findItem(code) ?? (await findAfterUpdate(() => findItem(code)));
     if (!match) return setNotice({ kind: "error", text: `Unknown barcode ${code} (for new items, update master data on the home screen first)` });
     const rows = balances.filter((b) => b.item.id === match.item.id && available(b) > 0);
     if (!rows.length) {
       return setNotice({ kind: "error", text: `No ${match.item.sku_code} stock available at ${from?.code}` });
     }
     haptic("tick");
-    if (rows.length === 1) return startEdit(rows[0]);
+    const lot = match.lot;
+    const sameLot = (l: { batch_no: string | null; expiry_date: string | null }) =>
+      (!lot?.batchNo || l.batch_no === lot.batchNo) && (!lot?.expiryDate || l.expiry_date === lot.expiryDate);
+    const matching = lot?.batchNo || lot?.expiryDate ? rows.filter(sameLot) : rows;
+    if (lot && !matching.length) return setNotice({ kind: "error", text: `No ${match.item.sku_code} of batch ${lot.batchNo ?? lot.expiryDate} at ${from?.code}` });
+    if (matching.length === 1) {
+      startEdit(matching[0]);
+      if (lot?.qty && lot.qty <= available(matching[0])) setQtyText(fmtQty(lot.qty));
+      return;
+    }
     // The item has several batches at this location: let the operator choose by the batch on the goods
-    setChoices(rows);
+    setChoices(matching);
     setNotice({ kind: "info", text: "This item has several batches; choose the batch on the goods" }, { silent: true });
   };
 
-  const scanTarget = (code: string) => {
+  const scanTarget = async (code: string) => {
     if (!editing || !from) return;
     const qty = parseQty(qtyText);
     if (qty === null) return setNotice({ kind: "error", text: "Quantity must be a number greater than 0 (up to 4 decimals)" });
     if (qty > available(editing)) {
       return setNotice({ kind: "error", text: `Exceeds the available quantity ${fmtQty(available(editing))}` });
     }
-    const to = findLocation(code);
+    const to = findLocation(code) ?? (await findAfterUpdate(() => findLocation(code)));
     if (!to) return setNotice({ kind: "error", text: `Location ${code} not found` });
     if (!(cfg.targetTypes as readonly string[]).includes(to.location_type)) {
       return setNotice({ kind: "error", text: `${to.code} is not a ${cfg.targetName}; the target must be a ${cfg.targetName}` });

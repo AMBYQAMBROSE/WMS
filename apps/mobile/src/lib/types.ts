@@ -125,4 +125,71 @@ export interface StockBalance {
   batch_no: string | null;
   expiry_date: string | null;
   qty_on_hand: number;
+  qty_allocated: number;
+}
+
+export interface PutawayLine {
+  id: string;
+  line_no: number;
+  item: ItemBrief;
+  uom: { id: string; code: string; name: string };
+  /** Quantity of this line; a partial put splits the rest off as a new line */
+  qty_planned: number;
+  qty_actual: number;
+  batch_no: string | null;
+  expiry_date: string | null;
+  /** Suggested bin while open (null: any bin); the bin used once put away */
+  to_location: { id: string; code: string; name: string } | null;
+  confirmed_at: string | null;
+}
+
+/** Putaway sheet made from a posted receipt (status TO_PUT_AWAY while being worked) */
+export interface PutawaySheet extends DocumentSummary {
+  ref_document: { id: string; doc_no: string } | null;
+  location: { id: string; code: string; name: string } | null;
+  lines: PutawayLine[];
+}
+
+export interface ShipmentInfo {
+  carrier: string | null;
+  vehicle_no: string | null;
+  driver_name: string | null;
+  driver_phone: string | null;
+  seal_no: string | null;
+}
+
+export interface ShipmentLine {
+  id: string;
+  line_no: number;
+  item: ItemBrief;
+  uom: { id: string; code: string; name: string };
+  /** Quantity to ship (base units) */
+  qty_actual: number;
+  /** Scanned onto the vehicle so far */
+  qty_checked: number;
+  batch_no: string | null;
+  expiry_date: string | null;
+  from_location: { id: string; code: string; name: string } | null;
+}
+
+/** Delivery order (shipment); posted only once every piece is scanned */
+export interface Shipment extends DocumentSummary {
+  partner: { id: string; code: string; name: string } | null;
+  ref_document: { id: string; doc_no: string } | null;
+  shipment_info: ShipmentInfo | null;
+  lines: ShipmentLine[];
+}
+
+/** A document whose number was scanned (GET /mobile/lookup) */
+export interface DocumentHit {
+  id: string;
+  doc_type: string;
+  doc_no: string;
+  status: string;
+  ref_document_id: string | null;
+}
+
+export interface LoadingHistory {
+  carriers: string[];
+  vehicles: ShipmentInfo[];
 }

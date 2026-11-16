@@ -22,13 +22,16 @@ For warehouse operators, warehouse supervisors and system administrators. Everyo
 
 - **Server URL**: entered at first sign-in (your administrator gives it to you, e.g. `http://192.168.1.10`) and remembered afterwards.
 - **Master data**: items, locations and so on are downloaded after sign-in and used to recognize barcodes. The home screen shows when it was last updated; tap "Update master data" when items change.
-- **Scanning**: the scanner sends Enter after each scan and the cursor always stays in the scan field, so there is no need to tap the screen.
+- **Scanning**: the scanner sends Enter after each scan and the cursor always stays in the scan field, so there is no need to tap the screen. New devices must be set up first: see [scanner-setup.md](scanner-setup.md).
+- **GS1 carton codes and stock labels**: wherever an item is scanned, a supplier's GS1 carton code or one of our stock labels also gives the batch, expiry and quantity. Batch and expiry are filled in, the quantity is offered, and a carton of the wrong batch is refused when picking or loading.
+- **Dates**: expiry dates are typed as digits only (20271231); the dashes appear by themselves.
 - **Offline**: keep working when the signal is poor. Records go to the "Submit queue" and are submitted automatically once the signal returns, without duplicates (you can also tap "Sync now" in the queue). The home screen shows how many are pending; **make sure the queue is empty before the end of your shift**.
 - **Shared PDAs**: records you made offline are only submitted while **you** are signed in, so they are recorded as your work. If you sign out with records still waiting, sign in on that PDA again later to send them. The queue shows other people's waiting records separately.
 - **Failed records**: if the server refuses a record (e.g. the location was locked meanwhile), the queue shows what it contained and why. Fix the cause and tap **Retry**; delete it only if you redid the work another way.
 - **Each scan counts 1**: for goods labelled per piece, switch this on in Receive or Count and scan every piece instead of typing the quantity.
 - **Photos**: in Receive and Count, tap "Take photo" (add a note first if useful) to record damage or what you found. Photos are sent with the record, also when you were offline, and the office sees them on the document.
 - **New work**: when new pick lists or counts arrive, the PDA vibrates and the home screen shows them (e.g. "Pick · 2 new") until you open that screen.
+- **Scan anything**: the scan field on the home screen takes any barcode. A bin or an item shows its stock. A document number opens its task: a purchase order opens Receive, a putaway sheet opens Put away, an open pick list opens Pick, a picked pick list or a sales order opens Ship, and a running cycle count opens Count.
 
 ## 3. Receiving clerk
 
@@ -36,24 +39,38 @@ For warehouse operators, warehouse supervisors and system administrators. Everyo
 
 **PDA**: Receive → ① scan the PO number → ② scan the receiving location (receiving dock) → ③ scan the item barcode → enter the quantity (for batch items, scan/enter batch no. and expiry date) → OK.
 
+**GS1 cartons**: scanning a carton's GS1 code fills in batch, expiry and quantity; check them and tap OK.
+
+**Stock labels**: after posting a receipt, "Print stock labels" on the receipt page prints a label per line, or per carton or pallet ("Quantity per carton or pallet", e.g. 24). The label's QR code holds item, batch, expiry and quantity; stick it on the goods so that putting away, picking, counting and loading need nothing typed. The layout is set up under System → Labels & printing → Stock labels.
+
 Note: over-receipt is not allowed by default. After a partial receipt the PO shows "Partially received"; receive the rest next time.
 
 ## 4. Putaway operator
 
-**PDA**: Put away → ① scan the source location (receiving dock) → ② scan the item barcode (choose a batch if there are several) → enter the quantity → scan the target bin. You can do several lines in a row, then tap "Submit putaway".
+Posting a receipt into a dock creates a **putaway sheet** (status "To put away") at once. The success message offers to print it along with the receipt. The printed sheet has the sheet number as a barcode, and each line has the item barcode and the suggested bin as a barcode. The suggested bin is the bin that already holds most of that item; "Any bin" means the item is not in any bin yet.
 
-**Web**: Inbound → Goods receipts → Create putaway → choose a bin for each line → Post.
+**PDA (by sheet)**: Put away → ① scan the sheet number (or choose it from the list) → ② scan an item from the dock, in any order → ③ take it to the suggested bin, or any other bin, and scan that bin → ④ confirm the quantity. If the bin is full, enter what fits: the rest stays on the sheet and the PDA asks for the next bin. When everything is put away, tap "Finish putaway (post)". The stock moves into the bins only then, and the sheet cannot be posted while anything is left. This also works offline: puts are queued and sent without duplicates.
+
+**PDA (without a sheet)**: Put away → "Put away without a sheet" → scan the dock → scan the item → quantity → scan the target bin; several lines, then "Submit putaway".
+
+**Web**: open the sheet from the receipt (button "Putaway sheet …") or under Inbound → Putaways (filter "To put away"). The progress bar shows how much is still on the dock. "Put away…" on a line does the same as the PDA. A supervisor can cancel a sheet and do a free putaway instead.
 
 ## 5. Picker (PDA)
 
-Pick → choose a pick list → go to the bin shown → ① scan the bin → ② scan the item → ③ enter the picked quantity (0 if none).
+Pick → scan the pick list number (or choose it from the list) → go to the bin shown → ① scan the bin → ② scan the item → ③ enter the picked quantity (0 if none).
 - **Short pick**: if you find less than requested, confirm the actual quantity. The difference goes back to the order as "unallocated" and can be allocated again once stock is replenished.
 - **Skip**: if you cannot find something right away, use "Skip this line, pick later".
 - **Finish**: when everything is picked, tap "Finish picking (post)". This needs the pick-posting permission; without it, a supervisor posts the pick list on the web.
+- **Picked goods stay reserved**: goods in staging belong to their order until they ship; they cannot be moved, adjusted or allocated to another order.
+- **Picked goods that will not ship** (the customer cancelled, the wrong goods were picked): on the web, open the posted pick list and use "Return goods to stock". The goods go back from staging to the bins they came from, the pick list becomes "Returned to stock" and the order's quantities are unallocated again, so the order can be allocated anew, closed or cancelled. This works only until the goods ship; after that, record a customer return.
 
 ## 6. Shipping
 
-Outbound → Sales orders → open the order → Ship → enter carrier, vehicle plate, driver and seal no. → create the shipment → post it once loading is done. The shipment automatically includes every picked but unshipped item for that order in staging.
+**Every piece is scanned onto the vehicle**: a delivery order (shipment) can be posted only after all of its pieces were scanned while loading.
+
+**PDA**: Ship → ① scan the pick list number (or the sales order number). The PDA opens the order's delivery order, or creates one with everything picked and waiting in staging. ② Scan every piece as it goes onto the vehicle. A carton barcode counts as its whole pack (e.g. 12). A wrong item or an extra piece is refused with a buzz: take it off the vehicle. ③ Once everything is scanned, choose the vehicle and driver from the recent ones (or type them) and scan or enter the seal number. ④ "Post delivery order". Without the posting permission the PDA says so, and a supervisor posts it on the web. Print the delivery order on the web (Print button, or the link after posting) for the driver to sign.
+
+**Web**: Outbound → Sales orders → open the order → Ship → enter carrier, vehicle plate, driver and seal no. → create the shipment. The shipment page shows how much was scanned while loading. "Post shipment" stays disabled until every piece is scanned. Supervisors (permission "Post shipments without every piece scanned") can post anyway after a warning; this is recorded in the shipment's history.
 
 ## 7. Inventory operations
 
@@ -69,6 +86,23 @@ Outbound → Sales orders → open the order → Ship → enter carrier, vehicle
 - **Approvals**: supervisors post stock adjustments and cycle counts.
 - **Dashboard**: today's receipts and shipments, pending backlog (click a number to open the matching list), bin utilization and expiring stock.
 - **Reports**: stock turnover, picker performance, expiring stock and partner ledger. After choosing dates, use "Export CSV" to open the data in Excel. With large data sets the page shows only the first 1000 rows; export for the full data.
+- **Importing orders**: Inbound → Purchase orders or Outbound → Sales orders → "Import from Excel". Download the template, enter one row per order line (rows with the same order ref become one order), then Validate and Import. Orders arrive as drafts: review them, tick them in the list and confirm them together.
+- **Cart orders**: orders placed from the shopping cart arrive in Sales orders as drafts, created by the person who ordered. Check and confirm them as usual; the person who ordered can withdraw a draft until it is confirmed.
+- **Warehouse map** (Inventory → Warehouse map): every zone, aisle, rack and bin of the warehouse on one screen, drawn from the location structure.
+  - Colour the bins by **Fill** (quantity against capacity), **Pick heat** (pick lines in the last 30 days), **Expiry** (earliest expiry) or **Status** (locked, being counted, recalled batch, fully allocated).
+  - A bin pulses as stock moves or a PDA confirms work there. The initials of each person working show on the bin they last worked at, and the panel on the right lists what happened in the last 15 minutes.
+  - "Where is an item?" dims every bin that does not hold the chosen item.
+  - Click a bin for its stock, batches and the last two days of activity, or to move its stock elsewhere.
+  - **Replay a day**: choose a date and press Play. The day plays back fast and the bins take a colour by how often they were touched, which shows where the work really happened.
+- **Batch trace** (Inventory → Batch trace): type a batch number, or choose an item to list its batches.
+  - The diagram shows where the batch came from (suppliers and receipts), the batch itself, and where it went (customers and delivery orders) or still is (bins). The tabs below list customers with contact and address, receipts, other outflows, stock and every movement.
+  - "From a document": enter the number of the delivery order a customer complains about, or of a receipt. Each batch on it is listed with its supplier, its receipts and how many other customers received it.
+  - Batch numbers on the Stock page and in the map open the trace; receipts and shipments have a "Trace batches" link.
+- **Recalling a batch** (permission "Start batch recalls"): on the batch trace, "Recall this batch", give a reason and optionally a quarantine bin.
+  - The batch is on hold at once: it is no longer allocated to orders, and a shipment carrying it cannot be posted. The bins holding it get a red ring on the warehouse map.
+  - With a quarantine bin, a draft move takes everything that can move now; post it once the goods are there. Picked goods in staging must first go back to stock from their pick list ("Return goods to stock").
+  - The recall page (Inventory → Recalls) shows what is not yet in quarantine, the shipments it stopped and the customers to notify. "Download list" gives them as a spreadsheet. "Print" gives a recall notice.
+  - "Release hold" (permission "Release batch recalls") ends the hold when the batch is cleared.
 - **Shortages**: Outbound → Shortages. "Available warehouse-wide" greater than 0 means re-allocating after replenishment will cover the order.
 - **Printing documents**: every document (purchase order, receipt, putaway, pick list, delivery order, adjustment, count sheet, returns, repack) has a **Print** button next to its number. It opens an A4 PDF with the document's details, lines, totals and signature boxes; the document number is printed as a barcode on every page. After posting, the success message offers "Print <document no.>" directly. Each print is recorded in the document's History.
   - Delivery order: customer, address, vehicle, driver and seal number, with signature boxes for the warehouse, the driver and the customer.
@@ -89,9 +123,22 @@ Outbound → Sales orders → open the order → Ship → enter carrier, vehicle
 | Feature flags | System → Feature flags | Enable returns, cross-docking, repacking, returnable assets and over-receipt as needed |
 | Label layouts | System → Labels & printing | Set the label size and layout for item and location labels: a sheet of labels on an A4 office printer, or a roll on a thermal label printer. Start from common label stock, then "Test print": it outlines every label, so hold the print against a label sheet and adjust margins and gaps until they match. The default layout is used when nobody picks one; with none, a built-in A4 layout is used |
 | Reason codes | Master data → Reason codes | Adjustment reasons, return reasons |
-| Data import | System → Data import | Download template → fill in → validate → confirm import; nothing is imported unless every row is valid |
+| Data import | System → Data import | Download template → fill in → validate → confirm import; nothing is imported unless every row is valid. Also imports purchase and sales orders |
+| Customer accounts | System → Users | For a customer or store that orders through the shopping cart: give the user the **Customer ordering** role and set "Customer account for". The account sees only the shopping cart, orders only for that customer and sees only that customer's orders. Do not give it other roles: those open the normal screens, which show every customer's data. Staff who order for many customers get the `cart.order` permission without a customer link |
 | Integrations | System → Integrations | Configure pushes to ERP and other external systems; check failures and resend in the push log (see integration.md) |
 | Backup, upgrade | On the server | See deployment.md |
+
+## 9a. Ordering with the shopping cart
+
+Outbound → Shopping cart (a customer account lands here after login).
+
+1. Search by SKU or name, filter by category, or scan a barcode and press Enter to add one straight away. "Available" is the stock that can be shipped now.
+2. Choose the quantity and unit, and click **Add**. Adding the same item again raises the quantity.
+3. In the cart on the right: staff choose the customer (a customer account always orders for its own customer), optionally a requested ship date and a remark, then **Place order**.
+4. Ordering more than is available is allowed: the warehouse ships what it has and the rest later.
+5. **My orders** shows each order's status; expand a row to see its lines. **Order again** copies an earlier order into the cart. **Withdraw** cancels an order the warehouse has not confirmed yet.
+
+The cart is kept on the server, so it is still there after logging in on another PC.
 
 ## 10. FAQ
 
@@ -99,6 +146,7 @@ Outbound → Sales orders → open the order → Ship → enter carrier, vehicle
 |---|---|
 | An item is not in the dropdown | Type a more complete code or name. If it still does not show, the item may be inactive or not imported |
 | "Insufficient stock" | In stock enquiry, check the location's "available" (on hand − allocated); stock allocated to orders cannot be touched |
+| An order cannot be cancelled or closed because goods are picked | Ship the goods in staging, or return them to stock on the posted pick list ("Return goods to stock"); then cancel or close |
 | "Location is being counted" | Receiving and shipping resume after the count is posted or cancelled |
 | The PDA does not react to scans | Make sure the cursor is in the scan field; tap "Update master data" on the home screen and retry; new items must be created in the system first |
 | The PDA submit queue never empties | Check the network; open the queue to see why records failed (e.g. insufficient stock), fix the cause, then retry or delete the record |

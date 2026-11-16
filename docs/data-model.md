@@ -87,6 +87,7 @@ Unique: `(tenant_id, feature_code)`
 | `auth_provider` | nvarchar(20) default `'local'` | Reserved: `local` / `ad` / `saml` / `oidc`; only `local` is implemented |
 | `is_active` | bit | |
 | `last_login_at` | datetime2 | Nullable |
+| `partner_id` | FK→business_partner (nullable) | Customer account: in the shopping cart the user always orders for this customer (must be a customer or both) and sees only its orders. Empty for warehouse staff |
 
 ### `role`
 | Field | Type | Description |
@@ -270,7 +271,7 @@ Stock changes only through `stock_service.apply_movements`, which writes a ledge
 | `batch_no` | nvarchar(50) | Nullable |
 | `expiry_date` | date | Nullable |
 | `qty_change` | decimal(18,4) | Positive in, negative out |
-| `movement_type` | nvarchar(30) | `RECEIVE`, `PUTAWAY_OUT`/`PUTAWAY_IN`, `MOVE_OUT`/`MOVE_IN`, `ADJUST_IN`/`ADJUST_OUT`, `COUNT_GAIN`/`COUNT_LOSS`, `PICK_OUT`/`PICK_IN`, `SHIP_OUT`, `RETURN_IN`/`RETURN_OUT`, `REPACK_OUT`/`REPACK_IN` |
+| `movement_type` | nvarchar(30) | `RECEIVE`, `PUTAWAY_OUT`/`PUTAWAY_IN`, `MOVE_OUT`/`MOVE_IN`, `ADJUST_IN`/`ADJUST_OUT`, `COUNT_GAIN`/`COUNT_LOSS`, `PICK_OUT`/`PICK_IN`, `UNPICK_OUT`/`UNPICK_IN`, `SHIP_OUT`, `RETURN_IN`/`RETURN_OUT`, `REPACK_OUT`/`REPACK_IN` |
 | `ref_document_line_id` | FK→document_line (nullable) | The document line that triggered the entry |
 | `occurred_at` | datetime2 | Business time (may be later than created_at) |
 
@@ -367,6 +368,17 @@ Feature flags are stored in `tenant_feature_flag` and switched under "System →
   - `returnable_asset_type` (pallets, totes, etc.) + `returnable_asset_txn` entries (`ISSUE` lend is positive, `RETURN` is negative).
   - Outstanding quantities are summed per partner × type.
   - Recording locks the partner row, and returns cannot exceed what is outstanding.
+
+- **Batch recall** (`RECALL`, prefix `RC`; core, no feature flag):
+  - One line: item + batch. `qty_planned` is the quantity on hand when the recall started, `qty_actual` the quantity already shipped then.
+  - `ACTIVE` holds the batch: allocation skips it (`allocatable_balances`) and a shipment carrying it cannot be posted. Stock already allocated or picked stays put until it is returned to stock.
+  - `location_id` is the optional quarantine bin or dock. Starting the recall drafts a `MOVE` (with `ref_document_id` = the recall) for everything that can move there now.
+  - Releasing sets `RELEASED` and `posted_at`; the hold ends at once. Recalls are never cancelled, so their history stays.
+  - Permissions: `recall.read`, `recall.create`, `recall.close` (release). Roles created before this change do not have them: grant them under System > Roles.
+
+**Batch traceability** reads only the ledger: every row of a batch, joined to its document line and document, gives supplier, receipt and purchase order on one side and shipment, sales order, vehicle and customer on the other (index `ix_stock_ledger_batch`).
+
+**Warehouse map** is drawn from the location tree; activity comes from the ledger and from confirmed lines (`document_line.confirmed_at`: picks at `from_location_id`, putaway puts and counts at `to_location_id`).
 
 **Location types**: `WAREHOUSE` / `ZONE` / `AISLE` / `RACK` / `BIN` / `DOCK`.
 - Only `BIN` (storage bin) and `DOCK` (receiving/shipping staging) hold stock.
@@ -468,11 +480,12 @@ There are no summary tables; everything is computed from `stock_ledger` / `stock
 
 ## 12. Data import
 
-`app/services/import_service.py` handles master data and opening stock.
+`app/services/import_service.py` handles master data, opening stock and orders.
 - **Master data** (items, locations, business partners): upserted by code, inserting new ones and updating existing ones.
   - Columns missing from the file do not overwrite existing values.
   - Existing items cannot change their base unit, and existing locations cannot change their parent (it would change the path).
 - **Opening stock**: rows with the same item + location + unit + batch + expiry are merged, and one posted stock adjustment is created with reason `OPENING` (opening stock).
+- **Purchase / sales orders**: one row per order line. Rows with the same *Order ref* become one order; without a ref, rows with the same partner + date + remark are grouped. Every row of one order must agree on partner, date and remark. Lines with the same item + unit are merged. Each order is created as a `DRAFT` through the normal order service; the ref itself is only a grouping key and is not stored. At most 2,000 orders per file.
 - **Commit**: validation runs first; nothing is written unless there are no errors, and the whole batch is one transaction.
 
 ## 7. Tables not built yet (to avoid over-design)

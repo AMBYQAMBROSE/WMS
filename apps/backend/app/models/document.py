@@ -52,6 +52,10 @@ class DocumentHeader(Base, TenantScopedMixin):
         Index("ix_document_header_ref", "ref_document_id"),
         # Document lists: filter by type, page by creation time descending
         Index("ix_document_header_list", "tenant_id", "doc_type", "created_at"),
+        # Master data references: deleting a partner/location/reason makes SQL Server check these, and "used by" lookups read them
+        Index("ix_document_header_partner", "partner_id"),
+        Index("ix_document_header_location", "location_id"),
+        Index("ix_document_header_reason", "reason_code_id"),
     )
 
     doc_type: Mapped[str] = mapped_column(Unicode(30), nullable=False)
@@ -104,6 +108,10 @@ class DocumentLine(Base, TenantScopedMixin):
         Index("ix_document_line_ref_line", "ref_line_id"),
         # Picker performance is reported by confirmation time; only confirmed lines are indexed
         Index("ix_document_line_confirmed", "confirmed_at", mssql_where=text("confirmed_at IS NOT NULL")),
+        # Master data references (see document_header): an unindexed check scans the largest table under shared locks
+        Index("ix_document_line_item", "item_id"),
+        Index("ix_document_line_from_location", "from_location_id"),
+        Index("ix_document_line_to_location", "to_location_id"),
     )
 
     document_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("document_header.id"), nullable=False)
@@ -113,6 +121,10 @@ class DocumentLine(Base, TenantScopedMixin):
     qty_planned: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
     # PO line: cumulative received quantity; GRN/putaway line: quantity of this document
     qty_actual: Mapped[Decimal] = mapped_column(Numeric(18, 4), default=Decimal(0), nullable=False)
+    # Quantity verified by scanning piece by piece (shipment lines: loaded onto the vehicle)
+    qty_checked: Mapped[Decimal] = mapped_column(
+        Numeric(18, 4), default=Decimal(0), server_default="0", nullable=False
+    )
     batch_no: Mapped[str | None] = mapped_column(Unicode(50), nullable=True)
     expiry_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     from_location_id: Mapped[uuid.UUID | None] = mapped_column(

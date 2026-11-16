@@ -9,12 +9,14 @@ import { useNavigate, useSearchParams } from "react-router";
 import { apiClient } from "@/api/client";
 import { showError } from "@/api/errors";
 import type { Document, DocumentLine, DocumentSummary } from "@/api/types";
-import { preventEnterSubmit, useDocument } from "@/components/documents";
-import { LocationSelect } from "@/components/selects";
+import { CreateButtons, announcePosted, postDraft, preventEnterSubmit, useDocument } from "@/components/documents";
+import { BaseQtyHint, LocationSelect, UomSelect, useItemRecords } from "@/components/selects";
+import { useLastLocation } from "@/components/stockAutofill";
 import { EmptyState, FormFooter, FormSection, formatQty, useUnsavedChanges } from "@/components/ui";
 
 interface GrnLineValues {
   po_line_id: string;
+  uom_id?: string;
   qty: number;
   batch_no?: string;
   expiry_date?: Dayjs;
@@ -36,6 +38,12 @@ export default function GrnCreatePage() {
   const [form] = Form.useForm<FormValues>();
   const { data: po } = useDocument("purchase-orders", poId);
   const unsaved = useUnsavedChanges();
+  const postNow = useRef(false);
+  // Receipts nearly always arrive at the same dock: start with the one used last time
+  const [lastDock, rememberDock] = useLastLocation("receiving");
+  useEffect(() => {
+    if (po && lastDock && !form.getFieldValue("location_id")) form.setFieldValue("location_id", lastDock);
+  }, [po, lastDock, form]);
 
   const { data: receivablePos, isLoading: posLoading } = useQuery({
     queryKey: ["purchase-orders", "receivable"],
@@ -54,7 +62,7 @@ export default function GrnCreatePage() {
       filledFrom.current = po.id;
       form.setFieldValue(
         "lines",
-        po.lines.filter((l) => remaining(l) > 0).map((l) => ({ po_line_id: l.id, qty: remaining(l) })),
+        po.lines.filter((l) => remaining(l) > 0).map((l) => ({ po_line_id: l.id, uom_id: l.uom.id, qty: remaining(l) })),
       );
     }
   }, [po, form]);
@@ -65,18 +73,36 @@ export default function GrnCreatePage() {
         .filter((l) => l.qty > 0)
         .map((l) => ({ ...l, expiry_date: l.expiry_date?.format("YYYY-MM-DD") ?? null }));
       if (!lines.length) throw new Error("Nothing to receive");
-      return (await apiClient.post<Document>("/grns", { ...values, po_id: poId, lines })).data;
+      const draft = (await apiClient.post<Document>("/grns", { ...values, po_id: poId, lines })).data;
+      rememberDock(values.location_id);
+      if (!postNow.current) return { doc: draft, posted: false, sheets: [] as DocumentSummary[] };
+      const result = await postDraft("grns", draft);
+      // Posting into a dock makes a putaway sheet: it is printed with the receipt
+      const sheets = result.posted
+        ? await apiClient
+            .get<DocumentSummary[]>("/putaways", { params: { ref_document_id: draft.id, status: "TO_PUT_AWAY" } })
+            .then((r) => r.data)
+            .catch(() => [])
+        : [];
+      return { ...result, sheets };
     },
-    onSuccess: (grn) => {
+    onSuccess: ({ doc: grn, posted, sheets }) => {
       unsaved.reset();
-      message.success(`Created goods receipt ${grn.doc_no}; post it once checked`);
+      if (posted) announcePosted(grn, sheets);
+      else if (!postNow.current) message.success(`Created goods receipt ${grn.doc_no}; post it once checked`);
       queryClient.invalidateQueries({ queryKey: ["grns"] });
+      queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["putaways"] });
+      queryClient.invalidateQueries({ queryKey: ["stock"] });
       navigate(`/grns/${grn.id}`);
     },
     onError: showError,
   });
 
   const poLine = (poLineId: string) => po?.lines.find((l) => l.id === poLineId);
+  // Full item records carry the packing units the receiving unit can be chosen from
+  const items = useItemRecords(po?.lines.map((l) => l.item.id) ?? []);
+  const watchedLines = Form.useWatch("lines", form) as GrnLineValues[] | undefined;
 
   return (
     <Card title="New goods receipt">
@@ -116,7 +142,7 @@ export default function GrnCreatePage() {
               </Row>
             </FormSection>
 
-            <FormSection title="Lines" description="Set the quantity actually received. Lines left at 0 are skipped.">
+            <FormSection title="Lines" description="Set the quantity actually received, in the order's unit or a carton / pallet unit of the item. Lines left at 0 are skipped.">
             <Form.List name="lines">
               {(fields, { add, remove }) => (
                 <Table
@@ -137,22 +163,38 @@ export default function GrnCreatePage() {
                         );
                       },
                     },
-                    { title: "Unit", render: (_, f) => poLine(form.getFieldValue(["lines", f.name, "po_line_id"]))?.uom.code },
                     {
                       title: "Open",
                       align: "right",
                       render: (_, f) => {
                         const l = poLine(form.getFieldValue(["lines", f.name, "po_line_id"]));
-                        return l && formatQty(remaining(l));
+                        return l && `${formatQty(remaining(l))} ${l.uom.code}`;
                       },
                     },
                     {
                       title: "Received now",
-                      render: (_, f) => (
-                        <Form.Item name={[f.name, "qty"]} noStyle rules={[{ required: true }]}>
-                          <InputNumber min={0} aria-label={`Received quantity, line ${f.name + 1}`} />
-                        </Form.Item>
-                      ),
+                      render: (_, f) => {
+                        const l = poLine(form.getFieldValue(["lines", f.name, "po_line_id"]));
+                        const item = items.find((it) => it.id === l?.item.id);
+                        return (
+                          <>
+                            {/* Register po_line_id so onFinish includes it: antd only returns fields bound to a Form.Item */}
+                            <Form.Item name={[f.name, "po_line_id"]} hidden noStyle>
+                              <Input />
+                            </Form.Item>
+                            <span style={{ display: "inline-flex", gap: 6 }}>
+                              <Form.Item name={[f.name, "qty"]} noStyle rules={[{ required: true }]}>
+                                <InputNumber min={0} aria-label={`Received quantity, line ${f.name + 1}`} />
+                              </Form.Item>
+                              {/* Count in pallets or cartons against an order in eaches: the server converts to the base unit */}
+                              <Form.Item name={[f.name, "uom_id"]} noStyle rules={[{ required: true }]}>
+                                <UomSelect item={item} style={{ width: 160 }} aria-label={`Received unit, line ${f.name + 1}`} />
+                              </Form.Item>
+                            </span>
+                            <BaseQtyHint item={item} uomId={watchedLines?.[f.name]?.uom_id} qty={watchedLines?.[f.name]?.qty} />
+                          </>
+                        );
+                      },
                     },
                     {
                       title: "Batch no.",
@@ -189,7 +231,7 @@ export default function GrnCreatePage() {
                           <span style={{ display: "inline-flex", gap: 2 }}>
                             {l?.item.is_batch_managed && (
                               <Tooltip title="Split batch: receive this line as several batches">
-                                <Button type="text" size="small" icon={<SplitCellsOutlined />} aria-label={`Split batch, line ${f.name + 1}`} onClick={() => add({ po_line_id: l.id, qty: 0 }, f.name + 1)} />
+                                <Button type="text" size="small" icon={<SplitCellsOutlined />} aria-label={`Split batch, line ${f.name + 1}`} onClick={() => add({ po_line_id: l.id, uom_id: form.getFieldValue(["lines", f.name, "uom_id"]), qty: 0 }, f.name + 1)} />
                               </Tooltip>
                             )}
                             <Tooltip title="Remove line">
@@ -205,10 +247,8 @@ export default function GrnCreatePage() {
             </Form.List>
             </FormSection>
 
-            <FormFooter note="Created as a draft; posting adds the stock">
-              <Button type="primary" htmlType="submit" loading={save.isPending}>
-                Create goods receipt
-              </Button>
+            <FormFooter note="Posting adds the stock and cannot be undone; the receipt and its putaway sheet then open for printing">
+              <CreateButtons label="Create goods receipt" postPerm="grn.post" postNow={postNow} loading={save.isPending} />
               <Button onClick={() => navigate(-1)}>Cancel</Button>
             </FormFooter>
           </Form>

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.models.location import Location
 from app.repositories.base import BaseRepository, check_version
 from app.schemas.location import LocationCreate, LocationUpdate
+from app.services.master_guard import delete_location
 
 
 class LocationService:
@@ -62,4 +63,4 @@ class LocationService:
         return self.repo.update(location, fields)
 
     def delete(self, location: Location) -> None:
-        self.repo.soft_delete(location)
+        delete_location(self.repo.db, location)

@@ -2,6 +2,7 @@ import uuid
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.document import PartnerBrief
 from app.schemas.versioning import ExpectedVersion
 
 Password = Field(min_length=6, max_length=100)
@@ -21,6 +22,8 @@ class UserCreate(BaseModel):
     email: str | None = Field(default=None, max_length=200)
     password: str = Password
     role_codes: list[str] = []
+    # Customer account: the shopping cart always orders for this customer (see User.partner_id)
+    partner_id: uuid.UUID | None = None
 
 
 class UserUpdate(ExpectedVersion):
@@ -28,6 +31,7 @@ class UserUpdate(ExpectedVersion):
     email: str | None = Field(default=None, max_length=200)
     is_active: bool = True
     role_codes: list[str] = []
+    partner_id: uuid.UUID | None = None
 
 
 class PasswordReset(BaseModel):
@@ -43,6 +47,7 @@ class UserRead(BaseModel):
     email: str | None = None
     is_active: bool
     roles: list[RoleBrief] = []
+    partner: PartnerBrief | None = None
     row_version: int
 
 

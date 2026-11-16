@@ -16,6 +16,7 @@ import { themeRevealRunning } from "@/theme/motion";
 import "@fontsource-variable/inter";
 import "./styles/global.css";
 import "./styles/motion.css";
+import "./styles/trace.css";
 
 const queryClient = new QueryClient({
   defaultOptions: {

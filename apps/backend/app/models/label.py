@@ -5,7 +5,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TenantScopedMixin
 
-LABEL_PURPOSES = ("ITEM", "LOCATION")
+LABEL_PURPOSES = ("ITEM", "LOCATION", "STOCK")
 LABEL_MEDIA = ("SHEET", "ROLL")
 BARCODE_TYPES = ("CODE128", "QR")
 

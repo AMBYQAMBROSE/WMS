@@ -11,6 +11,14 @@ def _rows(page):
     return page.locator(".ant-table-tbody tr.ant-table-row")
 
 
+def _row_count(flow, page, expected: int, what: str) -> None:
+    """The form's lines arrive after the route and its source document load: wait for them before judging the count"""
+    try:
+        expect(_rows(page)).to_have_count(expected, timeout=10_000)
+    except AssertionError:
+        flow.equal(_rows(page).count(), expected, what)
+
+
 def test_golden_path(flow, unique):
     page, api = flow.page, flow.api
     s = make_scenario(api, unique)
@@ -75,7 +83,8 @@ def test_golden_path(flow, unique):
     page.get_by_role("button", name="Receive").click()
     page.wait_for_url("**/grns/new?po=*")
     flow.loaded()
-    flow.equal(_rows(page).count(), 2, "GRN-2 prefilled lines (fully received line left out)")
+    expect(page.get_by_text("New goods receipt")).to_be_visible(timeout=10_000)
+    _row_count(flow, page, 2, "GRN-2 prefilled lines (fully received line left out)")
     flow.choose("Receiving location", s.code("IN"))
     b_row = _rows(page).nth(1)
     b_row.locator("input[placeholder='Required']").fill(L2)
@@ -99,8 +108,9 @@ def test_golden_path(flow, unique):
         page.get_by_role("button", name="Create putaway").click()
         page.wait_for_url("**/putaways/new?grn=*")
         flow.loaded()
+        expect(page.get_by_text("Create putaway from goods receipt")).to_be_visible(timeout=10_000)
         lines = _rows(page)
-        flow.equal(lines.count(), 2, f"putaway lines prefilled from {label}")
+        _row_count(flow, page, 2, f"putaway lines prefilled from {label}")
         for i in range(lines.count()):
             sku = lines.nth(i).inner_text()
             target = s.code("BB") if s.b in sku or "Item B" in sku else s.code("BA")
@@ -130,8 +140,10 @@ def test_golden_path(flow, unique):
 
     # ---------------------------------------------------------------- A-07 allocate
     def allocate():
-        page.get_by_role("button", name="Allocate stock").click()
         dialog = page.get_by_role("dialog")
+        # Confirming an order goes straight on to the allocation dialog; later allocations start from the button
+        if not dialog.is_visible():
+            page.get_by_role("button", name="Allocate stock").click()
         flow.choose_in(dialog, s.code("ST"))
         dialog.get_by_role("button", name="Allocate").click()
         expect(dialog).to_be_hidden(timeout=15_000)
@@ -157,10 +169,10 @@ def test_golden_path(flow, unique):
     flow.confirm_action("Post pick list")
     flow.equal(flow.wait_status("picks", pick1, "POSTED"), "POSTED", "pick list 1 status")
     flow.equal(api.get(f"/sales-orders/{so_id}")["status"], "IN_PROGRESS", "SO status after picking")
-    flow.equal(stock(api, s.item_a), {(s.code("BA"), None): (30.0, 0.0), (s.code("ST"), None): (70.0, 0.0)},
+    flow.equal(stock(api, s.item_a), {(s.code("BA"), None): (30.0, 0.0), (s.code("ST"), None): (70.0, 70.0)},
                "A after pick")
-    flow.equal(stock(api, s.item_b), {(s.code("BB"), L1): (28.0, 0.0), (s.code("ST"), L1): (2.0, 0.0),
-                                      (s.code("ST"), L2): (20.0, 0.0)}, "B after pick (short pick released)")
+    flow.equal(stock(api, s.item_b), {(s.code("BB"), L1): (28.0, 0.0), (s.code("ST"), L1): (2.0, 2.0),
+                                      (s.code("ST"), L2): (20.0, 20.0)}, "B after pick (short pick released)")
     so = api.get(f"/sales-orders/{so_id}")
     flow.equal([float(l["unallocated"]) for l in so["lines"]], [0.0, 3.0], "SO unallocated after short pick")
 

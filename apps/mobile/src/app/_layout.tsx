@@ -91,9 +91,12 @@ export default function RootLayout() {
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="receive" options={{ title: "Receive" }} />
         <Stack.Screen name="putaway" options={{ title: "Put away" }} />
+        <Stack.Screen name="putaway-free" options={{ title: "Put away without a sheet" }} />
         <Stack.Screen name="move" options={{ title: "Move" }} />
         <Stack.Screen name="count" options={{ title: "Count" }} />
         <Stack.Screen name="pick" options={{ title: "Pick" }} />
+        <Stack.Screen name="ship" options={{ title: "Ship" }} />
+        <Stack.Screen name="stock" options={{ title: "Stock lookup" }} />
         <Stack.Screen name="queue" options={{ title: "Submit queue" }} />
       </Stack>
     </ThemeProvider>

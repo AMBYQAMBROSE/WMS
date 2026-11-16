@@ -104,6 +104,21 @@ def pda_url(database) -> str:
 _IGNORED = re.compile(r"Failed to load resource")
 
 
+@pytest.fixture(autouse=True)
+def _print_preview_stays_closed(request, context):
+    """Posting a document opens its printout over the page. Tests that go on clicking after a post switch that off, as
+    a user can with the preview's checkbox; a test module about printing sets PRINT_PREVIEW = True to keep it."""
+    if getattr(request.module, "PRINT_PREVIEW", False):
+        return
+    context.add_init_script(
+        """try {
+            const saved = JSON.parse(localStorage.getItem("wms-ui") || '{"state":{},"version":1}');
+            saved.state.printAfterPosting = false;
+            localStorage.setItem("wms-ui", JSON.stringify(saved));
+        } catch {}"""
+    )
+
+
 @pytest.fixture
 def errors(page) -> list[str]:
     """Browser errors (uncaught exceptions, console errors) collected while a test runs: assert it stays empty"""

@@ -1492,7 +1492,8 @@
                 {
                   "enum": [
                     "ITEM",
-                    "LOCATION"
+                    "LOCATION",
+                    "STOCK"
                   ],
                   "type": "string"
                 },
@@ -1821,6 +1822,49 @@
         ]
       }
     },
+    "/api/v1/labels/stock": {
+      "post": {
+        "tags": [
+          "labels"
+        ],
+        "summary": "Print Stock Labels",
+        "description": "Stock labels for a posted receipt: item, batch, expiry and quantity in one QR code that the PDA reads",
+        "operationId": "print_stock_labels_api_v1_labels_stock_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StockLabelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "PDF to print",
+            "content": {
+              "application/pdf": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/labels/locations": {
       "post": {
         "tags": [
@@ -2093,6 +2137,45 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "reason-codes"
+        ],
+        "summary": "Delete Reason Code",
+        "operationId": "delete_reason_code_api_v1_reason_codes__reason_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "reason_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Reason Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
           },
           "422": {
             "description": "Validation Error",
@@ -2817,6 +2900,59 @@
         }
       }
     },
+    "/api/v1/grns/{grn_id}/putaway-remaining": {
+      "get": {
+        "tags": [
+          "grns"
+        ],
+        "summary": "Putaway Remaining",
+        "description": "Per receipt line, the quantity no putaway covers yet (in the line's unit): what a putaway planned by hand starts from",
+        "operationId": "putaway_remaining_api_v1_grns__grn_id__putaway_remaining_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "grn_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Grn Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PutawayRemaining"
+                  },
+                  "title": "Response Putaway Remaining Api V1 Grns  Grn Id  Putaway Remaining Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/grns/{grn_id}/post": {
       "post": {
         "tags": [
@@ -3251,6 +3387,75 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/putaways/{document_id}/lines/{line_id}/put": {
+      "post": {
+        "tags": [
+          "putaways"
+        ],
+        "summary": "Put Away Line",
+        "description": "Putaway sheet (status TO_PUT_AWAY): record the quantity of a line placed in a bin. Less than the line's\nquantity splits off the rest as a new open line. Post the sheet once every line is done.",
+        "operationId": "put_away_line_api_v1_putaways__document_id__lines__line_id__put_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Document Id"
+            }
+          },
+          {
+            "name": "line_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Line Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutawayPutIn"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -4957,6 +5162,388 @@
         }
       }
     },
+    "/api/v1/cart/catalog": {
+      "get": {
+        "tags": [
+          "cart"
+        ],
+        "summary": "Catalog",
+        "operationId": "catalog_api_v1_cart_catalog_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "keyword",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Keyword"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "name": "in_stock_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "In Stock Only"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 48,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cart/customers": {
+      "get": {
+        "tags": [
+          "cart"
+        ],
+        "summary": "Customers",
+        "operationId": "customers_api_v1_cart_customers_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "keyword",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Keyword"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PartnerBrief"
+                  },
+                  "title": "Response Customers Api V1 Cart Customers Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cart/orders": {
+      "post": {
+        "tags": [
+          "cart"
+        ],
+        "summary": "Submit Order",
+        "operationId": "submit_order_api_v1_cart_orders_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CartOrderIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "cart"
+        ],
+        "summary": "My Orders",
+        "operationId": "my_orders_api_v1_cart_orders_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DocumentSummary"
+                  },
+                  "title": "Response My Orders Api V1 Cart Orders Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cart/orders/{so_id}": {
+      "get": {
+        "tags": [
+          "cart"
+        ],
+        "summary": "My Order",
+        "operationId": "my_order_api_v1_cart_orders__so_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "so_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "So Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cart/orders/{so_id}/cancel": {
+      "post": {
+        "tags": [
+          "cart"
+        ],
+        "summary": "Cancel My Order",
+        "operationId": "cancel_my_order_api_v1_cart_orders__so_id__cancel_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "so_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "So Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/picks": {
       "get": {
         "tags": [
@@ -5324,6 +5911,55 @@
         }
       }
     },
+    "/api/v1/picks/{pick_id}/reverse": {
+      "post": {
+        "tags": [
+          "picks"
+        ],
+        "summary": "Reverse Pick",
+        "description": "Return the goods of a posted pick from staging to their bins (status REVERSED), while they have not shipped.\nThe order's quantities become unallocated again.",
+        "operationId": "reverse_pick_api_v1_picks__pick_id__reverse_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pick_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Pick Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/picks/{pick_id}/cancel": {
       "post": {
         "tags": [
@@ -5571,6 +6207,33 @@
         }
       }
     },
+    "/api/v1/shipments/loading-history": {
+      "get": {
+        "tags": [
+          "shipments"
+        ],
+        "summary": "Loading History",
+        "description": "Recent carriers, vehicles and drivers, to choose from when entering loading details",
+        "operationId": "loading_history_api_v1_shipments_loading_history_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoadingHistory"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/shipments/{ship_id}": {
       "get": {
         "tags": [
@@ -5701,6 +6364,75 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipmentRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shipments/{ship_id}/lines/{line_id}/check": {
+      "post": {
+        "tags": [
+          "shipments"
+        ],
+        "summary": "Check Shipment Line",
+        "description": "Quantity of a line scanned onto the vehicle so far (base units). A shipment is posted only when every line\nis fully scanned, unless the user holds shipment.post_unchecked.",
+        "operationId": "check_shipment_line_api_v1_shipments__ship_id__lines__line_id__check_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "ship_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Ship Id"
+            }
+          },
+          {
+            "name": "line_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Line Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShipmentCheckIn"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -8201,7 +8933,9 @@
                 "items",
                 "locations",
                 "partners",
-                "opening_stock"
+                "opening_stock",
+                "purchase_orders",
+                "sales_orders"
               ],
               "type": "string",
               "title": "Kind"
@@ -8252,7 +8986,9 @@
                 "items",
                 "locations",
                 "partners",
-                "opening_stock"
+                "opening_stock",
+                "purchase_orders",
+                "sales_orders"
               ],
               "type": "string",
               "title": "Kind"
@@ -8353,6 +9089,18 @@
             }
           },
           {
+            "name": "unavailable",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Only balances with nothing available (on hand minus allocated <= 0)",
+              "default": false,
+              "title": "Unavailable"
+            },
+            "description": "Only balances with nothing available (on hand minus allocated <= 0)"
+          },
+          {
             "name": "skip",
             "in": "query",
             "required": false,
@@ -8450,6 +9198,23 @@
             }
           },
           {
+            "name": "movement_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 30
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Movement Type"
+            }
+          },
+          {
             "name": "skip",
             "in": "query",
             "required": false,
@@ -8483,6 +9248,781 @@
                   },
                   "title": "Response List Stock Ledger Api V1 Stock Ledger Get"
                 }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stock/map": {
+      "get": {
+        "tags": [
+          "warehouse map"
+        ],
+        "summary": "Warehouse Map",
+        "description": "Every location of one warehouse as a tree, with stock, allocation, nearest expiry, locks, counts, recalls and pick frequency",
+        "operationId": "warehouse_map_api_v1_stock_map_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "warehouse_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Defaults to the first warehouse by code",
+              "title": "Warehouse Id"
+            },
+            "description": "Defaults to the first warehouse by code"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WarehouseMap"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stock/map/activity": {
+      "get": {
+        "tags": [
+          "warehouse map"
+        ],
+        "summary": "Warehouse Activity",
+        "description": "Stock movements and PDA confirmations in the warehouse, oldest first (the newest `limit` when there are more)",
+        "operationId": "warehouse_activity_api_v1_stock_map_activity_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "warehouse_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Warehouse Id"
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "UTC; defaults to 15 minutes before until",
+              "title": "Since"
+            },
+            "description": "UTC; defaults to 15 minutes before until"
+          },
+          {
+            "name": "until",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "UTC; defaults to now. At most 2 days after since",
+              "title": "Until"
+            },
+            "description": "UTC; defaults to now. At most 2 days after since"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 5000,
+              "minimum": 1,
+              "default": 5000,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapActivityPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stock/map/locations/{location_id}": {
+      "get": {
+        "tags": [
+          "warehouse map"
+        ],
+        "summary": "Warehouse Map Location",
+        "operationId": "warehouse_map_location_api_v1_stock_map_locations__location_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "location_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Location Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapBinDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/trace/batches": {
+      "get": {
+        "tags": [
+          "traceability"
+        ],
+        "summary": "Search Batches",
+        "operationId": "search_batches_api_v1_trace_batches_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 50
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Start of the batch number",
+              "title": "Q"
+            },
+            "description": "Start of the batch number"
+          },
+          {
+            "name": "item_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BatchHit"
+                  },
+                  "title": "Response Search Batches Api V1 Trace Batches Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/trace/batch": {
+      "get": {
+        "tags": [
+          "traceability"
+        ],
+        "summary": "Trace Batch",
+        "description": "Suppliers and receipts the batch came from, where it is now, and the shipments and customers it went to",
+        "operationId": "trace_batch_api_v1_trace_batch_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
+            }
+          },
+          {
+            "name": "batch_no",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50,
+              "title": "Batch No"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchTrace"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/trace/documents/lookup": {
+      "get": {
+        "tags": [
+          "traceability"
+        ],
+        "summary": "Trace Document By Number",
+        "description": "Batches on a document found by its number (only document types the user may read)",
+        "operationId": "trace_document_by_number_api_v1_trace_documents_lookup_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "doc_no",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50,
+              "title": "Doc No"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentTrace"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/trace/documents/{document_id}": {
+      "get": {
+        "tags": [
+          "traceability"
+        ],
+        "summary": "Trace Document",
+        "description": "Reverse trace: the batches on a document (e.g. a delivery order a customer complains about), their suppliers and spread",
+        "operationId": "trace_document_api_v1_trace_documents__document_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Document Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentTrace"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/recalls": {
+      "get": {
+        "tags": [
+          "recalls"
+        ],
+        "summary": "List Recalls",
+        "operationId": "list_recalls_api_v1_recalls_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "keyword",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Part of the document or source document number, partner code/name or remark",
+              "title": "Keyword"
+            },
+            "description": "Part of the document or source document number, partner code/name or remark"
+          },
+          {
+            "name": "created_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "First day (business time zone), inclusive",
+              "title": "Created From"
+            },
+            "description": "First day (business time zone), inclusive"
+          },
+          {
+            "name": "created_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Last day (business time zone), inclusive",
+              "title": "Created To"
+            },
+            "description": "Last day (business time zone), inclusive"
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DocumentSummary"
+                  },
+                  "title": "Response List Recalls Api V1 Recalls Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "recalls"
+        ],
+        "summary": "Create Recall",
+        "description": "Holds the batch at once (no allocation, no shipping) and, with a quarantine location, drafts the move there",
+        "operationId": "create_recall_api_v1_recalls_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecallIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecallRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/recalls/{recall_id}": {
+      "get": {
+        "tags": [
+          "recalls"
+        ],
+        "summary": "Get Recall",
+        "operationId": "get_recall_api_v1_recalls__recall_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "recall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Recall Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecallRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/recalls/{recall_id}/release": {
+      "post": {
+        "tags": [
+          "recalls"
+        ],
+        "summary": "Release Recall",
+        "operationId": "release_recall_api_v1_recalls__recall_id__release_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "recall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Recall Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecallRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/recalls/{recall_id}/customers.csv": {
+      "get": {
+        "tags": [
+          "recalls"
+        ],
+        "summary": "Recall Customers Csv",
+        "description": "Customers to notify: one row per delivery order that took the batch out (UTF-8 CSV with BOM, opens in Excel)",
+        "operationId": "recall_customers_csv_api_v1_recalls__recall_id__customers_csv_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "recall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Recall Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
               }
             }
           },
@@ -8534,6 +10074,60 @@
             "content": {
               "application/json": {
                 "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/mobile/lookup": {
+      "get": {
+        "tags": [
+          "mobile"
+        ],
+        "summary": "Lookup Document",
+        "description": "The documents a scanned code is the number of, for the home screen's scan field to open the right task.\nNumbers are unique per document type, so a code can in theory match several types; documents the user may not\nread are left out. Items and locations are recognised on the PDA from its master data, not here.",
+        "operationId": "lookup_document_api_v1_mobile_lookup_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50,
+              "title": "Code"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DocumentHit"
+                  },
+                  "title": "Response Lookup Document Api V1 Mobile Lookup Get"
+                }
               }
             }
           },
@@ -10038,6 +11632,139 @@
         ],
         "title": "Backlog"
       },
+      "BatchHit": {
+        "properties": {
+          "item": {
+            "$ref": "#/components/schemas/ItemBrief"
+          },
+          "batch_no": {
+            "type": "string",
+            "title": "Batch No"
+          },
+          "first_seen": {
+            "type": "string",
+            "format": "date-time",
+            "title": "First Seen"
+          },
+          "last_seen": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Seen"
+          },
+          "qty_on_hand": {
+            "type": "number",
+            "title": "Qty On Hand"
+          },
+          "recalled": {
+            "type": "boolean",
+            "title": "Recalled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "item",
+          "batch_no",
+          "first_seen",
+          "last_seen",
+          "qty_on_hand",
+          "recalled"
+        ],
+        "title": "BatchHit"
+      },
+      "BatchTrace": {
+        "properties": {
+          "item": {
+            "$ref": "#/components/schemas/ItemBrief"
+          },
+          "batch_no": {
+            "type": "string",
+            "title": "Batch No"
+          },
+          "expiry_dates": {
+            "items": {
+              "type": "string",
+              "format": "date"
+            },
+            "type": "array",
+            "title": "Expiry Dates"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/TraceSummary"
+          },
+          "inbound": {
+            "items": {
+              "$ref": "#/components/schemas/TraceFlow"
+            },
+            "type": "array",
+            "title": "Inbound"
+          },
+          "outbound": {
+            "items": {
+              "$ref": "#/components/schemas/TraceFlow"
+            },
+            "type": "array",
+            "title": "Outbound"
+          },
+          "stock": {
+            "items": {
+              "$ref": "#/components/schemas/TraceStock"
+            },
+            "type": "array",
+            "title": "Stock"
+          },
+          "pending_shipments": {
+            "items": {
+              "$ref": "#/components/schemas/TraceFlow"
+            },
+            "type": "array",
+            "title": "Pending Shipments"
+          },
+          "movements": {
+            "items": {
+              "$ref": "#/components/schemas/TraceMovement"
+            },
+            "type": "array",
+            "title": "Movements"
+          },
+          "movements_total": {
+            "type": "integer",
+            "title": "Movements Total"
+          },
+          "recalls": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentBrief"
+            },
+            "type": "array",
+            "title": "Recalls"
+          },
+          "active_recall": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentBrief"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "item",
+          "batch_no",
+          "expiry_dates",
+          "summary",
+          "inbound",
+          "outbound",
+          "stock",
+          "pending_shipments",
+          "movements",
+          "movements_total",
+          "recalls",
+          "active_recall"
+        ],
+        "title": "BatchTrace"
+      },
       "Body_login_api_v1_auth_login_post": {
         "properties": {
           "grant_type": {
@@ -10342,6 +12069,185 @@
         },
         "type": "object",
         "title": "BusinessPartnerUpdate"
+      },
+      "CartOrderIn": {
+        "properties": {
+          "partner_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Partner Id"
+          },
+          "expected_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Date"
+          },
+          "remark": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 400
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remark"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/SalesOrderLineIn"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Lines"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lines"
+        ],
+        "title": "CartOrderIn",
+        "description": "Submit the cart. A customer account may leave partner_id empty (its own customer is used) and cannot order for another."
+      },
+      "CartUom": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "factor": {
+            "type": "number",
+            "title": "Factor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "name",
+          "factor"
+        ],
+        "title": "CartUom",
+        "description": "A unit the item can be ordered in; factor = base units per one of this unit (1 for the base unit)"
+      },
+      "CatalogItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "sku_code": {
+            "type": "string",
+            "title": "Sku Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "barcode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Barcode"
+          },
+          "base_uom": {
+            "$ref": "#/components/schemas/UomBrief"
+          },
+          "uoms": {
+            "items": {
+              "$ref": "#/components/schemas/CartUom"
+            },
+            "type": "array",
+            "title": "Uoms"
+          },
+          "available": {
+            "type": "number",
+            "title": "Available"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "sku_code",
+          "name",
+          "category",
+          "barcode",
+          "base_uom",
+          "uoms",
+          "available"
+        ],
+        "title": "CatalogItem"
+      },
+      "CatalogPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "categories": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Categories"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "categories"
+        ],
+        "title": "CatalogPage"
       },
       "ConnectorIn": {
         "properties": {
@@ -11152,6 +13058,86 @@
         ],
         "title": "DatabaseStatus"
       },
+      "DocumentBatch": {
+        "properties": {
+          "item": {
+            "$ref": "#/components/schemas/ItemBrief"
+          },
+          "batch_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batch No"
+          },
+          "expiry_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expiry Date"
+          },
+          "qty": {
+            "type": "number",
+            "title": "Qty"
+          },
+          "suppliers": {
+            "items": {
+              "$ref": "#/components/schemas/PartnerBrief"
+            },
+            "type": "array",
+            "title": "Suppliers"
+          },
+          "receipts": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentBrief"
+            },
+            "type": "array",
+            "title": "Receipts"
+          },
+          "other_customers": {
+            "type": "integer",
+            "title": "Other Customers"
+          },
+          "qty_on_hand": {
+            "type": "number",
+            "title": "Qty On Hand"
+          },
+          "active_recall": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentBrief"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "item",
+          "batch_no",
+          "expiry_date",
+          "qty",
+          "suppliers",
+          "receipts",
+          "other_customers",
+          "qty_on_hand",
+          "active_recall"
+        ],
+        "title": "DocumentBatch",
+        "description": "A batch on a document, with where it came from and where else it went"
+      },
       "DocumentBrief": {
         "properties": {
           "id": {
@@ -11180,6 +13166,48 @@
           "status"
         ],
         "title": "DocumentBrief"
+      },
+      "DocumentHit": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "doc_type": {
+            "type": "string",
+            "title": "Doc Type"
+          },
+          "doc_no": {
+            "type": "string",
+            "title": "Doc No"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "ref_document_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ref Document Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "doc_type",
+          "doc_no",
+          "status",
+          "ref_document_id"
+        ],
+        "title": "DocumentHit"
       },
       "DocumentLineRead": {
         "properties": {
@@ -11260,6 +13288,23 @@
               }
             ],
             "title": "Ref Line Id"
+          },
+          "confirmed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmed At"
+          },
+          "qty_checked": {
+            "type": "number",
+            "title": "Qty Checked",
+            "default": 0.0
           }
         },
         "type": "object",
@@ -11530,6 +13575,50 @@
         ],
         "title": "DocumentSummary"
       },
+      "DocumentTrace": {
+        "properties": {
+          "document": {
+            "$ref": "#/components/schemas/DocumentBrief"
+          },
+          "partner": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PartnerBrief"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "posted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Posted At"
+          },
+          "batches": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentBatch"
+            },
+            "type": "array",
+            "title": "Batches"
+          }
+        },
+        "type": "object",
+        "required": [
+          "document",
+          "partner",
+          "posted_at",
+          "batches"
+        ],
+        "title": "DocumentTrace"
+      },
       "EventTypeRead": {
         "properties": {
           "code": {
@@ -11764,6 +13853,18 @@
             ],
             "title": "Qty"
           },
+          "uom_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uom Id"
+          },
           "batch_no": {
             "anyOf": [
               {
@@ -11925,6 +14026,14 @@
               }
             ],
             "title": "Document No"
+          },
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/ImportedDocument"
+            },
+            "type": "array",
+            "title": "Documents",
+            "default": []
           }
         },
         "type": "object",
@@ -11941,6 +14050,62 @@
           "document_no"
         ],
         "title": "ImportResultRead"
+      },
+      "ImportedDocument": {
+        "properties": {
+          "ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ref"
+          },
+          "partner": {
+            "type": "string",
+            "title": "Partner"
+          },
+          "lines": {
+            "type": "integer",
+            "title": "Lines"
+          },
+          "document_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Id"
+          },
+          "document_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document No"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ref",
+          "partner",
+          "lines",
+          "document_id",
+          "document_no"
+        ],
+        "title": "ImportedDocument",
+        "description": "An order from an order import; document_id/no are set once it is created (empty while only validating)"
       },
       "IntegrationLogRead": {
         "properties": {
@@ -12177,6 +14342,14 @@
             "type": "boolean",
             "title": "Is Active",
             "default": true
+          },
+          "packings": {
+            "items": {
+              "$ref": "#/components/schemas/ItemPackingIn"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Packings"
           }
         },
         "type": "object",
@@ -12231,6 +14404,51 @@
           "item_ids"
         ],
         "title": "ItemLabelRequest"
+      },
+      "ItemPackingIn": {
+        "properties": {
+          "uom_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Uom Id"
+          },
+          "factor": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Factor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "uom_id",
+          "factor"
+        ],
+        "title": "ItemPackingIn",
+        "description": "A packing unit of the item: one `uom_id` (carton, pallet...) holds `factor` base units"
+      },
+      "ItemPackingRead": {
+        "properties": {
+          "uom": {
+            "$ref": "#/components/schemas/UomBrief"
+          },
+          "factor": {
+            "type": "number",
+            "title": "Factor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "uom",
+          "factor"
+        ],
+        "title": "ItemPackingRead"
       },
       "ItemRead": {
         "properties": {
@@ -12308,6 +14526,14 @@
             "type": "string",
             "format": "uuid",
             "title": "Id"
+          },
+          "packings": {
+            "items": {
+              "$ref": "#/components/schemas/ItemPackingRead"
+            },
+            "type": "array",
+            "title": "Packings",
+            "default": []
           }
         },
         "type": "object",
@@ -12421,6 +14647,21 @@
               }
             ],
             "title": "Is Active"
+          },
+          "packings": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ItemPackingIn"
+                },
+                "type": "array",
+                "maxItems": 10
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Packings"
           }
         },
         "type": "object",
@@ -12744,7 +14985,8 @@
             "type": "string",
             "enum": [
               "ITEM",
-              "LOCATION"
+              "LOCATION",
+              "STOCK"
             ],
             "title": "Purpose"
           },
@@ -12935,7 +15177,8 @@
             "type": "string",
             "enum": [
               "ITEM",
-              "LOCATION"
+              "LOCATION",
+              "STOCK"
             ],
             "title": "Purpose"
           },
@@ -13045,7 +15288,8 @@
             "type": "string",
             "enum": [
               "ITEM",
-              "LOCATION"
+              "LOCATION",
+              "STOCK"
             ],
             "title": "Purpose"
           },
@@ -13247,7 +15491,8 @@
             "type": "string",
             "enum": [
               "ITEM",
-              "LOCATION"
+              "LOCATION",
+              "STOCK"
             ],
             "title": "Purpose"
           },
@@ -13391,7 +15636,8 @@
             "type": "string",
             "enum": [
               "ITEM",
-              "LOCATION"
+              "LOCATION",
+              "STOCK"
             ],
             "title": "Purpose"
           },
@@ -13604,6 +15850,31 @@
           "document"
         ],
         "title": "LedgerRefLine"
+      },
+      "LoadingHistory": {
+        "properties": {
+          "carriers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Carriers"
+          },
+          "vehicles": {
+            "items": {
+              "$ref": "#/components/schemas/ShipmentInfoRead"
+            },
+            "type": "array",
+            "title": "Vehicles"
+          }
+        },
+        "type": "object",
+        "required": [
+          "carriers",
+          "vehicles"
+        ],
+        "title": "LoadingHistory",
+        "description": "Recently used loading details, for choosing instead of typing"
       },
       "LocationBrief": {
         "properties": {
@@ -13922,6 +16193,412 @@
         "type": "object",
         "title": "LocationUpdate"
       },
+      "MapActivity": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "location_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Location Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "movement_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Movement Type"
+          },
+          "doc_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Type"
+          },
+          "doc_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc No"
+          },
+          "document_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Id"
+          },
+          "sku_code": {
+            "type": "string",
+            "title": "Sku Code"
+          },
+          "qty": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qty"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          },
+          "user_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "location_id",
+          "kind",
+          "movement_type",
+          "doc_type",
+          "doc_no",
+          "document_id",
+          "sku_code",
+          "qty",
+          "user_id",
+          "user_name"
+        ],
+        "title": "MapActivity",
+        "description": "Something that happened at a location: a stock movement, or a line confirmed on a PDA (pick, put, count)"
+      },
+      "MapActivityPage": {
+        "properties": {
+          "since": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Since"
+          },
+          "until": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Until"
+          },
+          "truncated": {
+            "type": "boolean",
+            "title": "Truncated"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/MapActivity"
+            },
+            "type": "array",
+            "title": "Events"
+          }
+        },
+        "type": "object",
+        "required": [
+          "since",
+          "until",
+          "truncated",
+          "events"
+        ],
+        "title": "MapActivityPage"
+      },
+      "MapBinDetail": {
+        "properties": {
+          "location": {
+            "$ref": "#/components/schemas/LocationBrief"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "is_locked": {
+            "type": "boolean",
+            "title": "Is Locked"
+          },
+          "is_counting": {
+            "type": "boolean",
+            "title": "Is Counting"
+          },
+          "counting_doc": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentBrief"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "capacity_qty": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capacity Qty"
+          },
+          "stock": {
+            "items": {
+              "$ref": "#/components/schemas/MapBinStock"
+            },
+            "type": "array",
+            "title": "Stock"
+          },
+          "recent": {
+            "items": {
+              "$ref": "#/components/schemas/MapActivity"
+            },
+            "type": "array",
+            "title": "Recent"
+          }
+        },
+        "type": "object",
+        "required": [
+          "location",
+          "path",
+          "is_locked",
+          "is_counting",
+          "counting_doc",
+          "capacity_qty",
+          "stock",
+          "recent"
+        ],
+        "title": "MapBinDetail"
+      },
+      "MapBinStock": {
+        "properties": {
+          "item": {
+            "$ref": "#/components/schemas/ItemBrief"
+          },
+          "batch_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batch No"
+          },
+          "expiry_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expiry Date"
+          },
+          "qty_on_hand": {
+            "type": "number",
+            "title": "Qty On Hand"
+          },
+          "qty_allocated": {
+            "type": "number",
+            "title": "Qty Allocated"
+          },
+          "recall": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentBrief"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "item",
+          "batch_no",
+          "expiry_date",
+          "qty_on_hand",
+          "qty_allocated",
+          "recall"
+        ],
+        "title": "MapBinStock"
+      },
+      "MapNode": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "location_type": {
+            "type": "string",
+            "title": "Location Type"
+          },
+          "is_pickable": {
+            "type": "boolean",
+            "title": "Is Pickable"
+          },
+          "is_locked": {
+            "type": "boolean",
+            "title": "Is Locked"
+          },
+          "is_counting": {
+            "type": "boolean",
+            "title": "Is Counting"
+          },
+          "capacity_qty": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capacity Qty"
+          },
+          "qty_on_hand": {
+            "type": "number",
+            "title": "Qty On Hand"
+          },
+          "qty_allocated": {
+            "type": "number",
+            "title": "Qty Allocated"
+          },
+          "sku_count": {
+            "type": "integer",
+            "title": "Sku Count"
+          },
+          "nearest_expiry": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nearest Expiry"
+          },
+          "has_recalled": {
+            "type": "boolean",
+            "title": "Has Recalled"
+          },
+          "picks": {
+            "type": "integer",
+            "title": "Picks"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "parent_id",
+          "code",
+          "name",
+          "location_type",
+          "is_pickable",
+          "is_locked",
+          "is_counting",
+          "capacity_qty",
+          "qty_on_hand",
+          "qty_allocated",
+          "sku_count",
+          "nearest_expiry",
+          "has_recalled",
+          "picks"
+        ],
+        "title": "MapNode",
+        "description": "One location of the warehouse tree; containers (zone, aisle, rack) carry no stock of their own"
+      },
+      "MapWarehouse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "name"
+        ],
+        "title": "MapWarehouse"
+      },
       "MeResponse": {
         "properties": {
           "id": {
@@ -13950,6 +16627,16 @@
             },
             "type": "array",
             "title": "Features"
+          },
+          "partner": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PartnerBrief"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -14266,6 +16953,11 @@
               }
             ],
             "title": "Confirmed At"
+          },
+          "qty_checked": {
+            "type": "number",
+            "title": "Qty Checked",
+            "default": 0.0
           },
           "confirmer": {
             "anyOf": [
@@ -14635,6 +17327,54 @@
         ],
         "title": "PurchaseOrderLineIn"
       },
+      "PutawayPutIn": {
+        "properties": {
+          "to_location_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "To Location Id"
+          },
+          "qty": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Qty"
+          }
+        },
+        "type": "object",
+        "required": [
+          "to_location_id",
+          "qty"
+        ],
+        "title": "PutawayPutIn",
+        "description": "Quantity of a putaway sheet line placed in a bin (in the line's unit). Resend with the same Idempotency-Key\nwhen the response was lost: a plain resend would put the quantity twice"
+      },
+      "PutawayRemaining": {
+        "properties": {
+          "line_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Line Id"
+          },
+          "qty": {
+            "type": "number",
+            "title": "Qty"
+          }
+        },
+        "type": "object",
+        "required": [
+          "line_id",
+          "qty"
+        ],
+        "title": "PutawayRemaining",
+        "description": "Quantity of a goods receipt line not yet covered by a putaway, in the line's unit"
+      },
       "ReasonBrief": {
         "properties": {
           "id": {
@@ -14766,6 +17506,112 @@
           "row_version"
         ],
         "title": "ReasonCodeRead"
+      },
+      "RecallIn": {
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Item Id"
+          },
+          "batch_no": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Batch No"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 400,
+            "minLength": 1,
+            "title": "Reason"
+          },
+          "quarantine_location_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quarantine Location Id"
+          },
+          "client_request_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Request Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "item_id",
+          "batch_no",
+          "reason"
+        ],
+        "title": "RecallIn"
+      },
+      "RecallRead": {
+        "properties": {
+          "document": {
+            "$ref": "#/components/schemas/DocumentRead"
+          },
+          "moves": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentBrief"
+            },
+            "type": "array",
+            "title": "Moves"
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/RecallSkipped"
+            },
+            "type": "array",
+            "title": "Skipped"
+          },
+          "trace": {
+            "$ref": "#/components/schemas/BatchTrace"
+          }
+        },
+        "type": "object",
+        "required": [
+          "document",
+          "moves",
+          "skipped",
+          "trace"
+        ],
+        "title": "RecallRead"
+      },
+      "RecallSkipped": {
+        "properties": {
+          "location": {
+            "$ref": "#/components/schemas/LocationBrief"
+          },
+          "qty": {
+            "type": "number",
+            "title": "Qty"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "location",
+          "qty",
+          "reason"
+        ],
+        "title": "RecallSkipped"
       },
       "RecountIn": {
         "properties": {
@@ -15605,6 +18451,28 @@
         ],
         "title": "SalesOrderRead"
       },
+      "ShipmentCheckIn": {
+        "properties": {
+          "qty": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Qty"
+          }
+        },
+        "type": "object",
+        "required": [
+          "qty"
+        ],
+        "title": "ShipmentCheckIn",
+        "description": "Scanned quantity of a shipment line so far (base units). \"Set\" semantics: a resend gives the same result"
+      },
       "ShipmentCreate": {
         "properties": {
           "carrier": {
@@ -16132,6 +19000,62 @@
         ],
         "title": "StockBalanceRead"
       },
+      "StockLabelRequest": {
+        "properties": {
+          "grn_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Grn Id"
+          },
+          "qty_per_label": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qty Per Label"
+          },
+          "copies": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Copies",
+            "default": 1
+          },
+          "profile_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Id"
+          },
+          "skip": {
+            "type": "integer",
+            "maximum": 999.0,
+            "minimum": 0.0,
+            "title": "Skip",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "grn_id"
+        ],
+        "title": "StockLabelRequest",
+        "description": "Stock labels for the lines of a posted receipt: one label per line, or with qty_per_label one per carton or\npallet of that size (the last one holds the rest)"
+      },
       "StockLedgerRead": {
         "properties": {
           "id": {
@@ -16444,6 +19368,292 @@
           "error"
         ],
         "title": "ToolCall"
+      },
+      "TraceFlow": {
+        "properties": {
+          "document": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentBrief"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentBrief"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "partner": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TracePartner"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "movement_type": {
+            "type": "string",
+            "title": "Movement Type"
+          },
+          "qty": {
+            "type": "number",
+            "title": "Qty"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "vehicle_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vehicle No"
+          },
+          "driver_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Driver Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "document",
+          "source",
+          "partner",
+          "movement_type",
+          "qty",
+          "at"
+        ],
+        "title": "TraceFlow",
+        "description": "Quantity of the batch that one document brought in or took out"
+      },
+      "TraceMovement": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "movement_type": {
+            "type": "string",
+            "title": "Movement Type"
+          },
+          "qty": {
+            "type": "number",
+            "title": "Qty"
+          },
+          "location": {
+            "$ref": "#/components/schemas/LocationBrief"
+          },
+          "document": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentBrief"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "user_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "movement_type",
+          "qty",
+          "location",
+          "document",
+          "user_name"
+        ],
+        "title": "TraceMovement"
+      },
+      "TracePartner": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "contact_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Name"
+          },
+          "contact_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Phone"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "name"
+        ],
+        "title": "TracePartner"
+      },
+      "TraceStock": {
+        "properties": {
+          "location": {
+            "$ref": "#/components/schemas/LocationBrief"
+          },
+          "expiry_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expiry Date"
+          },
+          "qty_on_hand": {
+            "type": "number",
+            "title": "Qty On Hand"
+          },
+          "qty_allocated": {
+            "type": "number",
+            "title": "Qty Allocated"
+          }
+        },
+        "type": "object",
+        "required": [
+          "location",
+          "expiry_date",
+          "qty_on_hand",
+          "qty_allocated"
+        ],
+        "title": "TraceStock"
+      },
+      "TraceSummary": {
+        "properties": {
+          "received": {
+            "type": "number",
+            "title": "Received"
+          },
+          "returned_in": {
+            "type": "number",
+            "title": "Returned In"
+          },
+          "other_in": {
+            "type": "number",
+            "title": "Other In"
+          },
+          "shipped": {
+            "type": "number",
+            "title": "Shipped"
+          },
+          "returned_out": {
+            "type": "number",
+            "title": "Returned Out"
+          },
+          "other_out": {
+            "type": "number",
+            "title": "Other Out"
+          },
+          "qty_on_hand": {
+            "type": "number",
+            "title": "Qty On Hand"
+          },
+          "qty_allocated": {
+            "type": "number",
+            "title": "Qty Allocated"
+          },
+          "customers": {
+            "type": "integer",
+            "title": "Customers"
+          },
+          "shipments": {
+            "type": "integer",
+            "title": "Shipments"
+          },
+          "suppliers": {
+            "type": "integer",
+            "title": "Suppliers"
+          }
+        },
+        "type": "object",
+        "required": [
+          "received",
+          "returned_in",
+          "other_in",
+          "shipped",
+          "returned_out",
+          "other_out",
+          "qty_on_hand",
+          "qty_allocated",
+          "customers",
+          "shipments",
+          "suppliers"
+        ],
+        "title": "TraceSummary"
       },
       "Transcript": {
         "properties": {
@@ -16770,6 +19980,18 @@
             "type": "array",
             "title": "Role Codes",
             "default": []
+          },
+          "partner_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Partner Id"
           }
         },
         "type": "object",
@@ -16817,6 +20039,16 @@
             "type": "array",
             "title": "Roles",
             "default": []
+          },
+          "partner": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PartnerBrief"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "row_version": {
             "type": "integer",
@@ -16877,6 +20109,18 @@
             "type": "array",
             "title": "Role Codes",
             "default": []
+          },
+          "partner_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Partner Id"
           }
         },
         "type": "object",
@@ -16924,6 +20168,52 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "WarehouseMap": {
+        "properties": {
+          "warehouses": {
+            "items": {
+              "$ref": "#/components/schemas/MapWarehouse"
+            },
+            "type": "array",
+            "title": "Warehouses"
+          },
+          "warehouse": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MapWarehouse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/MapNode"
+            },
+            "type": "array",
+            "title": "Nodes"
+          },
+          "pick_window_days": {
+            "type": "integer",
+            "title": "Pick Window Days"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "warehouses",
+          "warehouse",
+          "nodes",
+          "pick_window_days",
+          "generated_at"
+        ],
+        "title": "WarehouseMap"
       },
       "WorkerStatus": {
         "properties": {

@@ -8,9 +8,9 @@ import { apiClient } from "@/api/client";
 import { openPdf } from "@/api/print";
 import type { LabelLayout, LabelProfile } from "@/api/types";
 
-export type Purpose = "ITEM" | "LOCATION";
+export type Purpose = "ITEM" | "LOCATION" | "STOCK";
 
-export const PURPOSE_LABELS: Record<Purpose, string> = { ITEM: "Item labels", LOCATION: "Location labels" };
+export const PURPOSE_LABELS: Record<Purpose, string> = { ITEM: "Item labels", LOCATION: "Location labels", STOCK: "Stock labels" };
 
 type Geometry = Pick<
   LabelLayout,

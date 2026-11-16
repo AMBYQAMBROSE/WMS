@@ -571,6 +571,11 @@ button:focus-visible,
 .wms-row-link {
   cursor: pointer;
 }
+/* Rows to flag (e.g. stock with nothing available): tint the whole row, hover included */
+.ant-table-tbody > tr.wms-row-warning > td,
+.ant-table-tbody > tr.wms-row-warning:hover > td {
+  background: var(--wms-tone-amber-bg);
+}
 /* Loading a new page of rows: keep the old rows, dim them slightly, no spinner */
 .wms-refreshing .ant-table-tbody {
   opacity: 0.6;
@@ -615,6 +620,15 @@ button:focus-visible,
 .wms-empty-value {
   color: var(--ant-color-text-quaternary);
   font-weight: 400;
+}
+
+/* Converted quantity under a quantity entered in a packing unit ("= 960 EA") */
+.wms-base-qty {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--ant-color-text-secondary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 /* ============================================================ toolbars and filters */
@@ -1012,6 +1026,24 @@ a.wms-list-row:hover {
   margin-right: auto;
   font-size: 12.5px;
   color: var(--ant-color-text-tertiary);
+}
+
+/* Print preview: the PDF fills the dialog; the footer keeps Print on the far right */
+.wms-print-frame {
+  display: block;
+  width: 100%;
+  height: min(72vh, 900px);
+  border: 1px solid var(--wms-surface-border);
+  border-radius: var(--wms-radius-lg);
+  background: var(--ant-color-fill-quaternary);
+}
+
+.wms-print-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
 }
 
 /* Line-entry rows in order forms */

@@ -21,7 +21,7 @@ from app.models.document import DocumentHeader, DocumentLine
 from app.models.tenant import Tenant
 from app.models.user import User
 from app.services.attachment_service import DOCUMENT_PERMISSIONS
-from app.services.printing.report import Column, Report, render
+from app.services.printing.report import BarcodeCell, Cell, Column, Report, render
 from app.services.sales_order_service import SalesOrderService
 
 if TYPE_CHECKING:  # the API layer's type only
@@ -40,12 +40,14 @@ TITLES = {
     "RETURN_IN": "Customer Return",
     "RETURN_OUT": "Return to Supplier",
     "REPACK": "Repack",
+    "RECALL": "Batch Recall Notice",
 }
 
 STATUS = {
     "DRAFT": "Draft", "CONFIRMED": "Confirmed", "PARTIALLY_RECEIVED": "Partially received", "RECEIVED": "Received",
-    "CLOSED": "Closed", "CANCELLED": "Cancelled", "POSTED": "Posted", "COUNTING": "Counting", "IN_PROGRESS": "In progress",
-    "PARTIALLY_SHIPPED": "Partially shipped", "SHIPPED": "Shipped", "OPEN": "To pick",
+    "CLOSED": "Closed", "CANCELLED": "Cancelled", "POSTED": "Posted", "REVERSED": "Returned to stock", "COUNTING": "Counting", "IN_PROGRESS": "In progress",
+    "PARTIALLY_SHIPPED": "Partially shipped", "SHIPPED": "Shipped", "OPEN": "To pick", "TO_PUT_AWAY": "To put away",
+    "ACTIVE": "On hold", "RELEASED": "Released",
 }
 
 SIGNATURES = {
@@ -61,14 +63,15 @@ SIGNATURES = {
     "RETURN_IN": ["Returned by (customer)", "Received by", "Checked by"],
     "RETURN_OUT": ["Released by (warehouse)", "Collected by (supplier)"],
     "REPACK": ["Repacked by", "Checked by"],
+    "RECALL": ["Raised by", "Quality approval", "Released by"],
 }
 
 PARTNER_LABEL = {"PO": "Supplier", "GRN": "Supplier", "RETURN_OUT": "Supplier", "SO": "Customer", "SHIP": "Customer", "RETURN_IN": "Customer", "PICK": "Customer"}
 REF_LABEL = {"GRN": "Purchase order", "PUTAWAY": "Goods receipt", "PICK": "Sales order", "SHIP": "Sales order", "RETURN_IN": "Sales order", "RETURN_OUT": "Purchase order"}
-LOCATION_LABEL = {"GRN": "Received at", "PICK": "Stage at", "SO": "Staging location"}
+LOCATION_LABEL = {"GRN": "Received at", "PICK": "Stage at", "SO": "Staging location", "PUTAWAY": "Take from", "RECALL": "Quarantine"}
 DATE_LABEL = {"PO": "Expected date", "SO": "Requested date"}
 
-LineValue = Callable[[DocumentLine], str]
+LineValue = Callable[[DocumentLine], Cell]
 
 
 def _location(loc) -> str:
@@ -77,6 +80,20 @@ def _location(loc) -> str:
 
 def _date(value: date | None) -> str:
     return value.isoformat() if value else ""
+
+
+def _item_barcode(line: DocumentLine) -> BarcodeCell:
+    """The item's barcode (or SKU when it has none, as on its label) with SKU and name under it"""
+    return BarcodeCell(line.item.barcode or line.item.sku_code, f"{line.item.sku_code} {line.item.name}")
+
+
+def _bin_barcode(loc) -> Cell:
+    return BarcodeCell(loc.code, loc.code) if loc else ""
+
+
+def is_putaway_sheet(doc: DocumentHeader) -> bool:
+    """A putaway made from a receipt and worked line by line (as opposed to a free putaway entered in one go)"""
+    return doc.doc_type == "PUTAWAY" and (doc.status == "TO_PUT_AWAY" or any(line.confirmed_at for line in doc.lines))
 
 
 class DocumentReportService:
@@ -121,7 +138,7 @@ class DocumentReportService:
         columns, rows, totals = self._lines(doc)
         printed_at = datetime.now(self.tz).strftime("%Y-%m-%d %H:%M")
         return Report(
-            title=TITLES.get(t, t),
+            title="Putaway Sheet" if is_putaway_sheet(doc) else TITLES.get(t, t),
             doc_no=doc.doc_no,
             status=STATUS.get(doc.status, doc.status),
             company=self.tenant_name,
@@ -217,6 +234,14 @@ class DocumentReportService:
             add("Expected", 0.9, qty(lambda line: line.qty_planned), "R")
             add("Received", 0.9, total_of := qty(lambda line: line.qty_actual), "R")
             add("Unit", 0.6, uom)
+        elif is_putaway_sheet(doc):
+            # Scan the item, take it to the suggested bin (or any bin), scan the bin; the blanks are for paper use
+            add("Item", 3.0, _item_barcode)
+            tracking_columns()
+            add("Qty", 0.7, total_of := qty(lambda line: line.qty_planned), "R")
+            add("Unit", 0.5, uom)
+            add("Suggested bin", 1.6, lambda line: "" if line.confirmed_at else (_bin_barcode(line.to_location) if line.to_location else "Any bin"), "C")
+            add("Put in bin", 1.1, lambda line: _location(line.to_location) if line.confirmed_at else "", "C")
         elif t in ("PUTAWAY", "MOVE"):
             add("From", 1.2, lambda line: _location(line.from_location))
             item_columns()
@@ -227,8 +252,8 @@ class DocumentReportService:
         elif t == "PICK":
             # Route order: by bin, so the printed list walks the warehouse once
             lines.sort(key=lambda line: (_location(line.from_location), line.line_no))
-            add("Bin", 1.2, lambda line: _location(line.from_location))
-            item_columns()
+            add("Bin", 1.4, lambda line: _bin_barcode(line.from_location), "C")
+            add("Item", 3.0, _item_barcode)
             tracking_columns()
             add("To pick", 0.8, total_of := qty(lambda line: line.qty_planned), "R")
             # Blank until confirmed: room to write the picked quantity on the paper list
@@ -253,6 +278,12 @@ class DocumentReportService:
             item_columns()
             tracking_columns()
             add("Change", 0.9, lambda line: _signed(line.qty_actual), "R")
+            add("Unit", 0.6, uom)
+        elif t == "RECALL":
+            item_columns()
+            tracking_columns()
+            add("On hand at recall", 1.1, total_of := qty(lambda line: line.qty_planned), "R")
+            add("Already shipped", 1.1, qty(lambda line: line.qty_actual), "R")
             add("Unit", 0.6, uom)
         elif t == "REPACK":
             lines.sort(key=lambda line: (line.from_location_id is None, line.line_no))

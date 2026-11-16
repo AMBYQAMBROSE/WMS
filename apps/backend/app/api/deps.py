@@ -23,6 +23,8 @@ class CurrentUser:
     username: str = ""
     display_name: str = ""
     permissions: set[str] = field(default_factory=set)
+    # Customer account (User.partner_id): orders only for this customer and sees only its sales orders
+    partner_id: uuid.UUID | None = None
 
 
 def get_current_user(
@@ -54,6 +56,7 @@ def load_current_user(db: Session, token: str) -> CurrentUser:
         username=user.username,
         display_name=user.display_name,
         permissions=load_permissions(db, user.id),
+        partner_id=user.partner_id,
     )
 
 

@@ -1,3 +1,4 @@
+import { ImportButton } from "@/components/ImportRunner";
 import { DocumentListPage } from "@/components/documents";
 
 export default function SalesOrdersPage() {
@@ -6,6 +7,7 @@ export default function SalesOrdersPage() {
       path="sales-orders"
       createLabel="New sales order"
       createPerm="sales_order.create"
+      toolbarExtra={<ImportButton kind={{ key: "sales_orders", name: "Sales orders" }} perm="sales_order.create" />}
       statuses={["DRAFT", "CONFIRMED", "IN_PROGRESS", "PARTIALLY_SHIPPED", "SHIPPED", "CLOSED", "CANCELLED"]}
       batchActions={[
         { key: "confirm", label: "Confirm", perm: "sales_order.confirm", statuses: ["DRAFT"] },

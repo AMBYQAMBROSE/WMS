@@ -65,6 +65,17 @@ def post_pick(
     return _service(db, user).post(pick_id)
 
 
+@router.post("/{pick_id}/reverse", response_model=PickRead)
+def reverse_pick(
+    pick_id: uuid.UUID,
+    db: Session = Depends(get_db_session),
+    user: CurrentUser = Depends(require_permission("pick.cancel")),
+):
+    """Return the goods of a posted pick from staging to their bins (status REVERSED), while they have not shipped.
+    The order's quantities become unallocated again."""
+    return _service(db, user).reverse(pick_id)
+
+
 @router.post("/{pick_id}/cancel", response_model=PickRead)
 def cancel_pick(
     pick_id: uuid.UUID,

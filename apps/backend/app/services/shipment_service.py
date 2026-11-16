@@ -6,9 +6,11 @@ from sqlalchemy import false, func, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import DomainError
+from app.core.formatting import qty_text
+from app.models.audit import record_change
 from app.models.document import DocumentHeader, DocumentLine, ShipmentInfo
 from app.repositories.base import check_version
-from app.schemas.outbound import ShipmentCreate, ShipmentInfoIn, ShipmentInfoUpdate
+from app.schemas.outbound import LoadingHistory, ShipmentCreate, ShipmentInfoIn, ShipmentInfoRead, ShipmentInfoUpdate
 from app.services.document_common import (
     DOC_PICK,
     DOC_SHIP,
@@ -29,6 +31,7 @@ from app.services.sales_order_service import (
     SO_SHIPPED,
     SalesOrderService,
 )
+from app.services.batch_hold import active_recall
 from app.services.stock_service import MOVE_SHIP_OUT, Movement, apply_movements
 
 SHIP_CANCELLED = "CANCELLED"
@@ -116,10 +119,69 @@ class ShipmentService:
         self.db.flush()
         return ship
 
-    def post(self, ship_id: uuid.UUID) -> DocumentHeader:
+    def check_line(self, ship_id: uuid.UUID, line_id: uuid.UUID, qty: Decimal) -> DocumentHeader:
+        """Record how much of a line has been scanned onto the vehicle so far (set, not add: resends are harmless)"""
+        ship = self.get(ship_id, lock=True)
+        require_status(ship, (SHIP_DRAFT,), "check")
+        line = next((candidate for candidate in ship.lines if candidate.id == line_id), None)
+        if line is None:
+            raise DomainError("Shipment line not found")
+        if qty > line.qty_actual:
+            raise DomainError(
+                f"{line.item.sku_code}: only {qty_text(line.qty_actual)} {line.uom.code} to ship, scanned {qty_text(qty)}"
+            )
+        line.qty_checked = qty
+        line.updated_by = self.user_id
+        self._touch(ship)
+        self.db.flush()
+        return self.get(ship.id)
+
+    def loading_history(self, limit: int = 30) -> LoadingHistory:
+        """Carriers and vehicle/driver combinations of recent shipments, newest first and without repeats"""
+        rows = self.db.scalars(
+            select(ShipmentInfo)
+            .join(DocumentHeader, DocumentHeader.id == ShipmentInfo.document_id)
+            .where(DocumentHeader.tenant_id == self.tenant_id, DocumentHeader.is_deleted == false())
+            .order_by(DocumentHeader.created_at.desc())
+            .limit(300)
+        ).all()
+        carriers: list[str] = []
+        vehicles: list[ShipmentInfoRead] = []
+        seen: set[tuple] = set()
+        for info in rows:
+            if info.carrier and info.carrier not in carriers:
+                carriers.append(info.carrier)
+            key = (info.vehicle_no, info.driver_name, info.driver_phone)
+            if (info.vehicle_no or info.driver_name) and key not in seen:
+                seen.add(key)
+                # The seal is new for every trip, so it is never offered again
+                vehicles.append(ShipmentInfoRead(carrier=info.carrier, vehicle_no=info.vehicle_no, driver_name=info.driver_name,
+                                                 driver_phone=info.driver_phone, seal_no=None))
+        return LoadingHistory(carriers=carriers[:limit], vehicles=vehicles[:limit])
+
+    def post(self, ship_id: uuid.UUID, allow_unchecked: bool = False) -> DocumentHeader:
+        """Every piece must have been scanned while loading, unless the user may post without (then it is recorded)"""
         # Fixed lock order: shipment -> order
         ship = self.get(ship_id, lock=True)
         require_status(ship, (SHIP_DRAFT,), "post")
+        unchecked = [line for line in ship.lines if line.qty_checked < line.qty_actual]
+        if unchecked:
+            summary = "; ".join(
+                f"{line.item.sku_code} {qty_text(line.qty_checked)} of {qty_text(line.qty_actual)} {line.uom.code}" for line in unchecked
+            )
+            if not allow_unchecked:
+                raise DomainError(f"Not every piece has been scanned yet: {summary}")
+            record_change(
+                self.db, tenant_id=self.tenant_id, entity_type="document", entity_id=ship.id,
+                entity_label=f"{ship.doc_type} {ship.doc_no}", changes={"posted_without_full_scan": [None, summary]},
+            )
+        for line in ship.lines:
+            recall = active_recall(self.db, self.tenant_id, line.item_id, line.batch_no)
+            if recall is not None:
+                raise DomainError(
+                    f"Batch {line.batch_no} of {line.item.sku_code} is held by recall {recall.doc_no} and cannot ship. "
+                    "Take it off the vehicle and return it to stock, or release the recall first"
+                )
         so = self.orders.get(ship.ref_document_id, lock=True)
         require_status(so, (SO_IN_PROGRESS, SO_PARTIALLY_SHIPPED), "ship")
 
@@ -136,6 +198,8 @@ class ShipmentService:
                     qty_change=-line.qty_actual,
                     movement_type=MOVE_SHIP_OUT,
                     ref_line_id=line.id,
+                    # Staged goods were reserved for the order when they were picked
+                    allocated_change=-line.qty_actual,
                 )
             )
             shipped[line.ref_line_id] += line.qty_actual

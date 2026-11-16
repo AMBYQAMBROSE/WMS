@@ -2,12 +2,15 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 
 import { request } from "@/lib/api";
+import { gtinCandidates, parseGs1 } from "@/lib/gs1";
 import { loadLarge, saveLarge } from "@/lib/largeStore";
 import type { MasterData, MobileItem, MobileLocation } from "@/lib/types";
 
 export interface ItemMatch {
   item: MobileItem;
   uomId: string;
+  /** From a GS1 code or our stock label: what the goods themselves say, so it is not typed */
+  lot?: { batchNo: string | null; expiryDate: string | null; qty: number | null };
 }
 
 /** Server compact format (columnar, units by index); see backend /mobile/master-data?format=compact */
@@ -41,11 +44,23 @@ interface MasterDataState {
   hydrate: () => Promise<void>;
   findItem: (code: string) => ItemMatch | null;
   findLocation: (code: string) => MobileLocation | null;
+  /**
+   * For a scan the local master data does not know: it may have been added (imported, created) since the last download,
+   * so download again and look once more. Online only; offline, or when it was downloaded moments ago, it just looks
+   * again. Call it as `find(code) ?? (await findAfterUpdate(() => find(code)))`, so a known code is handled at once.
+   */
+  findAfterUpdate: <T>(find: () => T | null) => Promise<T | null>;
+  /** How many base units one unit of uomId is for the item (a carton barcode counts its pack size); null if unknown */
+  baseFactor: (item: MobileItem, uomId: string) => number | null;
 }
 
 const STORAGE_KEY = "wms.masterData.v2";
 // Older versions stored it whole in AsyncStorage; delete it after upgrading to free space
 const LEGACY_KEY = "wms.masterData";
+// Unknown scans download the master data at most this often (a mistyped code must not download it on every try)
+const MISS_REFRESH_MS = 15_000;
+let missRefresh: Promise<void> | null = null;
+let lastMissRefresh = 0;
 
 function decode(c: CompactMasterData): MasterData {
   const table = (t: CompactTable) =>
@@ -122,17 +137,50 @@ export const useMasterData = create<MasterDataState>()((set, get) => ({
       set({ hydrated: true });
     }
   },
-  // Lookup order: barcode (multi-barcode table -> item main barcode) -> SKU code
+  // Lookup order: barcode (multi-barcode table -> item main barcode) -> SKU code -> GS1 code / stock label
   findItem: (raw) => {
     const code = raw.trim();
     const idx = get().indexes;
     if (!idx || !code) return null;
-    const byBarcode = idx.barcodes.get(code);
-    if (byBarcode) return byBarcode;
-    const item = idx.skus.get(code.toUpperCase());
-    return item ? { item, uomId: item.base_uom_id } : null;
+    const plain = (value: string): ItemMatch | null => {
+      const byBarcode = idx.barcodes.get(value);
+      if (byBarcode) return byBarcode;
+      const item = idx.skus.get(value.toUpperCase());
+      return item ? { item, uomId: item.base_uom_id } : null;
+    };
+    const direct = plain(code);
+    if (direct) return direct;
+    const gs1 = parseGs1(raw);
+    if (!gs1) return null;
+    const keys = [...(gs1.itemCode ? [gs1.itemCode] : []), ...(gs1.gtin ? gtinCandidates(gs1.gtin) : [])];
+    for (const key of keys) {
+      const match = plain(key);
+      if (match) return { ...match, lot: { batchNo: gs1.batch, expiryDate: gs1.expiry, qty: gs1.qty } };
+    }
+    return null;
   },
   findLocation: (raw) => get().indexes?.locations.get(raw.trim().toUpperCase()) ?? null,
+  findAfterUpdate: async (find) => {
+    if (!missRefresh && Date.now() - lastMissRefresh >= MISS_REFRESH_MS) {
+      lastMissRefresh = Date.now();
+      missRefresh = get()
+        .refresh()
+        .catch(() => undefined) // offline or refused: the cached master data stays in use
+        .finally(() => {
+          missRefresh = null;
+        });
+    }
+    if (missRefresh) await missRefresh;
+    return find();
+  },
+  baseFactor: (item, uomId) => {
+    if (uomId === item.base_uom_id) return 1;
+    const conversions = get().data?.conversions ?? [];
+    const direct = conversions.find((v) => v.item_id === item.id && v.from_uom_id === uomId && v.to_uom_id === item.base_uom_id);
+    if (direct) return direct.factor;
+    const inverse = conversions.find((v) => v.item_id === item.id && v.from_uom_id === item.base_uom_id && v.to_uom_id === uomId);
+    return inverse && inverse.factor ? 1 / inverse.factor : null;
+  },
 }));
 
 // On startup, load the last downloaded master data from local storage (barcodes resolve even offline)

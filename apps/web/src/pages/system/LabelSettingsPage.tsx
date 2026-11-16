@@ -45,7 +45,7 @@ const PAGES = [
   { value: "LETTER", label: "Letter (215.9 × 279.4 mm)", w: 215.9, h: 279.4 },
 ];
 
-const mm = { min: 0, max: 1000, step: 0.5, precision: 2, addonAfter: "mm", style: { width: "100%" } } as const;
+const mm = { min: 0, max: 1000, step: 0.5, precision: 2, suffix: "mm", style: { width: "100%" } } as const;
 
 /**
  * Label layouts: how item and location labels sit on the paper. Office printers use sheets of labels (A4);
@@ -315,20 +315,20 @@ function ProfileEditor({
                       options={[...PAGES, { value: "CUSTOM", label: "Custom size" }]}
                     />
                   </Form.Item>
-                  {pageKey === "CUSTOM" && (
-                    <Row gutter={12}>
-                      <Col span={12}>
-                        <Form.Item name="page_width_mm" label="Page width" rules={[{ required: true }]}>
-                          <InputNumber {...mm} min={10} />
-                        </Form.Item>
-                      </Col>
-                      <Col span={12}>
-                        <Form.Item name="page_height_mm" label="Page height" rules={[{ required: true }]}>
-                          <InputNumber {...mm} min={10} />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                  )}
+                  {/* Hidden, not unmounted: the page size is derived from these fields, and with preserve={false}
+                      unmounting them clears their values, which flips the page size back to Custom in a loop */}
+                  <Row gutter={12} style={pageKey === "CUSTOM" ? undefined : { display: "none" }}>
+                    <Col span={12}>
+                      <Form.Item name="page_width_mm" label="Page width" rules={[{ required: true }]}>
+                        <InputNumber {...mm} min={10} />
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item name="page_height_mm" label="Page height" rules={[{ required: true }]}>
+                        <InputNumber {...mm} min={10} />
+                      </Form.Item>
+                    </Col>
+                  </Row>
                   <Row gutter={12}>
                     <Col span={12}>
                       <Form.Item name="columns" label="Labels across" rules={[{ required: true }]}>
@@ -380,7 +380,7 @@ function ProfileEditor({
               <Row gutter={12}>
                 <Col span={12}>
                   <Form.Item name="font_size" label="Text size" rules={[{ required: true }]}>
-                    <InputNumber min={5} max={72} precision={0} addonAfter="pt" style={{ width: "100%" }} />
+                    <InputNumber min={5} max={72} precision={0} suffix="pt" style={{ width: "100%" }} />
                   </Form.Item>
                 </Col>
                 <Col span={12}>

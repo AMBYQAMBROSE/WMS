@@ -7,7 +7,7 @@ from app.api.deps import CurrentUser, get_db_session, require_permission
 from app.api.filters import document_filters
 from app.api.routing import TransactionalRoute
 from app.schemas.document import DocumentSummary
-from app.schemas.outbound import ShipmentCreate, ShipmentInfoUpdate, ShipmentRead
+from app.schemas.outbound import LoadingHistory, ShipmentCheckIn, ShipmentCreate, ShipmentInfoUpdate, ShipmentRead
 from app.services.shipment_service import ShipmentService
 
 router = APIRouter(route_class=TransactionalRoute, prefix="/shipments", tags=["shipments"])
@@ -36,6 +36,15 @@ def create_shipment(
     return _service(db, user).create(data)
 
 
+@router.get("/loading-history", response_model=LoadingHistory)
+def loading_history(
+    db: Session = Depends(get_db_session),
+    user: CurrentUser = Depends(require_permission("shipment.create")),
+):
+    """Recent carriers, vehicles and drivers, to choose from when entering loading details"""
+    return _service(db, user).loading_history()
+
+
 @router.get("/{ship_id}", response_model=ShipmentRead)
 def get_shipment(
     ship_id: uuid.UUID,
@@ -61,7 +70,20 @@ def post_shipment(
     db: Session = Depends(get_db_session),
     user: CurrentUser = Depends(require_permission("shipment.post")),
 ):
-    return _service(db, user).post(ship_id)
+    return _service(db, user).post(ship_id, allow_unchecked="shipment.post_unchecked" in user.permissions)
+
+
+@router.post("/{ship_id}/lines/{line_id}/check", response_model=ShipmentRead)
+def check_shipment_line(
+    ship_id: uuid.UUID,
+    line_id: uuid.UUID,
+    data: ShipmentCheckIn,
+    db: Session = Depends(get_db_session),
+    user: CurrentUser = Depends(require_permission("shipment.create")),
+):
+    """Quantity of a line scanned onto the vehicle so far (base units). A shipment is posted only when every line
+    is fully scanned, unless the user holds shipment.post_unchecked."""
+    return _service(db, user).check_line(ship_id, line_id, data.qty)
 
 
 @router.post("/{ship_id}/cancel", response_model=ShipmentRead)

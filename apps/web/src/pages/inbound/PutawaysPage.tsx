@@ -9,7 +9,7 @@ export default function PutawaysPage() {
       path="putaways"
       createLabel="New putaway"
       createPerm="putaway.create"
-      statuses={["DRAFT", "POSTED", "CANCELLED"]}
+      statuses={["TO_PUT_AWAY", "DRAFT", "POSTED", "CANCELLED"]}
       batchActions={postAndCancel("putaway")}
       columns={[
         {

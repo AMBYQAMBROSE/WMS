@@ -1,5 +1,5 @@
-import TransferScreen from "@/components/TransferScreen";
+import LocationMoveScreen from "@/components/LocationMoveScreen";
 
 export default function MoveScreen() {
-  return <TransferScreen kind="move" />;
+  return <LocationMoveScreen />;
 }

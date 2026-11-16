@@ -7,6 +7,7 @@ What a barcode holds is a code the system already resolves when scanned, so prin
 
 import io
 from dataclasses import dataclass, field
+from datetime import date
 from decimal import Decimal
 
 from reportlab.lib.colors import Color
@@ -25,7 +26,7 @@ from app.services.printing.pdf import (
 )
 
 # Fields printed above the bars, bold; the rest go below
-_HEADLINE = {"ITEM": "name", "LOCATION": "code"}
+_HEADLINE = {"ITEM": "name", "LOCATION": "code", "STOCK": "name"}
 _OUTLINE = Color(0.6, 0.6, 0.6)
 _GAP = 1 * mm
 # Below this the bars are too short to scan reliably, so secondary text is dropped to make room
@@ -38,6 +39,13 @@ BUILT_IN: dict[str, LabelLayout] = {
         columns=3, rows=8, margin_top_mm=Decimal("4.5"), margin_left_mm=Decimal(0), gap_x_mm=Decimal(0),
         gap_y_mm=Decimal(0), padding_mm=Decimal(3), barcode_type="CODE128", fields=["name", "barcode_text", "sku"],
         font_size=9,
+    ),
+    # 10 labels of 100 x 55 mm on A4 with a QR code: big enough for item, batch, expiry and quantity
+    "STOCK": LabelLayout(
+        purpose="STOCK", media="SHEET", label_width_mm=Decimal(100), label_height_mm=Decimal(55),
+        columns=2, rows=5, margin_top_mm=Decimal(10), margin_left_mm=Decimal(5), gap_x_mm=Decimal(0),
+        gap_y_mm=Decimal(0), padding_mm=Decimal(4), barcode_type="QR",
+        fields=["name", "sku", "batch", "expiry", "qty", "source"], font_size=10,
     ),
     # 10 large labels of 100 x 55 mm on A4: readable from the aisle and easy to scan from below
     "LOCATION": LabelLayout(
@@ -53,7 +61,28 @@ class LabelContent:
     fields: dict[str, str] = field(default_factory=dict)
 
 
+def stock_code(item_code: str, batch: str | None, expiry: date | None, qty: Decimal | None) -> str:
+    """What a stock label's barcode holds: a GS1 element string in its printable form, (240) item barcode or SKU,
+    (10) batch, (17) expiry YYMMDD, (30) whole-unit quantity. Plain text survives any scanner setting; the PDA reads
+    it like a supplier's GS1 carton code (apps/mobile/src/lib/gs1.ts)."""
+    code = f"(240){item_code}"
+    if batch:
+        code += f"(10){batch}"
+    if expiry:
+        code += f"(17){expiry:%y%m%d}"
+    if qty is not None and qty > 0 and qty == qty.to_integral_value():
+        code += f"(30){int(qty)}"
+    return code
+
+
 def sample_labels(purpose: str) -> list[LabelContent]:
+    if purpose == "STOCK":
+        return [
+            LabelContent(stock_code("6901234567892", "L2026-11", date(2027, 5, 31), Decimal(24)), {
+                "name": "Sample item name long enough to wrap", "sku": "SKU-0001", "batch": "Batch L2026-11",
+                "expiry": "Exp 2027-05-31", "qty": "24 EA", "source": "GRN20261112-0001 · 2026-11-12",
+            }),
+        ]
     if purpose == "ITEM":
         return [
             LabelContent("6901234567892", {"name": "Sample item name long enough to wrap", "barcode_text": "6901234567892", "sku": "SKU-0001", "uom": "EA", "category": "Category"}),
@@ -167,7 +196,7 @@ def _draw_bar_layout(canvas: Canvas, layout: LabelLayout, label: LabelContent, x
 def _draw_qr_layout(canvas: Canvas, layout: LabelLayout, label: LabelContent, x: float, y: float, w: float, h: float) -> None:
     base = float(layout.font_size)
     texts = _texts(layout, label)
-    size = min(h, w * 0.5) if texts else min(w, h)
+    size = min(h, w * 0.42) if texts else min(w, h)
     draw_qr(canvas, label.value, x, y + (h - size) / 2, size)
     col_x, col_w = x + size + 2 * mm, w - size - 2 * mm
     if not texts or col_w < 10 * mm:
@@ -182,7 +211,8 @@ def _draw_qr_layout(canvas: Canvas, layout: LabelLayout, label: LabelContent, x:
             size_pt, bold = base + 1, True
             lines = wrap(value, True, size_pt, col_w, 3)
         else:
-            size_pt, bold, lines = base, False, [value]
+            size_pt, bold = base, False
+            lines = wrap(value, False, size_pt, col_w, 2)
         for line in lines:
             if cursor - size_pt * LINE_HEIGHT < y:
                 return

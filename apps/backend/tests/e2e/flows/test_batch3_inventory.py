@@ -28,7 +28,7 @@ def test_e_stock_and_moves(flow, unique):
 
     flow.step("E-01  Stock enquiry filtered by item: on hand, batch, expiry")
     flow.goto("/stock")
-    flow.choose(page.get_by_label("Filter by item"), s.b)
+    flow.choose(page.get_by_label("Filter balances by item"), s.b)
     flow.visible(page.locator("tr.ant-table-row", has_text=f"E1-{unique}"), "B batch row in stock enquiry")
     row = page.locator("tr.ant-table-row", has_text=f"E1-{unique}").first
     flow.check(exp.isoformat() in row.inner_text(), f"expiry shown in the stock row ({row.inner_text()[:120]!r})")
@@ -93,14 +93,14 @@ def test_e_adjustments(flow, unique):
     page.get_by_role("button", name="Create adjustment").or_(page.get_by_role("button", name="Save")).first.click()
     adj = flow.saved("adjustments", lambda: api.post("/adjustments", {"reason_code_id": damage, "lines": [
         {"item_id": s.item_a, "uom_id": s.ea, "location_id": s.bin1, "qty": -5}]}), "Clerk creates adjustment")
-    flow.check(page.get_by_role("button", name="Post", exact=True).count() == 0, "clerk sees no Post button")
+    flow.check(page.get_by_role("button", name="Approve and post", exact=True).count() == 0, "clerk sees no Post button")
     flow.equal(stock(api, s.item_a).get((s.code("BA"), None)), (30.0, 0.0), "stock unchanged by a draft adjustment")
 
     flow.step("E-10  Supervisor posts it; E-06 ledger shows the reason")
     flow.sign_out()
     flow.sign_in()
     flow.goto(f"/adjustments/{adj}")
-    flow.confirm_action("Post")
+    flow.confirm_action("Approve and post")
     flow.equal(flow.wait_status("adjustments", adj, "POSTED"), "POSTED", "adjustment status")
     flow.equal(stock(api, s.item_a).get((s.code("BA"), None)), (25.0, 0.0), "A after -5")
     types = {r["movement_type"] for r in api.get("/stock/ledger", item_id=s.item_a, limit=100)}
@@ -200,7 +200,7 @@ def test_e_cycle_count(flow, unique):
     flow.step("E-14  A count cannot start on stock reserved by an open pick list")
     order = so(api, s, [(s.item_a, 5)])
     api.post(f"/sales-orders/{order['id']}/allocate", {"staging_location_id": s.stage})
-    flow.rejected("POST", "/cycle-counts", {"location_ids": [s.bin1]}, "reserved by pick lists", "count reserved stock")
+    flow.rejected("POST", "/cycle-counts", {"location_ids": [s.bin1]}, "reserved for orders", "count reserved stock")
 
     flow.step("E-17  Book stock not counted must be entered (0 if nothing)")
     cc2 = api.post("/cycle-counts", {"location_ids": [s.bin2]})

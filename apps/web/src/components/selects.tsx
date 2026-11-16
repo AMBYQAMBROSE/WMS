@@ -150,10 +150,18 @@ export function PartnerSelect(props: Props) {
   return <RemoteSelect<BusinessPartner> resource={PARTNERS} toOption={partnerOption} {...props} />;
 }
 
-export function ItemSelect(props: Props & { onRecordChange?: (item: Item | undefined) => void }) {
+export function ItemSelect({
+  stockedIds,
+  ...props
+}: Props & {
+  onRecordChange?: (item: Item | undefined) => void;
+  /** Offer only these items (the ones stocked at the line's location); see StockItemSelect */
+  stockedIds?: string[];
+}) {
   return (
     <RemoteSelect<Item>
       resource={ITEMS}
+      params={stockedIds ? { ids: stockedIds } : undefined}
       toOption={(i) => ({ value: i.id, label: `${i.sku_code} ${i.name}` })}
       {...props}
     />
@@ -167,10 +175,42 @@ export function useUoms() {
   });
 }
 
-export function UomSelect(props: Props) {
+/** Base units in one of `uomId` for this item: 1 for its base unit, the packing factor for a carton / pallet..., undefined otherwise */
+export function unitFactor(item: Item | undefined, uomId: string | undefined): number | undefined {
+  if (!item || !uomId) return undefined;
+  if (uomId === item.base_uom_id) return 1;
+  return item.packings?.find((p) => p.uom.id === uomId)?.factor;
+}
+
+/**
+ * Unit dropdown. With `item`, only the units that item can be counted in: its base unit and its packing units, each showing
+ * how many base units it holds; without one (or while the item loads), every unit.
+ */
+export function UomSelect({ item, ...props }: Props & { item?: Item }) {
   const { data, isLoading } = useUoms();
-  const options = (data ?? []).map((u) => ({ value: u.id, label: `${u.code} ${u.name}` }));
-  return <Select showSearch optionFilterProp="label" loading={isLoading} options={options} {...props} />;
+  const base = data?.find((u) => u.id === item?.base_uom_id);
+  const options =
+    item && base
+      ? [
+          { value: base.id, label: base.code, title: `${base.code} ${base.name} (base unit)` },
+          ...(item.packings ?? []).map((p) => ({
+            value: p.uom.id,
+            label: `${p.uom.code} (${p.factor} ${base.code})`,
+            title: `${p.uom.name}: ${p.factor} ${base.code} each`,
+          })),
+        ]
+      : (data ?? []).map((u) => ({ value: u.id, label: `${u.code} ${u.name}` }));
+  return <Select showSearch optionFilterProp="label" loading={isLoading} options={options} popupMatchSelectWidth={false} {...props} />;
+}
+
+/** "= 960 EA" under a quantity entered in a packing unit, so the user sees what goes into or out of stock */
+export function BaseQtyHint({ item, uomId, qty }: { item?: Item; uomId?: string; qty?: number | null }) {
+  const { data } = useUoms();
+  const factor = unitFactor(item, uomId);
+  if (!item || !qty || !factor || factor === 1) return null;
+  const base = data?.find((u) => u.id === item.base_uom_id)?.code ?? "";
+  const total = Math.round(qty * factor * 10000) / 10000;
+  return <div className="wms-base-qty">= {total.toLocaleString()} {base}</div>;
 }
 
 export function ReasonSelect({ category = "ADJUST", ...props }: Props & { category?: string }) {
@@ -187,7 +227,13 @@ export function LocationSelect({
   types,
   allowLocked = false,
   ...props
-}: Props & { types?: string[]; /** cycle counts may select locked locations */ allowLocked?: boolean }) {
+}: Props & {
+  types?: string[];
+  /** cycle counts may select locked locations */
+  allowLocked?: boolean;
+  /** Receives the full record after selection (e.g. to fill the line from the location's stock) */
+  onRecordChange?: (location: Location | undefined) => void;
+}) {
   return (
     <RemoteSelect<Location>
       resource={LOCATIONS}

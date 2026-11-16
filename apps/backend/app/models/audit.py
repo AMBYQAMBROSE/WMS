@@ -147,7 +147,9 @@ def _tenant_id(session: Session, obj) -> uuid.UUID | None:
     return getattr(obj, "tenant_id", None) or current_context().tenant_id
 
 
-def _changes(obj, action: str) -> dict[str, list]:
+def _changes(obj, action: str, removed: bool = False) -> dict[str, list]:
+    """removed: the row was deleted from the database (it was in session.deleted); its last values are logged.
+    state.deleted cannot tell, because SQLAlchemy only sets it after after_flush has run"""
     state = inspect(obj)
     changes: dict[str, list] = {}
     for attr in state.mapper.column_attrs:
@@ -158,7 +160,7 @@ def _changes(obj, action: str) -> dict[str, list]:
             value = state.dict.get(key)
             if value is not None and not (key == "is_deleted" and value is False):
                 changes[key] = [None, _value(key, value)]
-        elif action == ACTION_DELETE and state.deleted:
+        elif removed:
             value = state.dict.get(key)
             if value is not None and key != "is_deleted":
                 changes[key] = [_value(key, value), None]
@@ -242,7 +244,7 @@ def _write_audit_log(session: Session, _flush_context) -> None:
                 deleted = inspect(obj).attrs.is_deleted.history if hasattr(obj, "is_deleted") else None
                 if deleted is not None and deleted.added and deleted.added[0] is True:
                     action = ACTION_DELETE  # soft delete
-            changes = _changes(obj, action)
+            changes = _changes(obj, action, removed=default_action == ACTION_DELETE)
             if action == ACTION_UPDATE and not changes:
                 continue
             entity_type, label_fields = spec

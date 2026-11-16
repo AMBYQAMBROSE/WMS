@@ -1,7 +1,7 @@
 import uuid
 from decimal import Decimal
 
-from sqlalchemy import Boolean, ForeignKey, Numeric, Unicode, UniqueConstraint
+from sqlalchemy import Boolean, ForeignKey, Index, Numeric, Unicode, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TenantScopedMixin
@@ -15,7 +15,8 @@ class Location(Base, TenantScopedMixin):
     """Location structure as a self-referencing tree: WAREHOUSE > ZONE > AISLE > RACK > BIN/DOCK, replacing Ninso's BinNum/Rack/BinType."""
 
     __tablename__ = "location"
-    __table_args__ = (UniqueConstraint("tenant_id", "code"),)
+    # Children by parent: the tree, and the check that refuses deleting a location that still contains others
+    __table_args__ = (UniqueConstraint("tenant_id", "code"), Index("ix_location_parent", "parent_id"))
 
     code: Mapped[str] = mapped_column(Unicode(50), nullable=False)
     name: Mapped[str] = mapped_column(Unicode(100), nullable=False)

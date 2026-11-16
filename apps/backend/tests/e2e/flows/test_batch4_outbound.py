@@ -65,13 +65,16 @@ def test_f_allocation_rules(flow, unique):
     dialog = page.get_by_role("dialog")
     flow.choose_in(dialog, s.code("ST"))
     dialog.get_by_role("button", name="Allocate").click()
-    flow.visible(page.get_by_text("Some items are short"), "shortage warning after partial allocation")
+    # Look for the dialog: the same text is also in a hidden copy antd keeps for screen readers
+    flow.visible(page.get_by_role("dialog").filter(has_text="Some items are short"),
+                 "shortage warning after partial allocation")
     flow.visible(page.get_by_text("short 12"), "shortage of 12 listed")
     page.keyboard.press("Escape")
     rows = [x for x in api.get("/sales-orders/shortages") if x.get("doc_no") == short["doc_no"]
             or x.get("so_id") == short["id"] or str(x).find(short["doc_no"]) >= 0]
     flow.check(len(rows) > 0, "order listed in the shortage report")
     flow.goto("/shortages")
+    page.get_by_label("Search shortages").fill(short["doc_no"])  # the list is paged; the order may not be on page 1
     flow.visible(page.get_by_text(short["doc_no"]), "order shown on the shortages page")
 
     flow.step("F-11/F-12  Nothing available / nothing left to allocate")
@@ -120,6 +123,7 @@ def test_g_h_pick_and_ship(flow, unique):
     _alloc(api, o["id"], s.stage)
     pick, lines = _pick_lines(api, o["id"])
     flow.goto(f"/picks/{pick['id']}")
+    flow.visible(page.locator("tr.ant-table-row"), "pick lines shown")  # the route and the pick list load first
     flow.equal(page.locator("tr.ant-table-row").count(), 1, "one pick line")
     inp = page.locator("tr.ant-table-row").first.locator(".ant-input-number input")
     inp.fill("0")
@@ -172,7 +176,7 @@ def test_g_h_pick_and_ship(flow, unique):
     flow.goto(f"/shipments/{ship['id']}")
     flow.confirm_action("Cancel")
     flow.equal(flow.wait_status("shipments", ship["id"], "CANCELLED"), "CANCELLED", "shipment status after cancel")
-    flow.equal(stock(api, s.item_a).get((s.code("ST"), None)), (10.0, 0.0), "goods still in staging")
+    flow.equal(stock(api, s.item_a).get((s.code("ST"), None)), (10.0, 10.0), "goods still in staging, reserved for the order")
 
     flow.step("H-08  Staging stock moved away before posting the shipment")
     ship2 = api.post("/shipments", {"so_id": o["id"]})
@@ -228,9 +232,9 @@ def test_i_close_and_cancel(flow, unique):
     pick, _ = _pick_lines(api, o["id"])
     api.post(f"/picks/{pick['id']}/confirm-all")
     api.post(f"/picks/{pick['id']}/post")
-    flow.rejected("POST", f"/sales-orders/{o['id']}/close", None, "ship them first", "close with goods in staging")
+    flow.rejected("POST", f"/sales-orders/{o['id']}/close", None, "ship them, or return them to stock", "close with goods in staging")
     flow.step("I-03  Cancel after a posted pick")
-    flow.rejected("POST", f"/sales-orders/{o['id']}/cancel", None, "close it instead", "cancel after a pick")
+    flow.rejected("POST", f"/sales-orders/{o['id']}/cancel", None, "Return the picked goods to stock", "cancel after a pick")
 
     flow.step("I-05  Close with an unposted shipment")
     ship = api.post("/shipments", {"so_id": o["id"]})

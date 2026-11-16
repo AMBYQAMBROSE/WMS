@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 
+import { useLocalSearchParams } from "expo-router";
 import { RefreshControl, StyleSheet, Text, View } from "react-native";
 
 import PhotoCapture from "@/components/PhotoCapture";
+import { DateField } from "@/components/DateField";
 import ScanInput from "@/components/ScanInput";
 import Screen, { ContextBar } from "@/components/Screen";
 import { Button, Card, Divider, EachScanToggle, EmptyState, Field, ListRow, Pill, QtyField, Row } from "@/components/ui";
@@ -10,7 +12,7 @@ import { errorText } from "@/lib/api";
 import { confirm, haptic, useNotice } from "@/lib/feedback";
 import { fetchActiveCounts, fetchCount, fmtQty, parseDate } from "@/lib/inbound";
 import type { CountLine, CycleCount, DocumentSummary, MobileItem, MobileLocation } from "@/lib/types";
-import { useMasterData } from "@/stores/masterData";
+import { useMasterData, type ItemMatch } from "@/stores/masterData";
 import { useQueue } from "@/stores/queue";
 import { useSettings } from "@/stores/settings";
 import { useTasks } from "@/stores/tasks";
@@ -32,9 +34,11 @@ export default function CountScreen() {
   const s = useStyles(makeStyles);
   const findItem = useMasterData((st) => st.findItem);
   const findLocation = useMasterData((st) => st.findLocation);
+  const findAfterUpdate = useMasterData((st) => st.findAfterUpdate);
   const submitOp = useQueue((st) => st.submit);
   const eachScan = useSettings((st) => st.eachScanCountsOne);
 
+  const params = useLocalSearchParams<{ doc?: string }>();
   const [counts, setCounts] = useState<DocumentSummary[] | null>(null);
   const [count, setCount] = useState<CycleCount | null>(null);
   const [location, setLocation] = useState<MobileLocation | null>(null);
@@ -65,15 +69,6 @@ export default function CountScreen() {
     }
   };
 
-  // On mount, state is set from the promise callbacks rather than synchronously in the effect
-  useEffect(() => {
-    useTasks.getState().seen("count");
-    fetchActiveCounts()
-      .then(applyList, failList)
-      .finally(() => setBusy(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once on mount
-  }, []);
-
   const openCount = async (summary: DocumentSummary, keepNotice = false) => {
     setBusy(true);
     try {
@@ -89,9 +84,23 @@ export default function CountScreen() {
     }
   };
 
-  const scanLocation = (code: string) => {
+  // On mount, state is set from the promise callbacks rather than synchronously in the effect
+  useEffect(() => {
+    useTasks.getState().seen("count");
+    fetchActiveCounts()
+.then((result) => {
+        applyList(result);
+        // Opened from the home screen's scan field with this document's number
+        const wanted = params.doc && result.data.find((d) => d.doc_no.toUpperCase() === params.doc!.toUpperCase());
+        if (wanted) void openCount(wanted);
+      }, failList)
+      .finally(() => setBusy(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once on mount
+  }, []);
+
+  const scanLocation = async (code: string) => {
     if (!count) return;
-    const loc = findLocation(code);
+    const loc = findLocation(code) ?? (await findAfterUpdate(() => findLocation(code)));
     const inCount = loc && count.count_locations.some((cl) => cl.location.id === loc.id);
     if (!loc || !inCount) return setNotice({ kind: "error", text: `Location ${code} is not part of cycle count ${count.doc_no}` });
     setNotice(null);
@@ -101,19 +110,24 @@ export default function CountScreen() {
 
   const linesHere = count && location ? count.lines.filter((l) => l.to_location?.id === location.id) : [];
 
-  const startEdit = (item: MobileItem, line: CountLine | null) => {
+  const startEdit = (item: MobileItem, line: CountLine | null, lot?: ItemMatch["lot"]) => {
     setChoices([]);
     setChoiceItem(null);
-    setEditing({ item, batchNo: line?.batch_no ?? "", expiryDate: line?.expiry_date ?? "", fixed: !!line });
-    setQtyText(eachScan ? "1" : "");
+    setEditing({
+      item,
+      batchNo: line?.batch_no ?? lot?.batchNo ?? "",
+      expiryDate: line?.expiry_date ?? lot?.expiryDate ?? "",
+      fixed: !!line,
+    });
+    setQtyText(lot?.qty ? fmtQty(lot.qty) : eachScan ? "1" : "");
     setNotice(null);
   };
 
   const scanCounting =
     eachScan && !!editing && (editing.fixed || !(editing.item.is_batch_managed || editing.item.is_expiry_managed));
 
-  const scanItem = (code: string) => {
-    const match = findItem(code);
+  const scanItem = async (code: string) => {
+    const match = findItem(code) ?? (await findAfterUpdate(() => findItem(code)));
     if (!match) return setNotice({ kind: "error", text: `Unknown barcode ${code} (for new items, update master data on the home screen first)` });
     const item = match.item;
     if (editing) {
@@ -121,7 +135,8 @@ export default function CountScreen() {
       if (item.id !== editing.item.id) {
         return setNotice({ kind: "error", text: `Finish counting ${editing.item.sku_code} first: press OK, then scan the next item` });
       }
-      const counted = (Number(qtyText.trim()) || 0) + 1;
+      // A carton's own code counts its whole quantity
+      const counted = (Number(qtyText.trim()) || 0) + (match.lot?.qty ?? 1);
       setQtyText(String(counted));
       setNotice({ kind: "info", text: `${item.sku_code}: ${counted}` }, { silent: true });
       haptic("tick");
@@ -130,7 +145,14 @@ export default function CountScreen() {
     haptic("tick");
     const candidates = linesHere.filter((l) => l.item.id === item.id);
     const tracked = item.is_batch_managed || item.is_expiry_managed;
-    if (!tracked) return startEdit(item, candidates[0] ?? null);
+    const lot = match.lot;
+    if (lot && tracked && (lot.batchNo || lot.expiryDate)) {
+      // The code says which batch this is: its line, or a new one with that batch filled in
+      const sameLot = (l: { batch_no: string | null; expiry_date: string | null }) =>
+      (!lot?.batchNo || l.batch_no === lot.batchNo) && (!lot?.expiryDate || l.expiry_date === lot.expiryDate);
+      return startEdit(item, candidates.find(sameLot) ?? null, lot);
+    }
+    if (!tracked) return startEdit(item, candidates[0] ?? null, lot);
     if (candidates.length === 0) return startEdit(item, null);
     if (candidates.length === 1) return startEdit(item, candidates[0]);
     setChoiceItem(item);
@@ -309,13 +331,7 @@ export default function CountScreen() {
                 (editing.fixed ? (
                   <Row label="Expiry" value={editing.expiryDate} />
                 ) : (
-                  <Field
-                    label="Expiry date"
-                    placeholder="YYYY-MM-DD"
-                    value={editing.expiryDate}
-                    onChangeText={(v) => setEditing({ ...editing, expiryDate: v })}
-                    testID="expiry"
-                  />
+                  <DateField label="Expiry date" value={editing.expiryDate} onChange={(v) => setEditing({ ...editing, expiryDate: v })} testID="expiry" />
                 ))}
               <QtyField
                 label="Counted quantity (base unit, 0 if none)"

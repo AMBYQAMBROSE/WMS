@@ -20,13 +20,19 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import DomainError
 from app.models.business_partner import BusinessPartner
-from app.models.item import Item, Uom
+from app.models.item import Item, ItemUomConversion, Uom
 from app.models.location import LOCATION_TYPES, STOCK_LOCATION_TYPES, Location
 from app.models.reason_code import REASON_CATEGORY_ADJUST, ReasonCode
 from app.schemas.document import AdjustmentIn, AdjustmentLineIn
+from app.schemas.document import PurchaseOrderIn, PurchaseOrderLineIn
+from app.schemas.outbound import SalesOrderIn, SalesOrderLineIn
 from app.services.adjustment_service import AdjustmentService
+from app.services.purchase_order_service import PurchaseOrderService
+from app.services.sales_order_service import SalesOrderService
 
 MAX_ROWS = 100_000
+# One order import creates at most this many orders (each one is a separate document with its own number)
+MAX_ORDERS = 2_000
 MAX_ERRORS = 200
 OPENING_REASON = ("OPENING", "Opening stock")
 
@@ -130,6 +136,29 @@ class ImportKind:
     permissions: tuple[str, ...]
     columns: list[Column]
     notes: list[str] = field(default_factory=list)
+    # Extra example rows for the template, keyed by column (when one row of column examples is not enough)
+    examples: list[dict] = field(default_factory=list)
+
+
+def _order_columns(partner: str, partner_example: str, date_header: str) -> list[Column]:
+    return [
+        Column("order_ref", "Order ref", text(50), False,
+               "Rows with the same ref become one order. Leave empty to make one order per "
+               f"{partner.lower()}, date and remark", "ORD-001"),
+        Column("partner_code", f"{partner} code", text(50), True, f"A {partner.lower()} already in the system", partner_example),
+        Column("sku_code", "SKU code", text(50), True, "An active item already in the system", "A1001"),
+        Column("qty", "Quantity", number, True, "Greater than 0, in the unit below", 24),
+        Column("uom_code", "Unit", text(20), False, "Defaults to the item's base unit; other units need a conversion on the item", "EA"),
+        Column("expected_date", date_header, day, False, "Format 2026-12-31; the same for every row of one order", "2026-12-31"),
+        Column("remark", "Remark", text(400), False, "The same for every row of one order", ""),
+    ]
+
+
+ORDER_NOTES = [
+    "Each order is created as a draft; review it, then confirm it (one by one, or several at once from the list)",
+    "Order ref, partner, date and remark must be the same on every row of one order",
+    "The same item and unit twice in one order is merged into one line",
+]
 
 
 KINDS: dict[str, ImportKind] = {
@@ -159,7 +188,17 @@ KINDS: dict[str, ImportKind] = {
             Column("is_locked", "Locked", boolean, False, "Yes/No, default No", "No"),
             Column("is_active", "Active", boolean, False, "Yes/No, default Yes", "Yes"),
         ],
-        ["The parent of an existing location cannot be changed by import (it would change the paths below it); change it in the UI"],
+        [
+            "A parent must already exist or be another row in this file (rows can be in any order); "
+            "on a new system, include the zone/rack rows as well as the bins",
+            "The parent of an existing location cannot be changed by import (it would change the paths below it); change it in the UI",
+        ],
+        # Parent first, so the example works on an empty system
+        [
+            {"code": "A01", "name": "Zone A row 01", "location_type": "Zone", "parent_code": None,
+             "is_pickable": "No", "is_locked": "No", "is_active": "Yes"},
+            {},
+        ],
     ),
     "partners": ImportKind(
         "partners", "Business partners", ("business_partner.create", "business_partner.update"),
@@ -186,6 +225,14 @@ KINDS: dict[str, ImportKind] = {
         ],
         ["Importing creates one posted stock adjustment (reason: opening stock), visible under Stock adjustments", "Rows with the same item, location, batch and expiry are merged"],
     ),
+    "purchase_orders": ImportKind(
+        "purchase_orders", "Purchase orders", ("purchase_order.create",),
+        _order_columns("Supplier", "S0001", "Expected date"), ORDER_NOTES,
+    ),
+    "sales_orders": ImportKind(
+        "sales_orders", "Sales orders", ("sales_order.create",),
+        _order_columns("Customer", "C0001", "Requested ship date"), ORDER_NOTES,
+    ),
 }
 
 
@@ -201,6 +248,8 @@ class ImportResult:
     committed: bool = False
     document_id: uuid.UUID | None = None
     document_no: str | None = None
+    # Order imports: the orders created (or, when validating, to be created): ref, partner, lines, and number once created
+    documents: list[dict] = field(default_factory=list)
 
     def error(self, row: int, column: str, message: str) -> None:
         self.error_count += 1
@@ -393,7 +442,8 @@ class ImportService:
         for n, r in rows:
             parent = (r["parent_code"] or "").upper()
             if parent and parent not in existing and parent not in in_file:
-                result.error(n, "Parent location code", f"Parent location {r['parent_code']} does not exist")
+                result.error(n, "Parent location code",
+                             f"Parent location {r['parent_code']} does not exist; create it first or add a row for it in this file")
                 continue
             if parent == r["code"].upper():
                 result.error(n, "Parent location code", "Cannot be its own parent")
@@ -510,6 +560,104 @@ class ImportService:
         result.document_id = doc.id
         result.document_no = doc.doc_no
 
+    # ---- purchase / sales orders: rows grouped into draft orders
+    def _purchase_orders(self, rows, result: ImportResult, write: bool) -> None:
+        self._orders(rows, result, write, supplier=True)
+
+    def _sales_orders(self, rows, result: ImportResult, write: bool) -> None:
+        self._orders(rows, result, write, supplier=False)
+
+    def _orders(self, rows, result: ImportResult, write: bool, supplier: bool) -> None:
+        partner_header = "Supplier code" if supplier else "Customer code"
+        date_header = "Expected date" if supplier else "Requested ship date"
+        roles = ("supplier", "both") if supplier else ("customer", "both")
+        partners = _existing(self.db, BusinessPartner, "code", self.tenant_id)
+        items = _existing(self.db, Item, "sku_code", self.tenant_id)
+        uoms = {u.code.upper(): u for u in self.db.scalars(select(Uom).where(Uom.tenant_id == self.tenant_id))}
+        # (item, unit) pairs that convert to the item's base unit, so a wrong unit is reported per row before anything is written
+        convertible = {(item_id, uom_id) for item_id, uom_id in self.db.execute(
+            select(ItemUomConversion.item_id, ItemUomConversion.from_uom_id)
+            .join(Item, Item.id == ItemUomConversion.item_id)
+            .where(ItemUomConversion.tenant_id == self.tenant_id, ItemUomConversion.is_deleted == false(),
+                   ItemUomConversion.to_uom_id == Item.base_uom_id)
+        )}
+
+        orders: dict[tuple, dict] = {}
+        for n, r in rows:
+            partner = partners.get(r["partner_code"].upper())
+            if partner is None or not partner.is_active:
+                result.error(n, partner_header, f"{r['partner_code']} does not exist or is inactive")
+                continue
+            if partner.partner_type not in roles:
+                result.error(n, partner_header, f"{partner.code} is not a {'supplier' if supplier else 'customer'}")
+                continue
+            item = items.get(r["sku_code"].upper())
+            if item is None or not item.is_active:
+                result.error(n, "SKU code", f"Item {r['sku_code']} does not exist or is inactive")
+                continue
+            if r["qty"] <= 0:
+                result.error(n, "Quantity", "Must be greater than 0")
+                continue
+            if r["qty"] != round(r["qty"], 4):
+                result.error(n, "Quantity", "At most 4 decimal places")
+                continue
+            uom_id = item.base_uom_id
+            if r["uom_code"]:
+                uom = uoms.get(r["uom_code"].upper())
+                if uom is None:
+                    result.error(n, "Unit", f"Unit {r['uom_code']} does not exist")
+                    continue
+                if uom.id != item.base_uom_id and (item.id, uom.id) not in convertible:
+                    result.error(n, "Unit", f"Item {item.sku_code} has no conversion from {uom.code} to its base unit")
+                    continue
+                uom_id = uom.id
+            ref = (r["order_ref"] or "").upper()
+            key = ("ref", ref) if ref else ("auto", partner.id, r["expected_date"], r["remark"] or "")
+            order = orders.get(key)
+            if order is None:
+                if len(orders) >= MAX_ORDERS:
+                    raise DomainError(f"At most {MAX_ORDERS} orders per import; split the file")
+                order = orders[key] = {
+                    "row": n, "ref": r["order_ref"], "partner": partner, "expected_date": r["expected_date"],
+                    "remark": r["remark"], "lines": {},
+                }
+            else:
+                # One order has one header: a row that disagrees with the order's first row is an error, not a silent pick
+                mismatch = next((
+                    header for field_key, header, value in (
+                        ("partner", partner_header, partner), ("expected_date", date_header, r["expected_date"]),
+                        ("remark", "Remark", r["remark"]),
+                    ) if order[field_key] != value
+                ), None)
+                if mismatch:
+                    result.error(n, mismatch, f"Differs from row {order['row']} of order {r['order_ref']}")
+                    continue
+            lines = order["lines"]
+            lines[(item.id, uom_id)] = lines.get((item.id, uom_id), Decimal(0)) + r["qty"]
+
+        result.created = len(orders)
+        result.documents = [
+            {"ref": o["ref"], "partner": f"{o['partner'].code} {o['partner'].name}", "lines": len(o["lines"]),
+             "document_id": None, "document_no": None}
+            for o in orders.values()
+        ]
+        if not orders:
+            if not result.error_count:
+                result.error(0, "", "No rows to import")
+            return
+        if not write or result.error_count:
+            return
+        service = PurchaseOrderService if supplier else SalesOrderService
+        schema, line_schema = (PurchaseOrderIn, PurchaseOrderLineIn) if supplier else (SalesOrderIn, SalesOrderLineIn)
+        svc = service(self.db, self.tenant_id, self.user_id)
+        for summary, order in zip(result.documents, orders.values()):
+            doc = svc.create(schema(
+                partner_id=order["partner"].id, expected_date=order["expected_date"], remark=order["remark"],
+                lines=[line_schema(item_id=i, uom_id=u, qty=q) for (i, u), q in order["lines"].items()],
+            ))
+            summary["document_id"], summary["document_no"] = doc.id, doc.doc_no
+        result.committed = True
+
 
 # ---------------------------------------------------------------- template
 
@@ -520,7 +668,10 @@ def template(kind_key: str) -> bytes:
     ws = wb.active
     ws.title = kind.name
     ws.append([c.header + ("*" if c.required else "") for c in kind.columns])
-    ws.append([c.example for c in kind.columns])
+    # An empty dict in examples means "the column examples"
+    for example in kind.examples or [{}]:
+        ws.append([example.get(c.key) if example else c.example for c in kind.columns])
+    example_rows = len(kind.examples or [{}])
     bold, fill = Font(bold=True), PatternFill("solid", fgColor="FFF2CC")
     for i, col in enumerate(kind.columns, start=1):
         cell = ws.cell(row=1, column=i)
@@ -539,7 +690,8 @@ def template(kind_key: str) -> bytes:
     for col in kind.columns:
         notes.append([col.header, "Yes" if col.required else "", col.help])
     notes.append([])
-    for line in ["Row 1 is the header, do not change it; row 2 is an example, delete it before importing.", "Click Validate first; when there are no errors click Import.", *kind.notes]:
+    sample = "row 2 is an example, delete it" if example_rows == 1 else f"rows 2-{example_rows + 1} are examples, delete them"
+    for line in [f"Row 1 is the header, do not change it; {sample} before importing.","Click Validate first; when there are no errors click Import.", *kind.notes]:
         notes.append([line])
     notes.column_dimensions["A"].width = 18
     notes.column_dimensions["C"].width = 70

@@ -8,6 +8,7 @@ import { apiClient } from "@/api/client";
 import { showError } from "@/api/errors";
 import { useCan, useMe } from "@/api/me";
 import type { components } from "@/api/schema";
+import { CustomerSelect } from "@/components/selects";
 import { Pill, STICKY_HEADER, Toolbar } from "@/components/ui";
 
 type User = components["schemas"]["UserRead"];
@@ -19,6 +20,7 @@ interface UserForm {
   email?: string;
   is_active: boolean;
   role_codes: string[];
+  partner_id?: string | null;
 }
 
 export default function UsersPage() {
@@ -44,12 +46,13 @@ export default function UsersPage() {
   const save = useMutation({
     mutationFn: async (v: UserForm) =>
       editing === "new"
-        ? apiClient.post("/users", v)
+        ? apiClient.post("/users", { ...v, partner_id: v.partner_id ?? null })
         : apiClient.put(`/users/${(editing as User).id}`, {
             display_name: v.display_name,
             email: v.email || null,
             is_active: v.is_active,
             role_codes: v.role_codes,
+            partner_id: v.partner_id ?? null,
             row_version: (editing as User).row_version,
           }),
     onSuccess: () => {
@@ -75,12 +78,13 @@ export default function UsersPage() {
   // The form unmounts when the modal closes (destroyOnHidden); initial values go through initialValues, never by calling form methods while unmounted
   const initialValues =
     editing === null || editing === "new"
-      ? { username: "", password: "", display_name: "", email: "", is_active: true, role_codes: [] }
+      ? { username: "", password: "", display_name: "", email: "", is_active: true, role_codes: [], partner_id: null }
       : {
           display_name: editing.display_name,
           email: editing.email ?? "",
           is_active: editing.is_active,
           role_codes: editing.roles.map((r) => r.code),
+          partner_id: editing.partner?.id ?? null,
         };
 
   const isNew = editing === "new";
@@ -152,6 +156,10 @@ export default function UsersPage() {
               ),
           },
           {
+            title: "Orders for",
+            render: (_, u) => (u.partner ? <Pill tone="violet">{u.partner.code} {u.partner.name}</Pill> : <span className="wms-empty-value">—</span>),
+          },
+          {
             title: "Status",
             dataIndex: "is_active",
             render: (v: boolean) => (v ? <Pill tone="green" dot>Active</Pill> : <Pill tone="slate" dot>Disabled</Pill>),
@@ -200,6 +208,13 @@ export default function UsersPage() {
           </Form.Item>
           <Form.Item name="role_codes" label="Roles">
             <Select mode="multiple" optionFilterProp="label" options={roles.map((r) => ({ value: r.code, label: r.name }))} />
+          </Form.Item>
+          <Form.Item
+            name="partner_id"
+            label="Customer account for"
+            extra="Leave empty for warehouse staff. When set, the shopping cart always orders for this customer and shows only its orders. Give such accounts the Customer ordering role."
+          >
+            <CustomerSelect allowClear placeholder="Not a customer account" />
           </Form.Item>
           {!isNew && (
             <Form.Item

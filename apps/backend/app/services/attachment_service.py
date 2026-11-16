@@ -37,6 +37,7 @@ DOCUMENT_PERMISSIONS = {
     "RETURN_IN": ("return_in", "create"),
     "RETURN_OUT": ("return_out", "create"),
     "REPACK": ("repack", "create"),
+    "RECALL": ("recall", "create"),
 }
 
 # The file's own first bytes decide its type, never the name or the client's claim

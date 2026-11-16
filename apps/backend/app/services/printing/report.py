@@ -15,7 +15,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.pdfgen.canvas import Canvas
-from reportlab.platypus import KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import Flowable, KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from app.services.printing.pdf import UNICODE_FONT, can_code128, draw_code128, draw_text, font_for
 
@@ -39,6 +39,38 @@ class Column:
 
 
 @dataclass
+class BarcodeCell:
+    """A table cell holding a scannable barcode with text under it (item or bin on a putaway sheet or pick list)"""
+
+    value: str
+    caption: str
+
+
+class _Bars(Flowable):
+    """Code 128 as wide as its table cell allows"""
+
+    HEIGHT = 7 * mm
+    MAX_WIDTH = 45 * mm
+
+    def __init__(self, value: str):
+        super().__init__()
+        self.value = value
+        self.width = 0
+
+    def wrap(self, available_width, available_height):
+        self.width = available_width
+        return available_width, self.HEIGHT
+
+    def draw(self):
+        # Capped and centred: a barcode across a wide column is harder to aim at among its neighbours in the row
+        width = min(self.width, self.MAX_WIDTH)
+        draw_code128(self.canv, self.value, (self.width - width) / 2, 0, width, self.HEIGHT)
+
+
+Cell = str | BarcodeCell
+
+
+@dataclass
 class Report:
     title: str
     doc_no: str
@@ -47,7 +79,7 @@ class Report:
     printed: str
     info: list[tuple[str, str]]
     columns: list[Column]
-    rows: list[list[str]]
+    rows: list[list[Cell]]
     totals: str = ""
     remark: str = ""
     signatures: list[str] = field(default_factory=list)
@@ -133,7 +165,7 @@ def _lines_table(report: Report, width: float) -> Table:
     total = sum(c.weight for c in report.columns)
     widths = [width * c.weight / total for c in report.columns]
     header = [para(c.title, 7.5, bold=True, align=c.align) for c in report.columns]
-    body = [[para(value, align=col.align) for value, col in zip(row, report.columns, strict=True)] for row in report.rows]
+    body = [[_cell(value, col) for value, col in zip(row, report.columns, strict=True)] for row in report.rows]
     if not body:
         body = [[para(report.empty_text, color=MUTED)] + [""] * (len(report.columns) - 1)]
     table = Table([header, *body], colWidths=widths, repeatRows=1)
@@ -152,6 +184,13 @@ def _lines_table(report: Report, width: float) -> Table:
         style.append(("SPAN", (0, 1), (-1, 1)))
     table.setStyle(TableStyle(style))
     return table
+
+
+def _cell(value: Cell, column: Column):
+    if isinstance(value, BarcodeCell):
+        caption = para(value.caption, 7.5, align="C")
+        return [_Bars(value.value), caption] if can_code128(value.value) else caption
+    return para(value, align=column.align)
 
 
 def _signatures(roles: list[str], width: float) -> Table:

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useLocalSearchParams } from "expo-router";
 import { Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 
 import ScanInput from "@/components/ScanInput";
@@ -25,8 +26,10 @@ export default function PickScreen() {
   const { c } = useTheme();
   const s = useStyles(makeStyles);
   const findItem = useMasterData((st) => st.findItem);
+  const findAfterUpdate = useMasterData((st) => st.findAfterUpdate);
   const submitOp = useQueue((st) => st.submit);
 
+  const params = useLocalSearchParams<{ doc?: string }>();
   const [picks, setPicks] = useState<DocumentSummary[] | null>(null);
   const [pick, setPick] = useState<Pick | null>(null);
   // Picked quantities confirmed on this device (including those still in the queue)
@@ -56,15 +59,6 @@ export default function PickScreen() {
     }
   };
 
-  // On mount, state is set from the promise callbacks rather than synchronously in the effect
-  useEffect(() => {
-    useTasks.getState().seen("pick");
-    fetchOpenPicks()
-      .then(applyList, failList)
-      .finally(() => setBusy(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once on mount
-  }, []);
-
   const openPick = async (summary: DocumentSummary) => {
     setBusy(true);
     try {
@@ -85,6 +79,20 @@ export default function PickScreen() {
     }
   };
 
+  // On mount, state is set from the promise callbacks rather than synchronously in the effect
+  useEffect(() => {
+    useTasks.getState().seen("pick");
+    fetchOpenPicks()
+.then((result) => {
+        applyList(result);
+        // Opened from the home screen's scan field with this document's number
+        const wanted = params.doc && result.data.find((d) => d.doc_no.toUpperCase() === params.doc!.toUpperCase());
+        if (wanted) void openPick(wanted);
+      }, failList)
+      .finally(() => setBusy(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once on mount
+  }, []);
+
   const isDone = (l: PickLine) => l.confirmed_at !== null || l.id in local;
   const remaining = pick ? pick.lines.filter((l) => !isDone(l)) : [];
   // Skipped lines go to the end
@@ -101,11 +109,14 @@ export default function PickScreen() {
     setStep("item");
   };
 
-  const scanItem = (code: string) => {
+  const scanItem = async (code: string) => {
     if (!current) return;
-    const match = findItem(code);
+    const match = findItem(code) ?? (await findAfterUpdate(() => findItem(code)));
     if (!match || match.item.id !== current.item.id) {
       return setNotice({ kind: "error", text: `Wrong item: pick ${current.item.sku_code} ${current.item.name}` });
+    }
+    if (match.lot?.batchNo && current.batch_no && match.lot.batchNo !== current.batch_no) {
+      return setNotice({ kind: "error", text: `Wrong batch: pick batch ${current.batch_no}, this is ${match.lot.batchNo}` });
     }
     setNotice(null);
     haptic("tick");
@@ -191,7 +202,18 @@ export default function PickScreen() {
           />
         ) : (
           <>
-            <Text style={s.listHeader}>Choose a pick list</Text>
+            <ScanInput
+              label="Scan the pick list"
+              icon="file-document-outline"
+              onScan={(code) => {
+                const found = picks.find((p) => p.doc_no.toUpperCase() === code.trim().toUpperCase());
+                if (found) void openPick(found);
+                else setNotice({ kind: "error", text: `${code} is not an open pick list. Pull down to refresh the list.` });
+              }}
+              active={!busy}
+              testID="scan-pick-list"
+            />
+            <Text style={s.listHeader}>Or choose one</Text>
             {picks.map((p) => (
               <ListRow
                 key={p.id}

@@ -20,6 +20,10 @@ const PutawaysPage = lazy(() => import("@/pages/inbound/PutawaysPage"));
 const PutawayCreatePage = lazy(() => import("@/pages/inbound/PutawayCreatePage"));
 const PutawayDetailPage = lazy(() => import("@/pages/inbound/PutawayDetailPage"));
 const StockPage = lazy(() => import("@/pages/inventory/StockPage"));
+const WarehouseMapPage = lazy(() => import("@/pages/inventory/WarehouseMapPage"));
+const BatchTracePage = lazy(() => import("@/pages/inventory/BatchTracePage"));
+const RecallsPage = lazy(() => import("@/pages/inventory/RecallsPage"));
+const RecallDetailPage = lazy(() => import("@/pages/inventory/RecallDetailPage"));
 const AdjustmentsPage = lazy(() => import("@/pages/inventory/AdjustmentsPage"));
 const AdjustmentCreatePage = lazy(() => import("@/pages/inventory/AdjustmentCreatePage"));
 const AdjustmentDetailPage = lazy(() => import("@/pages/inventory/AdjustmentDetailPage"));
@@ -38,6 +42,7 @@ const PickDetailPage = lazy(() => import("@/pages/outbound/PickDetailPage"));
 const ShipmentsPage = lazy(() => import("@/pages/outbound/ShipmentsPage"));
 const ShipmentDetailPage = lazy(() => import("@/pages/outbound/ShipmentDetailPage"));
 const ShortagesPage = lazy(() => import("@/pages/outbound/ShortagesPage"));
+const CartPage = lazy(() => import("@/pages/outbound/CartPage"));
 const UsersPage = lazy(() => import("@/pages/system/UsersPage"));
 const RolesPage = lazy(() => import("@/pages/system/RolesPage"));
 const FeaturesPage = lazy(() => import("@/pages/system/FeaturesPage"));
@@ -86,6 +91,10 @@ export default function App() {
               <Route path="putaways/new" element={<PutawayCreatePage />} />
               <Route path="putaways/:id" element={<PutawayDetailPage />} />
               <Route path="stock" element={<StockPage />} />
+              <Route path="warehouse-map" element={<WarehouseMapPage />} />
+              <Route path="trace" element={<BatchTracePage />} />
+              <Route path="recalls" element={<RecallsPage />} />
+              <Route path="recalls/:id" element={<RecallDetailPage />} />
               <Route path="adjustments" element={<AdjustmentsPage />} />
               <Route path="adjustments/new" element={<AdjustmentCreatePage />} />
               <Route path="adjustments/:id" element={<AdjustmentDetailPage />} />
@@ -105,6 +114,7 @@ export default function App() {
               <Route path="shipments" element={<ShipmentsPage />} />
               <Route path="shipments/:id" element={<ShipmentDetailPage />} />
               <Route path="shortages" element={<ShortagesPage />} />
+              <Route path="cart" element={<CartPage />} />
               <Route path="users" element={<UsersPage />} />
               <Route path="roles" element={<RolesPage />} />
               <Route path="features" element={<FeaturesPage />} />

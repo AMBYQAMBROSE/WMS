@@ -127,6 +127,19 @@ class ShipmentRead(DocumentRead):
     shipment_info: ShipmentInfoRead | None
 
 
+class ShipmentCheckIn(BaseModel):
+    """Scanned quantity of a shipment line so far (base units). "Set" semantics: a resend gives the same result"""
+
+    qty: Qty = Field(ge=0)
+
+
+class LoadingHistory(BaseModel):
+    """Recently used loading details, for choosing instead of typing"""
+
+    carriers: list[str]
+    vehicles: list[ShipmentInfoRead]
+
+
 # ---------- shortage report ----------
 
 

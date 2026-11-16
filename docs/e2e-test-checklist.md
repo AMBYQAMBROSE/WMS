@@ -63,7 +63,7 @@ Run these steps in order as **supervisor** (web) and **clerk** (PDA where noted)
 | B-03 | Inactive supplier | Use SUP99 | Rejected: "Supplier SUP99 is inactive" |
 | B-04 | Partner is not a supplier | Use CUS01 as supplier | Rejected: "... is not a supplier" |
 | B-05 | Inactive item | Add ITEM-C | Rejected: "Item ITEM-C is inactive" |
-| B-06 | Unit without conversion | Use a UOM the item has no conversion for | Rejected: "has no conversion from this unit to its base unit" |
+| B-06 | Unit without conversion | Use a UOM the item has no packing unit for | Not offered in the unit dropdown; via the API: rejected "has no conversion from this unit to its base unit" |
 | B-07 | Edit draft | Change qty and add/remove lines on a DRAFT | Saved |
 | B-08 | Edit after confirm | Edit a CONFIRMED PO | Rejected: "is CONFIRMED; cannot edit" |
 | B-09 | Confirm | Confirm a DRAFT | CONFIRMED; event pushed |
@@ -174,12 +174,15 @@ Run these steps in order as **supervisor** (web) and **clerk** (PDA where noted)
 | G-05 | Pick zero | Confirm 0 | Accepted; full line goes back to unallocated |
 | G-06 | Confirm all (web) | "Confirm all" | Every unconfirmed line set to its planned qty |
 | G-07 | Post with unconfirmed lines | Post | Rejected: "n lines not confirmed yet" with the list |
-| G-08 | Post | Post | Bin −picked, staging +picked, allocation released in full; ledger PICK_OUT / in; event `pick.posted` |
+| G-08 | Post | Post | Bin −picked and its allocation released in full, staging +picked (reserved for the order until shipped); ledger PICK_OUT / in; event `pick.posted` |
 | G-09 | Source bin locked or counted before post | Lock the bin after allocation, then post | Rejected |
 | G-10 | Cancel open pick list | Cancel | Allocation released; SO qty back to unallocated |
 | G-11 | Act on a posted pick | Confirm / cancel after post | Rejected |
 | G-12 | PDA guided pick | Scan bin → item → qty; wrong bin or wrong item scanned | Wrong scans are refused with a message; correct flow confirms the line |
 | G-13 | Picker KPI | Report after G-08 | Lines / qty / time per picker match |
+| G-14 | Return picked goods to stock | On a posted pick list whose goods have not shipped: Return goods to stock | Pick list = REVERSED; goods back in their bins, staging emptied; SO qty back to unallocated; ledger UNPICK_OUT / UNPICK_IN; event `pick.reversed` |
+| G-15 | Return to stock after shipping or while loading | Same, after the shipment posted / with a draft shipment | Rejected: "already shipped" / "being loaded" |
+| G-16 | Same item on two order lines | Order 5 + 5 of an item with 6 in stock, allocate | Pick list totals 6, shortage 4; the bin's allocated = 6 (never above on hand) |
 
 ## H. Shipping
 
@@ -192,7 +195,7 @@ Run these steps in order as **supervisor** (web) and **clerk** (PDA where noted)
 | H-05 | Post | Post | Staging decreases; SO = PARTIALLY_SHIPPED or SHIPPED; event `shipment.posted` |
 | H-06 | Cancel draft shipment | Cancel | Goods stay in staging; a new shipment can be created |
 | H-07 | Cancel posted shipment | Cancel | Rejected |
-| H-08 | Staging stock touched before post | Move staging stock away, then post shipment | Rejected: insufficient stock |
+| H-08 | Staging stock touched before post | Move staging stock away | Move rejected: the goods are reserved for the order until shipped |
 | H-09 | Print delivery note / pick list | Print from the detail page | Correct content and layout |
 
 ## I. Order close and cancel
@@ -201,11 +204,12 @@ Run these steps in order as **supervisor** (web) and **clerk** (PDA where noted)
 |---|---|---|---|
 | I-01 | Cancel a confirmed SO with no activity | Cancel | CANCELLED |
 | I-02 | Cancel with open pick list | Cancel | Rejected: "has open pick lists; cancel them first" |
-| I-03 | Cancel with picks or shipments | Cancel after a posted pick | Rejected: "close it instead" |
+| I-03 | Cancel with picks or shipments | Cancel after a posted pick | Rejected: "Return the picked goods to stock … or close the order" |
 | I-04 | Close with open pick list | Close | Rejected |
 | I-05 | Close with unposted shipment | Close | Rejected |
-| I-06 | Close with goods in staging | Picked but not shipped | Rejected: "ship them first" |
+| I-06 | Close with goods in staging | Picked but not shipped | Rejected: "ship them, or return them to stock" |
 | I-07 | Close a partially shipped SO | All shipments posted, rest not needed | CLOSED; remaining qty leaves the shortage report |
+| I-08 | Cancel after returning picked goods | Posted pick, Return goods to stock, then Cancel the SO | CANCELLED |
 
 ## J. Extension modules (enable the flag first)
 

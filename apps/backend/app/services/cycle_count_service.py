@@ -88,9 +88,13 @@ class CycleCountService:
         current = balances_at_locations(self.db, self.tenant_id, location_ids)
         reserved = [b for b in current if b.qty_allocated > 0]
         if reserved:
-            # Stock reserved by pick lists would block: a count loss cannot post below the reservation, and the pick cannot post on a frozen location
+            # Stock reserved for orders would block: a count loss cannot post below the reservation, and the pick or
+            # shipment cannot post on a frozen location
             listed = ", ".join(f"{b.location.code} {b.item.sku_code}" for b in reserved[:MAX_LISTED])
-            raise DomainError(f"This stock is reserved by pick lists; finish or cancel the picks before counting: {listed}")
+            raise DomainError(
+                "This stock is reserved for orders (allocated to pick lists, or picked and waiting to ship); "
+                f"finish or cancel the picks and ship the staged goods before counting: {listed}"
+            )
 
         document = DocumentHeader(
             tenant_id=self.tenant_id,

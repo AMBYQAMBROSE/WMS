@@ -63,6 +63,10 @@ class DocumentLineRead(_Orm):
     from_location: LocationBrief | None
     to_location: LocationBrief | None
     ref_line_id: uuid.UUID | None
+    # Lines worked one by one (putaway sheet, pick list, count): when this line was done; null while open
+    confirmed_at: datetime | None = None
+    # Shipment lines: quantity scanned piece by piece while loading
+    qty_checked: Qty = Decimal(0)
 
 
 class ReasonBrief(_Orm):
@@ -107,6 +111,8 @@ class PurchaseOrderIn(ExpectedVersion):
 class GrnLineIn(BaseModel):
     po_line_id: uuid.UUID
     qty: PositiveQty
+    # Unit the quantity is counted in (e.g. pallets against an order in eaches); defaults to the order line's unit
+    uom_id: uuid.UUID | None = None
     batch_no: str | None = Field(default=None, max_length=50)
     expiry_date: date | None = None
 
@@ -130,6 +136,21 @@ class TransferLineIn(BaseModel):
     expiry_date: date | None = None
     from_location_id: uuid.UUID
     to_location_id: uuid.UUID
+
+
+class PutawayPutIn(BaseModel):
+    """Quantity of a putaway sheet line placed in a bin (in the line's unit). Resend with the same Idempotency-Key
+    when the response was lost: a plain resend would put the quantity twice"""
+
+    to_location_id: uuid.UUID
+    qty: PositiveQty
+
+
+class PutawayRemaining(BaseModel):
+    """Quantity of a goods receipt line not yet covered by a putaway, in the line's unit"""
+
+    line_id: uuid.UUID
+    qty: Qty
 
 
 class TransferIn(BaseModel):

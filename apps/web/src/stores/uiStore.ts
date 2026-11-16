@@ -13,6 +13,9 @@ interface UiState {
   /** Decorative animations (entrances, count-ups, theme reveal); the OS "reduce motion" setting overrides it */
   animations: boolean;
   setAnimations: (animations: boolean) => void;
+  /** Open the print preview by itself after posting a document (and after allocating, for the pick list) */
+  printAfterPosting: boolean;
+  setPrintAfterPosting: (printAfterPosting: boolean) => void;
   setPreference: (preference: ThemePreference) => void;
   /** Flip between light and dark (leaves "system") */
   toggleMode: () => void;
@@ -37,6 +40,8 @@ export const useUiStore = create<UiState>()(
       siderCollapsed: false,
       animations: true,
       setAnimations: (animations) => set({ animations }),
+      printAfterPosting: true,
+      setPrintAfterPosting: (printAfterPosting) => set({ printAfterPosting }),
       setPreference: (preference) => set({ preference, mode: resolve(preference) }),
       toggleMode: () => {
         const preference = get().mode === "dark" ? "light" : "dark";

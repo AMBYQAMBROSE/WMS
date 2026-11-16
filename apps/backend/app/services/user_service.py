@@ -10,6 +10,7 @@ from app.models.user import Role, User, UserRole
 from app.repositories.base import BaseRepository, check_version
 from app.schemas.user import UserCreate, UserUpdate
 from app.services.auth_service import load_permissions
+from app.services.document_common import get_customer
 
 # Permissions an administrator cannot remove from themselves, or they would lock themselves out of user management
 SELF_LOCKOUT_PERMISSION = "user.update"
@@ -33,6 +34,7 @@ class UserService:
 
     def create(self, data: UserCreate) -> User:
         roles = self._resolve_roles(data.role_codes)
+        self._check_partner(data.partner_id)
         user = User(
             tenant_id=self.tenant_id,
             created_by=self.user_id,
@@ -41,6 +43,7 @@ class UserService:
             display_name=data.display_name,
             email=data.email,
             password_hash=hash_password(data.password),
+            partner_id=data.partner_id,
         )
         self.repo.create(user)
         self._set_roles(user, roles)
@@ -50,6 +53,7 @@ class UserService:
         user = self.get(user_id)
         check_version(user, data.row_version, f"User {user.username}")
         roles = self._resolve_roles(data.role_codes)
+        self._check_partner(data.partner_id)
         if user.id == self.user_id and not data.is_active:
             raise DomainError("You cannot deactivate your own account")
 
@@ -59,6 +63,7 @@ class UserService:
                 "display_name": data.display_name,
                 "email": data.email,
                 "is_active": data.is_active,
+                "partner_id": data.partner_id,
                 "updated_by": self.user_id,
             },
         )
@@ -71,6 +76,11 @@ class UserService:
     def reset_password(self, user_id: uuid.UUID, password: str) -> None:
         user = self.get(user_id)
         self.repo.update(user, {"password_hash": hash_password(password), "updated_by": self.user_id})
+
+    def _check_partner(self, partner_id: uuid.UUID | None) -> None:
+        """Only a customer (or a partner that is both) can be linked: the link is for ordering"""
+        if partner_id is not None:
+            get_customer(self.db, self.tenant_id, partner_id)
 
     def _resolve_roles(self, role_codes: list[str]) -> list[Role]:
         codes = list(dict.fromkeys(role_codes))
@@ -102,5 +112,5 @@ class UserService:
         self.db.flush()
 
     def _reload(self, user: User) -> User:
-        self.db.refresh(user, attribute_names=["roles"])
+        self.db.refresh(user, attribute_names=["roles", "partner"])
         return user

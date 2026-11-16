@@ -28,6 +28,7 @@ import { Avatar, Breadcrumb, Button, Drawer, Dropdown, Grid, Input, Layout, Menu
 import { Link, Navigate, Outlet, useLocation, useNavigate } from "react-router";
 
 import { useCan, useFeature, useMe } from "@/api/me";
+import PrintPreview from "@/components/PrintPreview";
 import TopLoader from "@/components/TopLoader";
 import { BackLink, BrandMark, EmptyState, PageHeader } from "@/components/ui";
 import { useLiveStore, useLiveUpdates, type LiveStatus } from "@/api/live";
@@ -89,6 +90,7 @@ const MENU: MenuGroup[] = [
     label: "Outbound",
     icon: <ExportOutlined />,
     children: [
+      { key: "/cart", label: "Shopping cart", description: "Browse items and place an order in a few clicks", perm: "cart.order" },
       { key: "/sales-orders", label: "Sales orders", description: "Customer orders from allocation to shipment", perm: "sales_order.read", create: { label: "New sales order", perm: "sales_order.create" } },
       { key: "/picks", label: "Pick lists", description: "Picking tasks in bin order", perm: "pick.read" },
       { key: "/shipments", label: "Shipments", description: "Goods leaving the warehouse", perm: "shipment.read" },
@@ -101,6 +103,9 @@ const MENU: MenuGroup[] = [
     icon: <DatabaseOutlined />,
     children: [
       { key: "/stock", label: "Stock", description: "Balances by item, location and batch, with the full ledger", perm: "stock.read" },
+      { key: "/warehouse-map", label: "Warehouse map", description: "Every bin live: fill, pick heat, expiry and locks, with a replay of the day", perm: "stock.read", ownHeader: true },
+      { key: "/trace", label: "Batch trace", description: "Where a batch came from, where it is and which customers received it", perm: "stock.read" },
+      { key: "/recalls", label: "Recalls", description: "Batches on hold: no allocation, no shipping, quarantine and customers to notify", perm: "recall.read" },
       { key: "/moves", label: "Moves", description: "Bin-to-bin transfers", perm: "move.read", create: { label: "New move", perm: "move.create" } },
       { key: "/adjustments", label: "Stock adjustments", description: "Correct quantities with a reason", perm: "adjustment.read", create: { label: "New adjustment", perm: "adjustment.create" } },
       { key: "/cycle-counts", label: "Cycle counts", description: "Count bins and reconcile differences", perm: "cycle_count.read", create: { label: "Start cycle count", perm: "cycle_count.create" } },
@@ -138,7 +143,7 @@ const MENU: MenuGroup[] = [
       { key: "/features", label: "Feature flags", description: "Turn optional modules on or off for this tenant", perm: "system.settings" },
       { key: "/label-settings", label: "Labels & printing", description: "Label sizes and layouts for item and location labels", perm: "system.settings" },
       { key: "/integration", label: "Integrations", description: "Webhook connectors and delivery history", perm: "integration.read" },
-      { key: "/imports", label: "Data import", description: "Bulk-load master data and opening stock from spreadsheets", perm: ["item.create", "location.create", "business_partner.create", "adjustment.post"] },
+      { key: "/imports", label: "Data import", description: "Bulk-load master data, opening stock and orders from spreadsheets", perm: ["item.create", "location.create", "business_partner.create", "adjustment.post", "purchase_order.create", "sales_order.create"] },
       { key: "/audit-log", label: "Audit log", description: "Who changed what and when, with old and new values", perm: "audit.read" },
       { key: "/system-health", label: "System health", description: "Database, background worker, integration queue and monitoring", perm: "system.settings" },
     ],
@@ -229,7 +234,15 @@ function QuickJump({ open, onClose, menu }: { open: boolean; onClose: () => void
     [menu, can],
   );
   const needle = q.trim().toLowerCase();
-  const results = needle ? entries.filter((e) => `${e.label} ${e.hint}`.toLowerCase().includes(needle)) : entries;
+  // A page whose name matches comes before one that only mentions the word in its description ("Items" must not
+  // open the shopping cart because it "browses items"); the stable sort keeps the menu order within each rank
+  const rank = (e: PaletteEntry) => {
+    const label = e.label.toLowerCase();
+    return label.startsWith(needle) ? 0 : label.includes(needle) ? 1 : 2;
+  };
+  const results = needle
+    ? entries.filter((e) => `${e.label} ${e.hint}`.toLowerCase().includes(needle)).sort((a, b) => rank(a) - rank(b))
+    : entries;
 
   useEffect(() => {
     if (open) {
@@ -567,6 +580,7 @@ export default function MainLayout() {
 
       <Layout>
         <TopLoader />
+        <PrintPreview />
         <Header className="wms-header">
           {mobile && <Button type="text" icon={<MenuOutlined />} onClick={() => setDrawerOpen(true)} aria-label="Open navigation" />}
           <Breadcrumb

@@ -10,7 +10,7 @@ import { apiClient } from "@/api/client";
 import { showError } from "@/api/errors";
 import type { Document } from "@/api/types";
 import { preventEnterSubmit, useDocument } from "@/components/documents";
-import { CustomerSelect, ItemSelect, SupplierSelect, UomSelect } from "@/components/selects";
+import { BaseQtyHint, CustomerSelect, ItemSelect, SupplierSelect, UomSelect, useItemRecords } from "@/components/selects";
 import { DetailSkeleton, DocTitle, FormFooter, FormSection, useUnsavedChanges } from "@/components/ui";
 
 interface LineValues {
@@ -40,6 +40,9 @@ export default function OrderForm({ kind }: { kind: keyof typeof KINDS }) {
   const [form] = Form.useForm<FormValues>();
   const { data: existing, isLoading } = useDocument(path, id);
   const unsaved = useUnsavedChanges();
+  const lines = Form.useWatch("lines", form) as Partial<LineValues>[] | undefined;
+  const items = useItemRecords(lines?.map((l) => l?.item_id) ?? []);
+  const itemOf = (i: number) => items.find((it) => it.id === lines?.[i]?.item_id);
 
   // Fill the form once per source document, not on every refetch (live updates, window focus): that would wipe the user's edits
   const filledFrom = useRef<string>(undefined);
@@ -111,7 +114,7 @@ export default function OrderForm({ kind }: { kind: keyof typeof KINDS }) {
         </Row>
         </FormSection>
 
-        <FormSection title="Lines" description="Quantities are in the unit chosen on each line; the item's base unit is filled in for you.">
+        <FormSection title="Lines" description="Enter quantities in the item's base unit, or pick a carton or pallet unit set up on the item; stock is always counted in the base unit.">
         <Form.List
           name="lines"
           rules={[
@@ -143,9 +146,13 @@ export default function OrderForm({ kind }: { kind: keyof typeof KINDS }) {
                       />
                     </Form.Item>
                     <Form.Item name={[name, "uom_id"]} rules={[{ required: true, message: "Choose a unit" }]}>
-                      <UomSelect placeholder="Unit" style={{ width: "100%" }} />
+                      <UomSelect item={itemOf(name)} placeholder="Unit" style={{ width: "100%" }} />
                     </Form.Item>
-                    <Form.Item name={[name, "qty"]} rules={[{ required: true, message: "Enter a quantity" }]}>
+                    <Form.Item
+                      name={[name, "qty"]}
+                      rules={[{ required: true, message: "Enter a quantity" }]}
+                      extra={<BaseQtyHint item={itemOf(name)} uomId={lines?.[name]?.uom_id} qty={lines?.[name]?.qty} />}
+                    >
                       <InputNumber placeholder="0" min={0.0001} style={{ width: "100%" }} aria-label={`Quantity, line ${index + 1}`} />
                     </Form.Item>
                     <Tooltip title="Remove line">

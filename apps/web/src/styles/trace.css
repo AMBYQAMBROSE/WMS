@@ -1,0 +1,424 @@
+/* ============================================================ warehouse map (pages/inventory/WarehouseMapPage.tsx)
+ * The floor plan is the location tree itself: zones side by side, aisles stacked in a zone, racks side by side in an
+ * aisle, bins as cells in a rack. Cells are small when there are many (hover for details) and labelled when few.
+ * Colours come from tokens in global.css (var(--wms-*), var(--ant-*)), so light and dark both work. */
+.wms-map-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: var(--wms-space-4);
+  align-items: start;
+}
+@media (max-width: 1100px) {
+  .wms-map-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.wms-map-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wms-space-4);
+  position: sticky;
+  top: calc(var(--wms-header-h) + 16px);
+}
+@media (max-width: 1100px) {
+  .wms-map-side {
+    position: static;
+  }
+}
+.wms-map-card .ant-card-head-wrapper {
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 0;
+}
+.wms-map {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wms-space-3);
+  max-height: calc(100vh - 300px);
+  min-height: 240px;
+  overflow: auto;
+  /* Room for the pulse rings and person badges at the edges */
+  padding: 8px;
+}
+.wms-map-zones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--wms-space-3);
+  align-items: flex-start;
+}
+.wms-map-group {
+  border: 1px solid var(--wms-border-subtle);
+  border-radius: var(--wms-radius);
+  background: var(--wms-surface-subtle);
+  padding: 6px 8px 8px;
+  min-width: 0;
+}
+.wms-map-group.is-zone {
+  background: var(--wms-surface);
+  border-color: var(--wms-surface-border);
+  padding: 8px 10px 10px;
+}
+.wms-map-group.is-rack {
+  background: transparent;
+  border-style: dashed;
+}
+.wms-map-group-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ant-color-text-secondary);
+  margin-bottom: 6px;
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  white-space: nowrap;
+}
+.wms-map-group.is-zone > .wms-map-group-label {
+  font-size: 13px;
+  color: var(--ant-color-text);
+}
+.wms-map-group-name {
+  font-weight: 400;
+  color: var(--ant-color-text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wms-map-group-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+/* The racks of an aisle stand side by side, like on the floor */
+.wms-map-group.is-aisle > .wms-map-group-body {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+.wms-map-cells {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 20px);
+  gap: 3px;
+  width: max-content;
+  max-width: calc(12 * 23px);
+}
+.wms-map.is-large .wms-map-cells {
+  grid-template-columns: repeat(auto-fill, 64px);
+  max-width: calc(6 * 68px);
+  gap: 4px;
+}
+.wms-map-group.is-docks .wms-map-cells {
+  max-width: none;
+  width: auto;
+}
+.wms-map-cell {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  background: var(--wms-surface-hover);
+  box-shadow: inset 0 0 0 1px var(--wms-surface-border);
+  transition: transform var(--wms-fast) var(--wms-ease), opacity var(--wms-mid) var(--wms-ease);
+}
+.wms-map-cell.is-large {
+  width: 64px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.wms-map-cell:not(.is-empty) {
+  box-shadow: none;
+}
+.wms-map-cell.is-dock {
+  border-radius: 10px;
+}
+.wms-map-cell:hover {
+  transform: scale(1.15);
+  z-index: 2;
+}
+.wms-map-cell:focus-visible {
+  outline: none;
+  box-shadow: var(--wms-focus);
+  z-index: 2;
+}
+.wms-map-cell.is-dim {
+  opacity: 0.18;
+}
+.wms-map-cell.is-counting {
+  outline: 2px dashed var(--wms-tone-violet-fg);
+  outline-offset: 1px;
+}
+.wms-map-cell.is-recalled {
+  box-shadow: 0 0 0 2px var(--wms-surface), 0 0 0 4px var(--wms-tone-red-fg);
+}
+.wms-map-cell-code {
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  padding: 0 3px;
+  max-width: 58px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ant-color-text);
+  background: color-mix(in srgb, var(--wms-surface) 80%, transparent);
+  border-radius: 3px;
+}
+.wms-map-cell-icon {
+  position: absolute;
+  right: 1px;
+  bottom: 1px;
+  font-size: 9px;
+  color: var(--ant-color-text);
+  background: var(--wms-surface);
+  border-radius: 3px;
+  padding: 1px;
+}
+.wms-map-person {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  padding: 0 4px;
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 18px;
+  color: var(--ant-color-white, #fff);
+  background: var(--ant-color-primary);
+  box-shadow: 0 0 0 2px var(--wms-surface);
+  z-index: 3;
+  pointer-events: none;
+}
+.wms-map-person sup {
+  font-size: 8px;
+  margin-left: 1px;
+}
+/* A pulse ring when something happens at a bin; remounted (new key) for every event so it always restarts */
+.wms-map-ping {
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  pointer-events: none;
+  border: 2px solid currentColor;
+  animation: wms-map-ping 1.5s var(--wms-ease) forwards;
+}
+.tone-in {
+  color: var(--wms-tone-green-fg);
+}
+.tone-out {
+  color: var(--wms-tone-amber-fg);
+}
+.tone-scan {
+  color: var(--wms-tone-indigo-fg);
+}
+.tone-internal {
+  color: var(--wms-tone-slate-fg);
+}
+@keyframes wms-map-ping {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  70% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(2.1);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* No movement: the ring just shows for a moment and goes */
+  .wms-map-ping {
+    animation: wms-map-fade 1.5s linear forwards;
+    inset: -3px;
+  }
+  .wms-map-cell {
+    transition: none;
+  }
+}
+@keyframes wms-map-fade {
+  0%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.wms-map-legend-ping {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+}
+.wms-map-hover {
+  position: fixed;
+  z-index: 1100;
+  pointer-events: none;
+  max-width: 300px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  border-radius: var(--wms-radius);
+  background: var(--ant-color-bg-elevated);
+  color: var(--ant-color-text);
+  box-shadow: var(--wms-shadow-md);
+  border: 1px solid var(--wms-surface-border);
+}
+.wms-map-timeline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.wms-map-clock {
+  font-size: 22px;
+  font-weight: 650;
+  letter-spacing: -0.5px;
+  min-width: 64px;
+}
+.wms-map-glance {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  font-size: 12.5px;
+  color: var(--ant-color-text-secondary);
+}
+.wms-map-glance-value {
+  font-size: 22px;
+  font-weight: 650;
+  color: var(--ant-color-text);
+  line-height: 1.2;
+}
+.wms-map-glance-value span {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ant-color-text-tertiary);
+}
+.wms-map-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 460px;
+  overflow-y: auto;
+}
+.wms-map-feed-row {
+  display: grid;
+  grid-template-columns: auto 10px minmax(0, 1fr);
+  gap: 8px;
+  align-items: baseline;
+  font-size: 12.5px;
+}
+.wms-map-feed-time {
+  color: var(--ant-color-text-tertiary);
+  font-size: 11.5px;
+}
+.wms-map-feed-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  align-self: center;
+}
+.wms-map-feed-text {
+  overflow-wrap: anywhere;
+}
+
+/* ============================================================ batch trace flow (pages/inventory/BatchTracePage.tsx)
+ * Three columns: what brought the batch in, the batch itself, and where it went or sits now. The connecting bands
+ * are an SVG drawn behind the cards, each as wide as its share of the quantity. */
+.wms-trace-flow {
+  position: relative;
+  overflow-x: auto;
+  padding: 4px 2px 8px;
+}
+.wms-trace-canvas {
+  position: relative;
+  min-width: 760px;
+}
+.wms-trace-canvas > svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+.wms-trace-cols {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(170px, 220px) minmax(220px, 1fr);
+  column-gap: 110px;
+  align-items: center;
+}
+.wms-trace-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.wms-trace-col-title {
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--ant-color-text-tertiary);
+}
+.wms-trace-node {
+  position: relative;
+  border: 1px solid var(--wms-surface-border);
+  border-left: 4px solid var(--node-accent, var(--wms-surface-border));
+  border-radius: var(--wms-radius);
+  background: var(--wms-surface);
+  padding: 6px 10px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  box-shadow: var(--wms-shadow-sm);
+  z-index: 1;
+  min-width: 0;
+}
+.wms-trace-node-title {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wms-trace-node-meta {
+  color: var(--ant-color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wms-trace-node-qty {
+  float: right;
+  font-weight: 650;
+  margin-left: 8px;
+}
+.wms-trace-hub {
+  text-align: center;
+  border: 2px solid var(--ant-color-primary);
+  border-radius: var(--wms-radius-xl);
+  padding: 14px 12px;
+  background: var(--wms-surface);
+  box-shadow: var(--wms-shadow-md);
+  z-index: 1;
+  position: relative;
+}
+.wms-trace-hub.is-recalled {
+  border-color: var(--wms-tone-red-fg);
+}
+.wms-trace-hub-batch {
+  font-size: 18px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.wms-trace-hub-item {
+  font-size: 12.5px;
+  color: var(--ant-color-text-secondary);
+}

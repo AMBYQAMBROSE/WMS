@@ -12,6 +12,7 @@ from app.models.document import DocumentHeader, DocumentLine, DocumentLocation
 from app.models.item import Item, ItemUomConversion
 from app.models.location import Location
 from app.models.stock import StockBalance, StockLedger
+from app.services.batch_hold import held
 from app.services.document_common import (
     COUNT_IN_PROGRESS,
     DOC_COUNT,
@@ -31,6 +32,9 @@ MOVE_COUNT_GAIN = "COUNT_GAIN"
 MOVE_COUNT_LOSS = "COUNT_LOSS"
 MOVE_PICK_OUT = "PICK_OUT"
 MOVE_PICK_IN = "PICK_IN"
+# Picked goods returned from staging to their bin (a posted pick reversed)
+MOVE_UNPICK_OUT = "UNPICK_OUT"
+MOVE_UNPICK_IN = "UNPICK_IN"
 MOVE_SHIP_OUT = "SHIP_OUT"
 MOVE_RETURN_IN = "RETURN_IN"
 MOVE_RETURN_OUT = "RETURN_OUT"
@@ -113,7 +117,7 @@ def allocatable_balances(
     """Candidate stock for outbound allocation, taking update locks on the balances read (concurrent allocations of an item queue up and never double-reserve).
 
     Normal: bins (BIN) only; cross-dock: only the given receiving dock (DOCK) source_location_id.
-    Always excluded: locked/inactive locations, locations being counted, expired batches.
+    Always excluded: locked/inactive locations, locations being counted, expired batches, batches under an active recall.
     Order: first expiry first out (no expiry last) -> pickable bins first -> first in first out -> location code.
     """
     location_filter = (
@@ -144,6 +148,7 @@ def allocatable_balances(
             Location.is_deleted == false(),
             Location.id.not_in(counting),
             or_(StockBalance.expiry_date.is_(None), StockBalance.expiry_date >= today),
+            ~held(tenant_id, StockBalance.item_id, StockBalance.batch_no),
         )
         .order_by(
             case((StockBalance.expiry_date.is_(None), 1), else_=0),
@@ -255,12 +260,16 @@ def list_balances(
     location_id: uuid.UUID | None = None,
     skip: int = 0,
     limit: int = 50,
+    *,
+    unavailable: bool = False,
 ) -> list[StockBalance]:
     stmt = select(StockBalance).where(StockBalance.tenant_id == tenant_id)
     if item_id:
         stmt = stmt.where(StockBalance.item_id == item_id)
     if location_id:
         stmt = stmt.where(StockBalance.location_id == location_id)
+    if unavailable:
+        stmt = stmt.where(StockBalance.qty_on_hand - StockBalance.qty_allocated <= 0)
     stmt = stmt.order_by(StockBalance.created_at, StockBalance.id).offset(skip).limit(limit)
     return list(db.scalars(stmt).unique())
 
@@ -272,6 +281,8 @@ def list_ledger(
     location_id: uuid.UUID | None = None,
     skip: int = 0,
     limit: int = 50,
+    *,
+    movement_type: str | None = None,
 ) -> list[StockLedger]:
     stmt = (
         select(StockLedger)
@@ -282,5 +293,7 @@ def list_ledger(
         stmt = stmt.where(StockLedger.item_id == item_id)
     if location_id:
         stmt = stmt.where(StockLedger.location_id == location_id)
+    if movement_type:
+        stmt = stmt.where(StockLedger.movement_type == movement_type)
     stmt = stmt.order_by(StockLedger.occurred_at.desc(), StockLedger.id).offset(skip).limit(limit)
     return list(db.scalars(stmt).unique())

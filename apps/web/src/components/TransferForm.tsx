@@ -9,8 +9,9 @@ import { useNavigate } from "react-router";
 import { apiClient } from "@/api/client";
 import { showError } from "@/api/errors";
 import type { Document } from "@/api/types";
-import { preventEnterSubmit } from "@/components/documents";
-import { ItemSelect, LocationSelect, UomSelect, useItemRecords } from "@/components/selects";
+import { CreateButtons, announcePosted, postDraft, preventEnterSubmit } from "@/components/documents";
+import { LocationSelect, UomSelect, useItemRecords } from "@/components/selects";
+import { StockItemSelect, useStockAutofill } from "@/components/stockAutofill";
 import { FormFooter, FormSection, useUnsavedChanges } from "@/components/ui";
 
 interface LineValues {
@@ -28,24 +29,34 @@ interface FormValues {
   lines: LineValues[];
 }
 
-/** Entry form shared by putaways and moves: they differ only in target location types, wording, and whether lines come from a goods receipt */
+/** Line-by-line entry form for putaways (lines may come from a goods receipt). Moves use the location-to-location page instead. */
 export default function TransferForm({
   path,
   docLabel,
   targetTypes,
   targetLabel,
   sourceGrn,
+  remaining,
 }: {
   path: "putaways" | "moves";
   docLabel: string;
   targetTypes: string[];
   targetLabel: string;
   sourceGrn?: Document;
+  /** Per receipt line id, the quantity no putaway covers yet; lines with nothing left are not offered */
+  remaining?: Record<string, number>;
 }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [form] = Form.useForm<FormValues>();
   const unsaved = useUnsavedChanges();
+  const postNow = useRef(false);
+  const autofill = useStockAutofill(form);
+  const SOURCE = { locationField: "from_location_id", source: true };
+
+  const left = (l: Document["lines"][number]) => remaining?.[l.id] ?? l.qty_actual;
+  const open = sourceGrn?.lines.filter((l) => left(l) > 0) ?? [];
+  const nothingLeft = !!sourceGrn && sourceGrn.status === "POSTED" && open.length === 0;
 
   // Fill the form once per source document, not on every refetch (live updates, window focus): that would wipe the user's edits
   const filledFrom = useRef<string>(undefined);
@@ -54,17 +65,19 @@ export default function TransferForm({
       filledFrom.current = sourceGrn.id;
       form.setFieldValue(
         "lines",
-        sourceGrn.lines.map((l) => ({
-          item_id: l.item.id,
-          uom_id: l.uom.id,
-          qty: l.qty_actual,
-          batch_no: l.batch_no ?? undefined,
-          expiry_date: l.expiry_date ? dayjs(l.expiry_date) : undefined,
-          from_location_id: sourceGrn.location?.id,
-        })),
+        open.length
+          ? open.map((l) => ({
+              item_id: l.item.id,
+              uom_id: l.uom.id,
+              qty: left(l),
+              batch_no: l.batch_no ?? undefined,
+              expiry_date: l.expiry_date ? dayjs(l.expiry_date) : undefined,
+              from_location_id: sourceGrn.location?.id,
+            }))
+          : [{}],
       );
     }
-  }, [sourceGrn, form]);
+  }, [sourceGrn, form]); // filled once per receipt: `open` is read at that moment only
 
   const save = useMutation({
     mutationFn: async (values: FormValues) => {
@@ -73,14 +86,17 @@ export default function TransferForm({
         batch_no: l.batch_no || null,
         expiry_date: l.expiry_date?.format("YYYY-MM-DD") ?? null,
       }));
-      return (
+      const draft = (
         await apiClient.post<Document>(`/${path}`, { ...values, ref_document_id: sourceGrn?.id ?? null, lines })
       ).data;
+      return postNow.current ? postDraft(path, draft) : { doc: draft, posted: false };
     },
-    onSuccess: (doc) => {
+    onSuccess: ({ doc, posted }) => {
       unsaved.reset();
-      message.success(`Created ${docLabel.toLowerCase()} ${doc.doc_no}; post it once the goods are moved`);
+      if (posted) announcePosted(doc);
+      else if (!postNow.current) message.success(`Created ${docLabel.toLowerCase()} ${doc.doc_no}; post it once the goods are moved`);
       queryClient.invalidateQueries({ queryKey: [path] });
+      queryClient.invalidateQueries({ queryKey: ["stock"] });
       navigate(`/${path}/${doc.id}`);
     },
     onError: showError,
@@ -94,6 +110,15 @@ export default function TransferForm({
     <Card title={sourceGrn ? `Create ${docLabel.toLowerCase()} from goods receipt ${sourceGrn.doc_no}` : `New ${docLabel.toLowerCase()}`}>
       {sourceGrn && sourceGrn.status !== "POSTED" && (
         <Alert type="warning" style={{ marginBottom: 16 }} title="The goods receipt is not posted yet and cannot be put away" />
+      )}
+      {nothingLeft && (
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+          title="Everything on this goods receipt is already on a putaway"
+          description="Nothing is prefilled. To move stock that is still on the dock, enter the lines yourself."
+        />
       )}
       <Form
         form={form}
@@ -110,7 +135,7 @@ export default function TransferForm({
         </FormSection>
         <FormSection
           title="Lines"
-          description={sourceGrn ? "Prefilled from the goods receipt. Split a line to put one batch into several bins." : "One line per item, batch and location pair."}
+          description={sourceGrn ? "Prefilled from the goods receipt. Split a line to put one batch into several bins." : "One line per item, batch and location pair. Choosing the from location fills in the item, batch and free quantity found there."}
         >
         <Form.List name="lines">
           {(fields, { add, remove }) => (
@@ -126,9 +151,14 @@ export default function TransferForm({
                     title: "Item",
                     render: (_, f) => (
                       <Form.Item name={[f.name, "item_id"]} noStyle rules={[{ required: true }]}>
-                        <ItemSelect
+                        <StockItemSelect
                           style={{ width: 220 }}
-                          onRecordChange={(item) => item && form.setFieldValue(["lines", f.name, "uom_id"], item.base_uom_id)}
+                          locationId={watchedLines?.[f.name]?.from_location_id}
+                          onRecordChange={(item) => {
+                            if (!item) return;
+                            form.setFieldValue(["lines", f.name, "uom_id"], item.base_uom_id);
+                            void autofill(["lines", f.name], SOURCE);
+                          }}
                         />
                       </Form.Item>
                     ),
@@ -137,7 +167,7 @@ export default function TransferForm({
                     title: "Unit",
                     render: (_, f) => (
                       <Form.Item name={[f.name, "uom_id"]} noStyle rules={[{ required: true }]}>
-                        <UomSelect style={{ width: 100 }} />
+                        <UomSelect item={itemOf(f.name)} style={{ width: 120 }} />
                       </Form.Item>
                     ),
                   },
@@ -175,7 +205,7 @@ export default function TransferForm({
                     title: "From location",
                     render: (_, f) => (
                       <Form.Item name={[f.name, "from_location_id"]} noStyle rules={[{ required: true }]}>
-                        <LocationSelect types={["DOCK", "BIN"]} style={{ width: 170 }} />
+                        <LocationSelect types={["DOCK", "BIN"]} style={{ width: 170 }} onRecordChange={() => void autofill(["lines", f.name], { ...SOURCE, locationChanged: true })} />
                       </Form.Item>
                     ),
                   },
@@ -228,15 +258,14 @@ export default function TransferForm({
           )}
         </Form.List>
         </FormSection>
-        <FormFooter note="Created as a draft; post it once the goods are moved">
-          <Button
-            type="primary"
-            htmlType="submit"
+        <FormFooter note="Post once the goods are at the target location: posting moves the stock">
+          <CreateButtons
+            label={`Create ${docLabel.toLowerCase()}`}
+            postPerm={`${path === "putaways" ? "putaway" : "move"}.post`}
+            postNow={postNow}
             loading={save.isPending}
             disabled={!!sourceGrn && sourceGrn.status !== "POSTED"}
-          >
-            Create {docLabel.toLowerCase()}
-          </Button>
+          />
           <Button onClick={() => navigate(-1)}>Cancel</Button>
         </FormFooter>
       </Form>

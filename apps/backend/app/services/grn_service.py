@@ -1,5 +1,6 @@
 import uuid
 from collections import defaultdict
+from datetime import timedelta
 from decimal import Decimal
 
 from sqlalchemy.orm import Session
@@ -28,12 +29,14 @@ from app.services.purchase_order_service import (
     PO_RECEIVABLE,
     PO_RECEIVED,
 )
+from app.services.report_service import today_local
 from app.services.stock_service import MOVE_RECEIVE, Movement, apply_movements, to_base_qty
 
 GRN_DRAFT = "DRAFT"
 GRN_POSTED = "POSTED"
 GRN_CANCELLED = "CANCELLED"
 QTY_STEP = Decimal("0.0001")  # quantities are stored with 4 decimals
+PRICE_STEP = Decimal("0.000001")  # prices are stored with 6 decimals
 
 
 class GrnService:
@@ -151,8 +154,19 @@ class GrnService:
 
         apply_movements(self.db, self.tenant_id, movements, self.user_id)
 
+        # Costing: each receipt line takes its order line's price, in the receipt line's unit (2 PLT against a price per CTN)
+        for line in grn.lines:
+            po_line = po_lines[line.ref_line_id]
+            if po_line.unit_price is not None:
+                order_unit_base = to_base_qty(self.db, self.tenant_id, line.item, po_line.uom_id, Decimal(1))
+                line_unit_base = to_base_qty(self.db, self.tenant_id, line.item, line.uom_id, Decimal(1))
+                line.unit_price = (po_line.unit_price * line_unit_base / order_unit_base).quantize(PRICE_STEP)
+
         grn.status = GRN_POSTED
         grn.posted_at = utcnow()
+        # Payable: due after the supplier's credit terms, fixed now so later changes to the terms leave this receipt alone
+        terms = grn.partner.credit_terms_days if grn.partner else None
+        grn.payment_due_date = today_local() + timedelta(days=terms or 0)
         grn.updated_by = self.user_id
         grn.row_version += 1
         self.db.flush()

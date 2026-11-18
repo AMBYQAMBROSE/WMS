@@ -16,4 +16,6 @@ class BusinessPartner(Base, TenantScopedMixin):
     contact_name: Mapped[str | None] = mapped_column(Unicode(100), nullable=True)
     contact_phone: Mapped[str | None] = mapped_column(Unicode(50), nullable=True)
     address: Mapped[str | None] = mapped_column(Unicode(400), nullable=True)
+    # Suppliers: days from receipt to payment due; null means due on receipt
+    credit_terms_days: Mapped[int | None] = mapped_column(nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)

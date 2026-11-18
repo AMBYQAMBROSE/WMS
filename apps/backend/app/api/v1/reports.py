@@ -13,8 +13,18 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_db_session, require_permission
 from app.api.routing import TransactionalRoute
-from app.schemas.report import Dashboard, ExpiryPage, OccupancyArea, PartnerLedgerPage, PickerKpiPage, TurnoverPage
-from app.services.report_service import ReportService, today_local
+from app.schemas.report import (
+    Analytics,
+    Dashboard,
+    ExpiryPage,
+    OccupancyArea,
+    PartnerLedgerPage,
+    PickerKpiPage,
+    Pricing,
+    TurnoverPage,
+)
+from app.services.analytics_service import AnalyticsService
+from app.services.report_service import ReportService, local_now, today_local
 
 router = APIRouter(route_class=TransactionalRoute, prefix="/reports", tags=["reports"])
 
@@ -165,3 +175,61 @@ def partner_ledger(
         ], rows)
     total, rows = svc.partner_ledger(start, end, partner_id, limit)
     return {"total": total, "rows": rows}
+
+
+def _analytics(db: Session, user: CurrentUser) -> AnalyticsService:
+    return AnalyticsService(db, user.tenant_id, "cost.view" in user.permissions)
+
+
+@router.get("/analytics", response_model=Analytics)
+def analytics(
+    db: Session = Depends(get_db_session),
+    user: CurrentUser = Depends(require_permission("report.read")),
+):
+    """Dashboard trend analysis: purchases and losses per month over three years, the biggest SKUs this month and year
+    against the same dates last year and the three-year average, and the top suppliers with credit terms and payables.
+    Values are null without cost.view. Cached for a few minutes (it reads years of ledger)."""
+    return _analytics(db, user).trends()
+
+
+@router.get("/pricing", response_model=Pricing)
+def pricing(
+    item_id: uuid.UUID | None = None,
+    db: Session = Depends(get_db_session),
+    user: CurrentUser = Depends(require_permission("cost.view")),
+):
+    """Purchase price trend per SKU (average cost per base unit and month); for costing, cost.view only"""
+    return _analytics(db, user).pricing(item_id)
+
+
+@router.get("/stock-on-hand", response_class=Response, responses={200: {"content": {"text/csv": {}}}})
+def stock_on_hand(
+    by: Literal["location", "item"] = "location",
+    db: Session = Depends(get_db_session),
+    user: CurrentUser = Depends(require_permission("stock.read")),
+):
+    """Real-time stock on hand as CSV, for finance or anyone who asks: every balance by location and batch, or one row per
+    item. With cost.view it adds the average purchase cost and the stock value."""
+    rows = _analytics(db, user).stock_on_hand(by)
+    costs = "cost.view" in user.permissions
+    stamp = local_now()
+    columns: list[tuple[str, Callable[[dict], object]]] = [
+        ("SKU", lambda r: r["item_sku"]), ("Item", lambda r: r["item_name"]), ("Category", lambda r: r["category"]),
+    ]
+    if by == "location":
+        columns += [
+            ("Location", lambda r: r["location_code"]), ("Location type", lambda r: r["location_type"]),
+            ("Batch", lambda r: r["batch_no"]), ("Expiry date", lambda r: r["expiry_date"]),
+        ]
+    else:
+        columns.append(("Locations", lambda r: r["locations"]))
+    columns += [
+        ("On hand", lambda r: r["on_hand"]), ("Allocated", lambda r: r["allocated"]), ("Available", lambda r: r["available"]),
+        ("Unit", lambda r: r["uom_code"]),
+    ]
+    if by == "item":
+        columns.append(("Minimum stock", lambda r: r["min_stock_qty"]))
+    if costs:
+        columns += [("Average cost per unit", lambda r: r["avg_cost"]), ("Stock value", lambda r: r["value"])]
+    columns.append(("As of", lambda r: stamp.strftime("%Y-%m-%d %H:%M:%S")))
+    return _csv(f"stock-on-hand_{'by-item' if by == 'item' else 'by-location'}_{stamp:%Y%m%d-%H%M}.csv", columns, rows)

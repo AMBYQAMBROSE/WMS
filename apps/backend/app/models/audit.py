@@ -26,6 +26,7 @@ from app.models.item import Item, ItemBarcode, ItemUomConversion, Uom
 from app.models.label import LabelProfile
 from app.models.location import Location
 from app.models.reason_code import ReasonCode
+from app.models.recipe import Recipe, RecipeLine
 from app.models.returnable_asset import ReturnableAssetTxn, ReturnableAssetType
 from app.models.tenant import Tenant, TenantFeatureFlag
 from app.models.user import Role, User
@@ -83,6 +84,8 @@ _AUDITED: dict[type, tuple[str, tuple[str, ...]]] = {
     ReasonCode: ("reason_code", ("category", "code")),
     ReturnableAssetType: ("returnable_asset_type", ("code",)),
     ReturnableAssetTxn: ("returnable_asset_txn", ("txn_type",)),
+    Recipe: ("recipe", ("code",)),
+    RecipeLine: ("recipe_line", ("line_no",)),
     DocNumberRule: ("doc_number_rule", ("doc_type",)),
     IntegrationConnector: ("integration_connector", ("code",)),
     DocumentHeader: ("document", ("doc_type", "doc_no")),
@@ -135,6 +138,8 @@ def _parent_id(session: Session, obj) -> uuid.UUID | None:
     if isinstance(obj, CountEntry):
         line = session.get(DocumentLine, obj.line_id)
         return line.document_id if line else None
+    if isinstance(obj, RecipeLine):
+        return obj.recipe_id
     return None
 
 

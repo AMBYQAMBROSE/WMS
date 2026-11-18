@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
+from app.core.request_context import current_context
 from app.models.audit import AuditLog
 from app.models.business_partner import BusinessPartner
 from app.models.document import DocumentHeader
@@ -16,6 +17,8 @@ from app.models.returnable_asset import ReturnableAssetType
 from app.models.user import User
 from app.schemas.audit import AuditChange, AuditLogRead
 
+# Prices are hidden from users without cost.view here too, not only in documents
+COST_FIELDS = {"unit_price"}
 IN_CHUNK = 1000  # SQL Server allows about 2100 parameters per statement
 
 # Fields holding the id of another record -> (model, column shown instead of the id)
@@ -97,7 +100,11 @@ class AuditService:
                 wanted.setdefault("confirmed_by", set()).add(log.user_id)
         names = self._lookup(wanted)
 
+        hide_costs = not current_context().can_view_costs
+
         def show(field: str, value):
+            if hide_costs and field in COST_FIELDS and value is not None:
+                return "***"
             if field in _REFERENCES and isinstance(value, str):
                 return names.get((_REFERENCES[field][0], value), value)
             return value

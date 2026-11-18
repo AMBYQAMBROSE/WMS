@@ -19,6 +19,7 @@ from sqlalchemy import false, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import DomainError
+from app.core.request_context import current_context
 from app.models.business_partner import BusinessPartner
 from app.models.item import Item, ItemUomConversion, Uom
 from app.models.location import LOCATION_TYPES, STOCK_LOCATION_TYPES, Location
@@ -140,7 +141,9 @@ class ImportKind:
     examples: list[dict] = field(default_factory=list)
 
 
-def _order_columns(partner: str, partner_example: str, date_header: str) -> list[Column]:
+def _order_columns(partner: str, partner_example: str, date_header: str, priced: bool = False) -> list[Column]:
+    price = [Column("unit_price", "Unit price", number, False,
+                    "Optional, per unit of the row, excluding tax; needs the cost.view permission", 2.5)] if priced else []
     return [
         Column("order_ref", "Order ref", text(50), False,
                "Rows with the same ref become one order. Leave empty to make one order per "
@@ -151,6 +154,7 @@ def _order_columns(partner: str, partner_example: str, date_header: str) -> list
         Column("uom_code", "Unit", text(20), False, "Defaults to the item's base unit; other units need a conversion on the item", "EA"),
         Column("expected_date", date_header, day, False, "Format 2026-12-31; the same for every row of one order", "2026-12-31"),
         Column("remark", "Remark", text(400), False, "The same for every row of one order", ""),
+        *price,
     ]
 
 
@@ -173,6 +177,8 @@ KINDS: dict[str, ImportKind] = {
             Column("is_batch_managed", "Batch managed", boolean, False, "Yes/No, default No", "No"),
             Column("is_expiry_managed", "Expiry managed", boolean, False, "Yes/No, default No", "Yes"),
             Column("shelf_life_days", "Shelf life (days)", integer, False, "", 365),
+            Column("min_stock_qty", "Minimum stock", number, False,
+                   "In the base unit; the dashboard alarms when available stock falls below it", 100),
             Column("is_active", "Active", boolean, False, "Yes/No, default Yes", "Yes"),
         ],
     ),
@@ -210,6 +216,8 @@ KINDS: dict[str, ImportKind] = {
             Column("contact_name", "Contact", text(100), False, "", "John Smith"),
             Column("contact_phone", "Phone", text(50), False, "", "13800000000"),
             Column("address", "Address", text(400), False, "", "1 Main Street"),
+            Column("credit_terms_days", "Credit terms (days)", integer, False,
+                   "Suppliers: days from receipt to payment due; empty = due on receipt", 30),
             Column("is_active", "Active", boolean, False, "Yes/No, default Yes", "Yes"),
         ],
     ),
@@ -227,7 +235,8 @@ KINDS: dict[str, ImportKind] = {
     ),
     "purchase_orders": ImportKind(
         "purchase_orders", "Purchase orders", ("purchase_order.create",),
-        _order_columns("Supplier", "S0001", "Expected date"), ORDER_NOTES,
+        _order_columns("Supplier", "S0001", "Expected date", priced=True),
+        [*ORDER_NOTES, "Unit price: the same item and unit twice in one order must have the same price"],
     ),
     "sales_orders": ImportKind(
         "sales_orders", "Sales orders", ("sales_order.create",),
@@ -404,7 +413,8 @@ class ImportService:
             is_new = item.id is None
             item.name = r["name"]
             self._assign(item, r, {"barcode": None, "category": None, "is_batch_managed": False,
-                                   "is_expiry_managed": False, "shelf_life_days": None, "is_active": True}, is_new)
+                                   "is_expiry_managed": False, "shelf_life_days": None, "min_stock_qty": None,
+                                   "is_active": True}, is_new)
             self._audit(item)
         self.db.flush()
         result.committed = True
@@ -426,7 +436,8 @@ class ImportService:
             else:
                 result.updated += 1
             partner.name, partner.partner_type = r["name"], r["partner_type"]
-            self._assign(partner, r, {"contact_name": None, "contact_phone": None, "address": None, "is_active": True},
+            self._assign(partner, r, {"contact_name": None, "contact_phone": None, "address": None,
+                                    "credit_terms_days": None, "is_active": True},
                          partner.id is None)
             self._audit(partner)
         self.db.flush()
@@ -601,6 +612,14 @@ class ImportService:
             if r["qty"] != round(r["qty"], 4):
                 result.error(n, "Quantity", "At most 4 decimal places")
                 continue
+            price = r.get("unit_price")
+            if price is not None:
+                if not current_context().can_view_costs:
+                    result.error(n, "Unit price", "Entering prices needs the cost.view permission; leave the column empty")
+                    continue
+                if price < 0 or price != round(price, 6):
+                    result.error(n, "Unit price", "Must be 0 or more, with at most 6 decimal places")
+                    continue
             uom_id = item.base_uom_id
             if r["uom_code"]:
                 uom = uoms.get(r["uom_code"].upper())
@@ -632,7 +651,12 @@ class ImportService:
                 if mismatch:
                     result.error(n, mismatch, f"Differs from row {order['row']} of order {r['order_ref']}")
                     continue
-            lines = order["lines"]
+            lines, prices = order["lines"], order.setdefault("prices", {})
+            if price is not None:
+                if prices.get((item.id, uom_id), price) != price:
+                    result.error(n, "Unit price", f"Differs from the price of {item.sku_code} on another row of this order")
+                    continue
+                prices[(item.id, uom_id)] = price
             lines[(item.id, uom_id)] = lines.get((item.id, uom_id), Decimal(0)) + r["qty"]
 
         result.created = len(orders)
@@ -653,7 +677,10 @@ class ImportService:
         for summary, order in zip(result.documents, orders.values()):
             doc = svc.create(schema(
                 partner_id=order["partner"].id, expected_date=order["expected_date"], remark=order["remark"],
-                lines=[line_schema(item_id=i, uom_id=u, qty=q) for (i, u), q in order["lines"].items()],
+                lines=[
+                    line_schema(item_id=i, uom_id=u, qty=q, **({"unit_price": order.get("prices", {}).get((i, u))} if supplier else {}))
+                    for (i, u), q in order["lines"].items()
+                ],
             ))
             summary["document_id"], summary["document_no"] = doc.id, doc.doc_no
         result.committed = True

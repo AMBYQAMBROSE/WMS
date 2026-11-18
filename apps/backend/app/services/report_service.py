@@ -51,9 +51,9 @@ _report_cache: dict[tuple, tuple[float, object]] = {}
 _report_locks: dict[tuple, threading.Lock] = {}
 
 
-def _cached(key: tuple, compute):
+def _cached(key: tuple, compute, ttl: float | None = None):
     """Single-flight cache: concurrent misses wait for one computation instead of each running it.
-    Expiry counts from when the computation started, so a cached result is never older than REPORT_CACHE_SECONDS."""
+    Expiry counts from when the computation started, so a cached result is never older than `ttl` (default REPORT_CACHE_SECONDS) seconds."""
     entry = _report_cache.get(key)
     if entry and entry[0] > monotonic():
         return entry[1]
@@ -63,7 +63,8 @@ def _cached(key: tuple, compute):
             return entry[1]  # computed by another request while this one waited
         started = monotonic()
         data = compute()
-        _report_cache[key] = (started + REPORT_CACHE_SECONDS, data)
+        # Read at call time (not as a default argument), so the setting can be changed while running
+        _report_cache[key] = (started + (REPORT_CACHE_SECONDS if ttl is None else ttl), data)
         return data
 
 ZERO = Decimal(0)
@@ -73,8 +74,12 @@ def _tz() -> ZoneInfo:
     return ZoneInfo(settings.business_timezone)
 
 
+def local_now() -> datetime:
+    return datetime.now(_tz())
+
+
 def today_local() -> date:
-    return datetime.now(_tz()).date()
+    return local_now().date()
 
 
 def to_utc(day: date) -> datetime:
@@ -197,6 +202,8 @@ class ReportService:
         return sorted(result.values(), key=lambda r: (r["warehouse_code"], r["location_type"] != "WAREHOUSE", r["code"]))
 
     def _dashboard(self) -> dict:
+        from app.services.analytics_service import AnalyticsService  # it builds on this module
+
         today = today_local()
         start, end = to_utc(today), to_utc(today + timedelta(days=1))
         L = StockLedger
@@ -280,6 +287,7 @@ class ReportService:
                 "expiring_30d_qty": _num(expiring),
             },
             "trend": self.daily_flow(today - timedelta(days=13), today),
+            "stock_alerts": AnalyticsService(self.db, self.tenant_id).stock_alerts(),
         }
 
     def daily_flow(self, date_from: date, date_to: date) -> list[dict]:

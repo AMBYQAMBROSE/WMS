@@ -11,6 +11,7 @@ from app.models import (  # noqa: F401
     label,
     location,
     reason_code,
+    recipe,
     returnable_asset,
     stock,
     tenant,

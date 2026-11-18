@@ -11,12 +11,14 @@ import { showError } from "@/api/errors";
 import type { Document } from "@/api/types";
 import { preventEnterSubmit, useDocument } from "@/components/documents";
 import { BaseQtyHint, CustomerSelect, ItemSelect, SupplierSelect, UomSelect, useItemRecords } from "@/components/selects";
-import { DetailSkeleton, DocTitle, FormFooter, FormSection, useUnsavedChanges } from "@/components/ui";
+import { DetailSkeleton, DocTitle, FormFooter, FormSection, formatMoney, useUnsavedChanges } from "@/components/ui";
+import { useCan } from "@/api/me";
 
 interface LineValues {
   item_id: string;
   uom_id: string;
   qty: number;
+  unit_price?: number | null;
 }
 
 interface FormValues {
@@ -43,6 +45,10 @@ export default function OrderForm({ kind }: { kind: keyof typeof KINDS }) {
   const lines = Form.useWatch("lines", form) as Partial<LineValues>[] | undefined;
   const items = useItemRecords(lines?.map((l) => l?.item_id) ?? []);
   const itemOf = (i: number) => items.find((it) => it.id === lines?.[i]?.item_id);
+  // Purchase prices are for users with cost.view only; others neither see nor send them (the server keeps saved prices)
+  const can = useCan();
+  const priced = kind === "purchase" && can("cost.view");
+  const orderTotal = priced ? (lines ?? []).reduce((sum, l) => sum + (l?.qty ?? 0) * (l?.unit_price ?? 0), 0) : 0;
 
   // Fill the form once per source document, not on every refetch (live updates, window focus): that would wipe the user's edits
   const filledFrom = useRef<string>(undefined);
@@ -57,7 +63,7 @@ export default function OrderForm({ kind }: { kind: keyof typeof KINDS }) {
         partner_id: existing.partner?.id,
         expected_date: existing.expected_date ? dayjs(existing.expected_date) : undefined,
         remark: existing.remark ?? undefined,
-        lines: existing.lines.map((l) => ({ item_id: l.item.id, uom_id: l.uom.id, qty: l.qty_planned })),
+        lines: existing.lines.map((l) => ({ item_id: l.item.id, uom_id: l.uom.id, qty: l.qty_planned, unit_price: l.unit_price ?? null })),
       });
     }
   }, [existing, form]);
@@ -127,12 +133,13 @@ export default function OrderForm({ kind }: { kind: keyof typeof KINDS }) {
         >
           {(fields, { add, remove }, { errors }) => (
             <>
-              <div className="wms-lines">
+              <div className={priced ? "wms-lines wms-lines--priced" : "wms-lines"}>
                 <div className="wms-lines-head">
                   <span>#</span>
                   <span>Item</span>
                   <span>Unit</span>
                   <span>Quantity</span>
+                  {priced && <span>Unit price</span>}
                   <span />
                 </div>
                 {fields.map(({ key, name }, index) => (
@@ -155,6 +162,14 @@ export default function OrderForm({ kind }: { kind: keyof typeof KINDS }) {
                     >
                       <InputNumber placeholder="0" min={0.0001} style={{ width: "100%" }} aria-label={`Quantity, line ${index + 1}`} />
                     </Form.Item>
+                    {priced && (
+                      <Form.Item
+                        name={[name, "unit_price"]}
+                        extra={lines?.[name]?.unit_price != null && lines?.[name]?.qty ? `Amount ${formatMoney((lines[name].qty ?? 0) * (lines[name].unit_price ?? 0))}` : "Per unit, excl. tax"}
+                      >
+                        <InputNumber placeholder="Optional" min={0} precision={4} style={{ width: "100%" }} aria-label={`Unit price, line ${index + 1}`} />
+                      </Form.Item>
+                    )}
                     <Tooltip title="Remove line">
                       <Button type="text" danger icon={<DeleteOutlined />} onClick={() => remove(name)} disabled={fields.length === 1} aria-label={`Remove line ${index + 1}`} />
                     </Tooltip>
@@ -162,6 +177,11 @@ export default function OrderForm({ kind }: { kind: keyof typeof KINDS }) {
                 ))}
               </div>
               <Form.ErrorList errors={errors} />
+              {priced && orderTotal > 0 && (
+                <div style={{ textAlign: "right", margin: "8px 0", fontWeight: 600 }} className="wms-num" data-testid="order-total">
+                  Order total {formatMoney(orderTotal)}
+                </div>
+              )}
               <Button type="dashed" block icon={<PlusOutlined />} onClick={() => add()}>
                 Add line
               </Button>

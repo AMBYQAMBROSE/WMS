@@ -17,6 +17,7 @@ from app.models.document import DocumentHeader, DocumentLine, DocumentLocation
 from app.models.item import Item, ItemBarcode, ItemUomConversion
 from app.models.location import Location
 from app.models.reason_code import ReasonCode
+from app.models.recipe import Recipe, RecipeLine
 from app.models.returnable_asset import ReturnableAssetTxn
 from app.models.stock import StockBalance, StockLedger
 from app.models.user import User
@@ -60,6 +61,14 @@ def delete_item(db: Session, item: Item) -> None:
     ):
         raise ConflictError(f"{what} has stock or stock history, so it cannot be deleted. {INACTIVE_HINT}")
     _refuse_if_docs(what, _doc_numbers(db, t, DocumentLine.item_id == item.id, via_lines=True))
+    recipe = db.scalar(
+        select(Recipe.code)
+        .where(Recipe.tenant_id == t, or_(Recipe.product_item_id == item.id, Recipe.id.in_(select(RecipeLine.recipe_id).where(RecipeLine.item_id == item.id))))
+        .order_by(Recipe.code)
+        .limit(1)
+    )
+    if recipe is not None:
+        raise ConflictError(f"{what} is used by recipe {recipe}, so it cannot be deleted. {INACTIVE_HINT}")
     # Barcodes and unit conversions belong to the item and go with it
     db.execute(delete(ItemBarcode).where(ItemBarcode.tenant_id == t, ItemBarcode.item_id == item.id))
     db.execute(delete(ItemUomConversion).where(ItemUomConversion.tenant_id == t, ItemUomConversion.item_id == item.id))

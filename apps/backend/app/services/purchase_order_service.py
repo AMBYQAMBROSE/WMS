@@ -3,6 +3,8 @@ from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
+from app.core.request_context import current_context
+
 from app.models.document import DocumentHeader, DocumentLine
 from app.repositories.base import check_version
 from app.schemas.document import PurchaseOrderIn, PurchaseOrderLineIn
@@ -63,7 +65,9 @@ class PurchaseOrderService:
         check_version(po, data.row_version, f"Purchase order {po.doc_no}")
         require_status(po, (PO_DRAFT,), "edit")
         get_supplier(self.db, self.tenant_id, data.partner_id)
-        new_lines = self._build_lines(data.lines)
+        # A user who cannot see prices sends none: keep the saved price of each item and unit instead of wiping it
+        kept = None if current_context().can_view_costs else {(l.item_id, l.uom_id): l.unit_price for l in po.lines}
+        new_lines = self._build_lines(data.lines, kept)
 
         po.partner_id = data.partner_id
         po.expected_date = data.expected_date
@@ -96,7 +100,12 @@ class PurchaseOrderService:
         self.db.flush()
         return po
 
-    def _build_lines(self, lines_in: list[PurchaseOrderLineIn]) -> list[DocumentLine]:
+    def _build_lines(
+        self, lines_in: list[PurchaseOrderLineIn], kept_prices: dict | None = None
+    ) -> list[DocumentLine]:
+        """kept_prices: prices by (item, unit) to use instead of the submitted ones (the user may not set prices)"""
+        if kept_prices is None and not current_context().can_view_costs:
+            kept_prices = {}
         lines = []
         for line_no, line in enumerate(lines_in, start=1):
             item = get_active_item(self.db, self.tenant_id, line.item_id)
@@ -111,6 +120,7 @@ class PurchaseOrderService:
                     uom_id=line.uom_id,
                     qty_planned=line.qty,
                     qty_actual=Decimal(0),
+                    unit_price=kept_prices.get((item.id, line.uom_id)) if kept_prices is not None else line.unit_price,
                     created_by=self.user_id,
                     updated_by=self.user_id,
                 )

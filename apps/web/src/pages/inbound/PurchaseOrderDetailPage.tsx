@@ -6,7 +6,7 @@ import { apiClient } from "@/api/client";
 import { useCan } from "@/api/me";
 import type { DocumentSummary } from "@/api/types";
 import StatusTag from "@/components/StatusTag";
-import { DESC_COLUMNS, DetailSkeleton, DocTitle, ErrorState, QtyProgress, emptyLocale, formatQty } from "@/components/ui";
+import { DESC_COLUMNS, DetailSkeleton, DocTitle, ErrorState, QtyProgress, emptyLocale, formatMoney, formatPrice, formatQty } from "@/components/ui";
 import { PurchaseOrderSteps } from "@/components/workflows";
 import {
   ActionButton,
@@ -31,6 +31,8 @@ export default function PurchaseOrderDetailPage() {
   if (!po) return <ErrorState title="Could not load this purchase order" error={error} onRetry={() => refetch()} back={{ to: "/purchase-orders", label: "Back to purchase orders" }} />;
   const run = (name: string) => () => action.mutate(name);
   const receivable = po.status === "CONFIRMED" || po.status === "PARTIALLY_RECEIVED";
+  const showCosts = can("cost.view");
+  const total = po.lines.reduce((sum, l) => sum + l.qty_planned * (l.unit_price ?? 0), 0);
 
   return (
     <Space orientation="vertical" style={{ width: "100%" }}>
@@ -65,6 +67,7 @@ export default function PurchaseOrderDetailPage() {
           <Descriptions.Item label="Supplier">{po.partner?.code} {po.partner?.name}</Descriptions.Item>
           <Descriptions.Item label="Expected arrival">{po.expected_date ?? <span className="wms-empty-value">Not set</span>}</Descriptions.Item>
           <Descriptions.Item label="Created">{formatDateTime(po.created_at)}</Descriptions.Item>
+          {showCosts && <Descriptions.Item label="Order value">{total ? formatMoney(total) : <span className="wms-empty-value">No prices</span>}</Descriptions.Item>}
           <Descriptions.Item label="Remark" span="filled">{po.remark || <span className="wms-empty-value">—</span>}</Descriptions.Item>
         </Descriptions>
       </Card>
@@ -76,6 +79,12 @@ export default function PurchaseOrderDetailPage() {
             { title: "Ordered", dataIndex: "qty_planned", align: "right", render: formatQty },
             { title: "Received", key: "received", render: (_, l) => <QtyProgress done={l.qty_actual} total={l.qty_planned} label="Received" /> },
             { title: "Open", align: "right", render: (_, l) => formatQty(Math.max(l.qty_planned - l.qty_actual, 0)) },
+            ...(showCosts
+              ? [
+                  { title: "Unit price", align: "right" as const, render: (_: unknown, l: (typeof po.lines)[number]) => formatPrice(l.unit_price) },
+                  { title: "Amount", align: "right" as const, render: (_: unknown, l: (typeof po.lines)[number]) => (l.unit_price == null ? "—" : formatMoney(l.qty_planned * l.unit_price)) },
+                ]
+              : []),
           ]}
         />
       </Card>

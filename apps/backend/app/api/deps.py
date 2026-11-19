@@ -50,12 +50,14 @@ def load_current_user(db: Session, token: str) -> CurrentUser:
 
     context = current_context()
     context.user_id, context.username, context.tenant_id = user.id, user.username, user.tenant_id
+    permissions = load_permissions(db, user.id)
+    context.can_view_costs = "cost.view" in permissions
     return CurrentUser(
         id=user.id,
         tenant_id=user.tenant_id,
         username=user.username,
         display_name=user.display_name,
-        permissions=load_permissions(db, user.id),
+        permissions=permissions,
         partner_id=user.partner_id,
     )
 

@@ -60,6 +60,8 @@ const MASTER_KEYS: Record<string, string[]> = {
   integration_connector: ["integration"],
   returnable_asset_type: ["returnable-assets"],
   returnable_asset_txn: ["returnable-assets"],
+  recipe: ["recipes"],
+  recipe_line: ["recipes"],
 };
 const DOCUMENT_TYPES = new Set(["document", "document_line", "shipment_info", "count_entry"]);
 // Documents whose posting changes the progress shown on their source order
@@ -85,7 +87,8 @@ export function keysFor(events: ChangeEvent[]): Set<string> | "all" {
       const path = e.doc_type ? DOC_PATHS[e.doc_type] : undefined;
       if (path) keys.add(path);
       for (const k of RELATED[e.doc_type ?? ""] ?? []) keys.add(k);
-      ["stock", "reports"].forEach((k) => keys.add(k));
+      // Documents move stock, so recipe availability changes too ("analytics", the slow trends, refresh on their own timer)
+      ["stock", "reports", "recipes", "payables"].forEach((k) => keys.add(k));
     } else {
       for (const k of MASTER_KEYS[e.type] ?? []) keys.add(k);
     }

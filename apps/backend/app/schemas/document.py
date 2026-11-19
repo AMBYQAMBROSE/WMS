@@ -5,11 +5,22 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, PlainSerializer
 
+from app.core.request_context import current_context
 from app.schemas.versioning import ExpectedVersion
 
 # Quantities are Decimal in the database and JSON would serialize them as strings; convert them to numbers for the frontend
 Qty = Annotated[Decimal, PlainSerializer(float, return_type=float, when_used="json")]
 PositiveQty = Annotated[Decimal, Field(gt=0, max_digits=18, decimal_places=4)]
+
+
+def _cost_or_hidden(value: Decimal | None) -> float | None:
+    """Prices and values reach only users with cost.view; everyone else gets null (also inside documents, prints, PDA)"""
+    return float(value) if value is not None and current_context().can_view_costs else None
+
+
+# A purchase price or stock value: serialized as a number, or null for users without cost.view
+Price = Annotated[Decimal | None, PlainSerializer(_cost_or_hidden, return_type=float | None)]
+UnitPriceIn = Annotated[Decimal, Field(ge=0, max_digits=18, decimal_places=6)]
 
 
 class _Orm(BaseModel):
@@ -67,6 +78,8 @@ class DocumentLineRead(_Orm):
     confirmed_at: datetime | None = None
     # Shipment lines: quantity scanned piece by piece while loading
     qty_checked: Qty = Decimal(0)
+    # Purchase order / goods receipt lines: price per unit of this line (null without a price or without cost.view)
+    unit_price: Price = None
 
 
 class ReasonBrief(_Orm):
@@ -89,6 +102,9 @@ class DocumentSummary(_Orm):
     remark: str | None
     created_at: datetime
     row_version: int
+    # Posted goods receipts: when the supplier is due to be paid, and when accounts marked it settled
+    payment_due_date: date | None = None
+    settled_on: date | None = None
 
 
 class DocumentRead(DocumentSummary):
@@ -99,6 +115,8 @@ class PurchaseOrderLineIn(BaseModel):
     item_id: uuid.UUID
     uom_id: uuid.UUID
     qty: PositiveQty
+    # Per unit of uom_id, excluding tax. Ignored (the saved price is kept) when the user lacks cost.view
+    unit_price: UnitPriceIn | None = None
 
 
 class PurchaseOrderIn(ExpectedVersion):

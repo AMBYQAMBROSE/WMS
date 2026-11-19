@@ -2012,6 +2012,200 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports/analytics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Analytics
+         * @description Dashboard trend analysis: purchases and losses per month over three years, the biggest SKUs this month and year
+         *     against the same dates last year and the three-year average, and the top suppliers with credit terms and payables.
+         *     Values are null without cost.view. Cached for a few minutes (it reads years of ledger).
+         */
+        get: operations["analytics_api_v1_reports_analytics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/pricing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Pricing
+         * @description Purchase price trend per SKU (average cost per base unit and month); for costing, cost.view only
+         */
+        get: operations["pricing_api_v1_reports_pricing_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/stock-on-hand": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stock On Hand
+         * @description Real-time stock on hand as CSV, for finance or anyone who asks: every balance by location and batch, or one row per
+         *     item. With cost.view it adds the average purchase cost and the stock value.
+         */
+        get: operations["stock_on_hand_api_v1_reports_stock_on_hand_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payables": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Payables
+         * @description Posted goods receipts with their due date and value; open ones most urgent first
+         */
+        get: operations["list_payables_api_v1_payables_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payables/{grn_id}/settle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Settle Payable */
+        post: operations["settle_payable_api_v1_payables__grn_id__settle_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payables/{grn_id}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reopen Payable */
+        post: operations["reopen_payable_api_v1_payables__grn_id__reopen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recipes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Recipes */
+        get: operations["list_recipes_api_v1_recipes_get"];
+        put?: never;
+        /** Create Recipe */
+        post: operations["create_recipe_api_v1_recipes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recipes/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Recipe Overview
+         * @description Active recipes with cost per unit (cost.view) and how many units current stock can make
+         */
+        get: operations["recipe_overview_api_v1_recipes_overview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recipes/{recipe_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Recipe */
+        get: operations["get_recipe_api_v1_recipes__recipe_id__get"];
+        /** Update Recipe */
+        put: operations["update_recipe_api_v1_recipes__recipe_id__put"];
+        post?: never;
+        /** Delete Recipe */
+        delete: operations["delete_recipe_api_v1_recipes__recipe_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recipes/{recipe_id}/costing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Recipe Costing
+         * @description Cost components (latest purchase cost of each), cost share, and how many units each component's stock allows
+         */
+        get: operations["recipe_costing_api_v1_recipes__recipe_id__costing_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/imports": {
         parameters: {
             query?: never;
@@ -2628,6 +2822,38 @@ export interface components {
             /** Shortages */
             shortages: components["schemas"]["ShortageRead"][];
         };
+        /** Analytics */
+        Analytics: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            periods: components["schemas"]["AnalyticsPeriods"];
+            /** Months */
+            months: components["schemas"]["MonthPoint"][];
+            totals: components["schemas"]["AnalyticsTotals"];
+            purchases: components["schemas"]["ItemTrendPage"];
+            losses: components["schemas"]["ItemTrendPage"];
+            suppliers: components["schemas"]["SupplierSummary"];
+        };
+        /**
+         * AnalyticsPeriods
+         * @description mtd / ytd: this month and year to date; *_ly: the same dates a year earlier; three_years: the three full years before this one
+         */
+        AnalyticsPeriods: {
+            mtd: components["schemas"]["PeriodRange"];
+            mtd_ly: components["schemas"]["PeriodRange"];
+            ytd: components["schemas"]["PeriodRange"];
+            ytd_ly: components["schemas"]["PeriodRange"];
+            last_year: components["schemas"]["PeriodRange"];
+            three_years: components["schemas"]["PeriodRange"];
+        };
+        /** AnalyticsTotals */
+        AnalyticsTotals: {
+            purchases: components["schemas"]["PeriodTotals"];
+            losses: components["schemas"]["PeriodTotals"];
+        };
         /** AskIn */
         AskIn: {
             /** Question */
@@ -2921,6 +3147,8 @@ export interface components {
             contact_phone?: string | null;
             /** Address */
             address?: string | null;
+            /** Credit Terms Days */
+            credit_terms_days?: number | null;
             /**
              * Is Active
              * @default true
@@ -2944,6 +3172,8 @@ export interface components {
             contact_phone?: string | null;
             /** Address */
             address?: string | null;
+            /** Credit Terms Days */
+            credit_terms_days?: number | null;
             /**
              * Is Active
              * @default true
@@ -2974,6 +3204,8 @@ export interface components {
             contact_phone?: string | null;
             /** Address */
             address?: string | null;
+            /** Credit Terms Days */
+            credit_terms_days?: number | null;
             /** Is Active */
             is_active?: boolean | null;
         };
@@ -3280,6 +3512,10 @@ export interface components {
             created_at: string;
             /** Row Version */
             row_version: number;
+            /** Payment Due Date */
+            payment_due_date?: string | null;
+            /** Settled On */
+            settled_on?: string | null;
             /** Count Locations */
             count_locations: components["schemas"]["CountLocationRead"][];
             /** Lines */
@@ -3316,6 +3552,7 @@ export interface components {
             stock: components["schemas"]["StockStats"];
             /** Trend */
             trend: components["schemas"]["DailyFlow"][];
+            stock_alerts: components["schemas"]["StockAlerts"];
         };
         /** DatabaseStatus */
         DatabaseStatus: {
@@ -3408,6 +3645,8 @@ export interface components {
              * @default 0
              */
             qty_checked: number;
+            /** Unit Price */
+            unit_price?: number | null;
         };
         /** DocumentRead */
         DocumentRead: {
@@ -3439,6 +3678,10 @@ export interface components {
             created_at: string;
             /** Row Version */
             row_version: number;
+            /** Payment Due Date */
+            payment_due_date?: string | null;
+            /** Settled On */
+            settled_on?: string | null;
             /** Lines */
             lines: components["schemas"]["DocumentLineRead"][];
         };
@@ -3472,6 +3715,10 @@ export interface components {
             created_at: string;
             /** Row Version */
             row_version: number;
+            /** Payment Due Date */
+            payment_due_date?: string | null;
+            /** Settled On */
+            settled_on?: string | null;
         };
         /** DocumentTrace */
         DocumentTrace: {
@@ -3735,6 +3982,8 @@ export interface components {
             is_serial_managed: boolean;
             /** Shelf Life Days */
             shelf_life_days?: number | null;
+            /** Min Stock Qty */
+            min_stock_qty?: number | string | null;
             /**
              * Is Active
              * @default true
@@ -3811,6 +4060,8 @@ export interface components {
             is_serial_managed: boolean;
             /** Shelf Life Days */
             shelf_life_days?: number | null;
+            /** Min Stock Qty */
+            min_stock_qty?: number | null;
             /**
              * Is Active
              * @default true
@@ -3828,6 +4079,37 @@ export interface components {
              * @default []
              */
             packings: components["schemas"]["ItemPackingRead"][];
+        };
+        /** ItemTrendPage */
+        ItemTrendPage: {
+            /** Total */
+            total: number;
+            /** Rows */
+            rows: components["schemas"]["ItemTrendRow"][];
+        };
+        /**
+         * ItemTrendRow
+         * @description Base-unit quantities per period for one SKU; packing is its largest packing unit, for showing them in cartons/bales
+         */
+        ItemTrendRow: {
+            item: components["schemas"]["ItemBrief"];
+            packing: components["schemas"]["PackingUnit"] | null;
+            /** Mtd */
+            mtd: number;
+            /** Mtd Ly */
+            mtd_ly: number;
+            /** Ytd */
+            ytd: number;
+            /** Ytd Ly */
+            ytd_ly: number;
+            /** Last Year */
+            last_year: number;
+            /** Avg 3Y */
+            avg_3y: number;
+            /** Ytd Value */
+            ytd_value?: number | null;
+            /** Ytd Ly Value */
+            ytd_ly_value?: number | null;
         };
         /** ItemUpdate */
         ItemUpdate: {
@@ -3850,6 +4132,8 @@ export interface components {
             is_serial_managed?: boolean | null;
             /** Shelf Life Days */
             shelf_life_days?: number | null;
+            /** Min Stock Qty */
+            min_stock_qty?: number | string | null;
             /** Is Active */
             is_active?: boolean | null;
             /** Packings */
@@ -4671,6 +4955,19 @@ export interface components {
             features: string[];
             partner?: components["schemas"]["PartnerBrief"] | null;
         };
+        /** MonthPoint */
+        MonthPoint: {
+            /** Month */
+            month: string;
+            /** Purchased Qty */
+            purchased_qty: number;
+            /** Loss Qty */
+            loss_qty: number;
+            /** Purchased Value */
+            purchased_value?: number | null;
+            /** Loss Value */
+            loss_value?: number | null;
+        };
         /**
          * OccupancyArea
          * @description Bins grouped by their zone (or by warehouse for bins not under a zone)
@@ -4699,6 +4996,12 @@ export interface components {
             qty_on_hand: number;
             /** Capacity Qty */
             capacity_qty: number | null;
+        };
+        /** PackingUnit */
+        PackingUnit: {
+            uom: components["schemas"]["UomBrief"];
+            /** Factor */
+            factor: number;
         };
         /** PartnerBrief */
         PartnerBrief: {
@@ -4738,6 +5041,91 @@ export interface components {
         PasswordReset: {
             /** Password */
             password: string;
+        };
+        /** PayablePage */
+        PayablePage: {
+            /** Total */
+            total: number;
+            /** Outstanding */
+            outstanding?: number | null;
+            /** Overdue */
+            overdue?: number | null;
+            /** Rows */
+            rows: components["schemas"]["PayableRow"][];
+        };
+        /** PayableRow */
+        PayableRow: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Doc No */
+            doc_no: string;
+            partner: components["schemas"]["PartnerBrief"];
+            /**
+             * Posted At
+             * Format: date-time
+             */
+            posted_at: string;
+            /**
+             * Payment Due Date
+             * Format: date
+             */
+            payment_due_date: string;
+            /** Settled On */
+            settled_on: string | null;
+            /** Credit Terms Days */
+            credit_terms_days: number | null;
+            /** Value */
+            value?: number | null;
+            /** Days Overdue */
+            days_overdue: number;
+            /** Status */
+            status: string;
+        };
+        /** PeriodRange */
+        PeriodRange: {
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
+            /**
+             * End
+             * Format: date
+             */
+            end: string;
+        };
+        /**
+         * PeriodTotals
+         * @description All SKUs together per period, in base units; *_value at purchase price (losses: average cost), null without cost.view
+         */
+        PeriodTotals: {
+            /** Mtd */
+            mtd: number;
+            /** Mtd Ly */
+            mtd_ly: number;
+            /** Ytd */
+            ytd: number;
+            /** Ytd Ly */
+            ytd_ly: number;
+            /** Last Year */
+            last_year: number;
+            /** Avg 3Y */
+            avg_3y: number;
+            /** Mtd Value */
+            mtd_value?: number | null;
+            /** Mtd Ly Value */
+            mtd_ly_value?: number | null;
+            /** Ytd Value */
+            ytd_value?: number | null;
+            /** Ytd Ly Value */
+            ytd_ly_value?: number | null;
+            /** Last Year Value */
+            last_year_value?: number | null;
+            /** Avg 3Y Value */
+            avg_3y_value?: number | null;
         };
         /** PermissionRead */
         PermissionRead: {
@@ -4786,6 +5174,8 @@ export interface components {
              * @default 0
              */
             qty_checked: number;
+            /** Unit Price */
+            unit_price?: number | null;
             confirmer: components["schemas"]["UserBrief"] | null;
         };
         /** PickRead */
@@ -4818,6 +5208,10 @@ export interface components {
             created_at: string;
             /** Row Version */
             row_version: number;
+            /** Payment Due Date */
+            payment_due_date?: string | null;
+            /** Settled On */
+            settled_on?: string | null;
             /** Lines */
             lines: components["schemas"]["PickLineRead"][];
         };
@@ -4872,6 +5266,42 @@ export interface components {
             /** Value */
             value?: unknown;
         };
+        /** PricePoint */
+        PricePoint: {
+            /** Month */
+            month: string;
+            /** Avg Cost */
+            avg_cost?: number | null;
+            /** Qty */
+            qty: number;
+        };
+        /** Pricing */
+        Pricing: {
+            /** Months */
+            months: string[];
+            /** Rows */
+            rows: components["schemas"]["PricingRow"][];
+        };
+        /** PricingRow */
+        PricingRow: {
+            item: components["schemas"]["ItemBrief"];
+            /** Latest Cost */
+            latest_cost?: number | null;
+            /** Latest At */
+            latest_at: string | null;
+            /** Avg Cost Ytd */
+            avg_cost_ytd?: number | null;
+            /** Cost Year Ago */
+            cost_year_ago?: number | null;
+            /** Change Pct */
+            change_pct: number | null;
+            /** Min Cost */
+            min_cost?: number | null;
+            /** Max Cost */
+            max_cost?: number | null;
+            /** Points */
+            points: components["schemas"]["PricePoint"][];
+        };
         /** PurchaseOrderIn */
         PurchaseOrderIn: {
             /**
@@ -4905,6 +5335,8 @@ export interface components {
             uom_id: string;
             /** Qty */
             qty: number | string;
+            /** Unit Price */
+            unit_price?: number | string | null;
         };
         /**
          * PutawayPutIn
@@ -5021,6 +5453,159 @@ export interface components {
             qty: number;
             /** Reason */
             reason: string;
+        };
+        /** RecipeCostLine */
+        RecipeCostLine: {
+            /** Line No */
+            line_no: number;
+            item: components["schemas"]["ItemBrief"];
+            uom: components["schemas"]["UomBrief"];
+            /** Qty */
+            qty: number;
+            /** Base Qty */
+            base_qty: number;
+            /** Qty Per Unit */
+            qty_per_unit: number;
+            /** Available */
+            available: number;
+            /** Can Make */
+            can_make: number | null;
+            /** Unit Cost */
+            unit_cost?: number | null;
+            /** Cost Source */
+            cost_source: string | null;
+            /** Cost Per Unit */
+            cost_per_unit?: number | null;
+            /** Share Pct */
+            share_pct: number | null;
+        };
+        /** RecipeCosting */
+        RecipeCosting: {
+            /**
+             * Recipe Id
+             * Format: uuid
+             */
+            recipe_id: string;
+            /** Complete */
+            complete: boolean;
+            /** Missing Costs */
+            missing_costs: string[];
+            /** Unit Cost */
+            unit_cost?: number | null;
+            /** Batch Cost */
+            batch_cost?: number | null;
+            /** Can Make */
+            can_make: number;
+            bottleneck: components["schemas"]["ItemBrief"] | null;
+            /** Lines */
+            lines: components["schemas"]["RecipeCostLine"][];
+        };
+        /** RecipeIn */
+        RecipeIn: {
+            /**
+             * Row Version
+             * @description The row_version of the record as you loaded it. If someone changed the record since, the save is refused with 409 instead of silently overwriting their change. Omit to save without the check.
+             */
+            row_version?: number | null;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /**
+             * Product Item Id
+             * Format: uuid
+             */
+            product_item_id: string;
+            /** Output Qty */
+            output_qty: number | string;
+            /** Remark */
+            remark?: string | null;
+            /**
+             * Is Active
+             * @default true
+             */
+            is_active: boolean;
+            /** Lines */
+            lines: components["schemas"]["RecipeLineIn"][];
+        };
+        /** RecipeLineIn */
+        RecipeLineIn: {
+            /**
+             * Item Id
+             * Format: uuid
+             */
+            item_id: string;
+            /**
+             * Uom Id
+             * Format: uuid
+             */
+            uom_id: string;
+            /** Qty */
+            qty: number | string;
+        };
+        /** RecipeLineRead */
+        RecipeLineRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Line No */
+            line_no: number;
+            item: components["schemas"]["ItemBrief"];
+            uom: components["schemas"]["UomBrief"];
+            /** Qty */
+            qty: number;
+        };
+        /** RecipeOverview */
+        RecipeOverview: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            product: components["schemas"]["ItemBrief"];
+            /** Unit Cost */
+            unit_cost?: number | null;
+            /** Complete */
+            complete: boolean;
+            /** Can Make */
+            can_make: number;
+            bottleneck: components["schemas"]["ItemBrief"] | null;
+            /** Components */
+            components: number;
+        };
+        /** RecipeRead */
+        RecipeRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            product: components["schemas"]["ItemBrief"];
+            /** Output Qty */
+            output_qty: number;
+            /** Remark */
+            remark: string | null;
+            /** Is Active */
+            is_active: boolean;
+            /** Row Version */
+            row_version: number;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Lines */
+            lines: components["schemas"]["RecipeLineRead"][];
         };
         /** RecountIn */
         RecountIn: {
@@ -5308,8 +5893,20 @@ export interface components {
             created_at: string;
             /** Row Version */
             row_version: number;
+            /** Payment Due Date */
+            payment_due_date?: string | null;
+            /** Settled On */
+            settled_on?: string | null;
             /** Lines */
             lines: components["schemas"]["SalesOrderLineRead"][];
+        };
+        /** SettleIn */
+        SettleIn: {
+            /**
+             * Settled On
+             * Format: date
+             */
+            settled_on: string;
         };
         /**
          * ShipmentCheckIn
@@ -5400,6 +5997,10 @@ export interface components {
             created_at: string;
             /** Row Version */
             row_version: number;
+            /** Payment Due Date */
+            payment_due_date?: string | null;
+            /** Settled On */
+            settled_on?: string | null;
             /** Lines */
             lines: components["schemas"]["DocumentLineRead"][];
             shipment_info: components["schemas"]["ShipmentInfoRead"] | null;
@@ -5445,6 +6046,34 @@ export interface components {
             unallocated: number;
             /** Available */
             available: number;
+        };
+        /** StockAlertRow */
+        StockAlertRow: {
+            item: components["schemas"]["ItemBrief"];
+            /** Level */
+            level: string;
+            /** Min Stock Qty */
+            min_stock_qty: number;
+            /** Available */
+            available: number;
+            /** On Hand */
+            on_hand: number;
+            /** Shortfall */
+            shortfall: number;
+        };
+        /**
+         * StockAlerts
+         * @description Items under their stock buffer (Item.min_stock_qty), most urgent first; rows holds the first 50
+         */
+        StockAlerts: {
+            /** Alarm Count */
+            alarm_count: number;
+            /** Out Count */
+            out_count: number;
+            /** Warning Count */
+            warning_count: number;
+            /** Rows */
+            rows: components["schemas"]["StockAlertRow"][];
         };
         /** StockBalanceRead */
         StockBalanceRead: {
@@ -5530,6 +6159,47 @@ export interface components {
             expired_qty: number;
             /** Expiring 30D Qty */
             expiring_30d_qty: number;
+        };
+        /** SupplierRow */
+        SupplierRow: {
+            partner: components["schemas"]["PartnerBrief"];
+            /** Credit Terms Days */
+            credit_terms_days: number | null;
+            /** Ytd Qty */
+            ytd_qty: number;
+            /** Ytd Value */
+            ytd_value?: number | null;
+            /** Ytd Ly Value */
+            ytd_ly_value?: number | null;
+            /** Share Pct */
+            share_pct?: number | null;
+            /** Receipts */
+            receipts: number;
+            /** Outstanding */
+            outstanding?: number | null;
+            /** Overdue */
+            overdue?: number | null;
+            /** Open Receipts */
+            open_receipts: number;
+            /** Overdue Receipts */
+            overdue_receipts: number;
+            /** Avg Days To Settle */
+            avg_days_to_settle: number | null;
+            /** On Time Pct */
+            on_time_pct: number | null;
+        };
+        /** SupplierSummary */
+        SupplierSummary: {
+            /** Rows */
+            rows: components["schemas"]["SupplierRow"][];
+            /** Outstanding */
+            outstanding?: number | null;
+            /** Overdue */
+            overdue?: number | null;
+            /** Open Receipts */
+            open_receipts: number;
+            /** Overdue Receipts */
+            overdue_receipts: number;
         };
         /** SystemStatus */
         SystemStatus: {
@@ -10583,6 +11253,397 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PartnerLedgerPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    analytics_api_v1_reports_analytics_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Analytics"];
+                };
+            };
+        };
+    };
+    pricing_api_v1_reports_pricing_get: {
+        parameters: {
+            query?: {
+                item_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Pricing"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stock_on_hand_api_v1_reports_stock_on_hand_get: {
+        parameters: {
+            query?: {
+                by?: "location" | "item";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_payables_api_v1_payables_get: {
+        parameters: {
+            query?: {
+                status?: ("open" | "overdue" | "settled") | null;
+                partner_id?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayablePage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    settle_payable_api_v1_payables__grn_id__settle_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                grn_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SettleIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reopen_payable_api_v1_payables__grn_id__reopen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                grn_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_recipes_api_v1_recipes_get: {
+        parameters: {
+            query?: {
+                keyword?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_recipe_api_v1_recipes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecipeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    recipe_overview_api_v1_recipes_overview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeOverview"][];
+                };
+            };
+        };
+    };
+    get_recipe_api_v1_recipes__recipe_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recipe_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_recipe_api_v1_recipes__recipe_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recipe_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecipeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_recipe_api_v1_recipes__recipe_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recipe_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    recipe_costing_api_v1_recipes__recipe_id__costing_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recipe_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeCosting"];
                 };
             };
             /** @description Validation Error */

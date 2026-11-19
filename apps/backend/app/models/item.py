@@ -28,6 +28,8 @@ class Item(Base, TenantScopedMixin):
     is_expiry_managed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_serial_managed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     shelf_life_days: Mapped[int | None] = mapped_column(nullable=True)
+    # Stock buffer in base units: the dashboard raises an alarm when available stock (on hand - allocated) falls below it
+    min_stock_qty: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     base_uom: Mapped[Uom] = relationship(foreign_keys=[base_uom_id], lazy="joined")

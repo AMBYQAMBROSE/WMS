@@ -1,7 +1,7 @@
 import uuid
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.versioning import ExpectedVersion
 
@@ -15,6 +15,8 @@ class BusinessPartnerBase(BaseModel):
     contact_name: str | None = None
     contact_phone: str | None = None
     address: str | None = None
+    # Suppliers: days from receipt to payment due (e.g. 30); null = due on receipt
+    credit_terms_days: int | None = Field(default=None, ge=0, le=3650)
     is_active: bool = True
 
 
@@ -28,6 +30,7 @@ class BusinessPartnerUpdate(ExpectedVersion):
     contact_name: str | None = None
     contact_phone: str | None = None
     address: str | None = None
+    credit_terms_days: int | None = Field(default=None, ge=0, le=3650)
     is_active: bool | None = None
 
 

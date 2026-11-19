@@ -34,6 +34,8 @@ class ItemBase(BaseModel):
     is_expiry_managed: bool = False
     is_serial_managed: bool = False
     shelf_life_days: int | None = None
+    # Stock buffer in base units: the dashboard alarms when available stock falls below it; null = no alarm
+    min_stock_qty: Annotated[Decimal, Field(ge=0, max_digits=18, decimal_places=4)] | None = None
     is_active: bool = True
 
 
@@ -49,6 +51,7 @@ class ItemUpdate(ExpectedVersion):
     is_expiry_managed: bool | None = None
     is_serial_managed: bool | None = None
     shelf_life_days: int | None = None
+    min_stock_qty: Annotated[Decimal, Field(ge=0, max_digits=18, decimal_places=4)] | None = None
     is_active: bool | None = None
     # The full list of packing units; omitted (or null) leaves them as they are
     packings: list[ItemPackingIn] | None = Field(default=None, max_length=MAX_PACKINGS)
@@ -56,6 +59,7 @@ class ItemUpdate(ExpectedVersion):
 
 class ItemRead(ItemBase):
     row_version: int
+    min_stock_qty: Qty | None = None
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID

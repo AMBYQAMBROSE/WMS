@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import { PlusOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Checkbox, Form, Input, Select, Space, Table } from "antd";
+import { Button, Checkbox, Form, Input, InputNumber, Select, Space, Table } from "antd";
 
 import { apiClient } from "@/api/client";
 import { useCan } from "@/api/me";
@@ -29,6 +29,12 @@ export default function BusinessPartnersPage() {
     { title: "Code", dataIndex: "code", render: (v: string) => <span className="wms-mono">{v}</span> },
     { title: "Name", dataIndex: "name" },
     { title: "Type", dataIndex: "partner_type", render: (v: string) => <Pill tone={v === "customer" ? "blue" : v === "supplier" ? "violet" : "cyan"}>{PARTNER_TYPE_LABELS[v] ?? v}</Pill> },
+    {
+      title: "Credit terms",
+      dataIndex: "credit_terms_days",
+      render: (v: number | null, p: BusinessPartner) =>
+        p.partner_type === "customer" ? <span className="wms-empty-value">—</span> : v ? `${v} days` : "On receipt",
+    },
     { title: "Contact", dataIndex: "contact_name" },
     { title: "Phone", dataIndex: "contact_phone" },
     { title: "Active", dataIndex: "is_active", render: (v: boolean) => <YesNo value={v} /> },
@@ -91,6 +97,19 @@ export default function BusinessPartnersPage() {
               <Select
                 options={Object.entries(PARTNER_TYPE_LABELS).map(([value, label]) => ({ value, label }))}
               />
+            </Form.Item>
+            <Form.Item noStyle dependencies={["partner_type"]}>
+              {({ getFieldValue }) =>
+                getFieldValue("partner_type") !== "customer" && (
+                  <Form.Item
+                    name="credit_terms_days"
+                    label="Credit terms (days)"
+                    extra="Days from receipt to payment due. Each posted goods receipt gets its due date from this; empty means due on receipt."
+                  >
+                    <InputNumber min={0} max={3650} precision={0} placeholder="Due on receipt" suffix="days" style={{ width: "100%" }} />
+                  </Form.Item>
+                )
+              }
             </Form.Item>
             <Form.Item name="contact_name" label="Contact">
               <Input />

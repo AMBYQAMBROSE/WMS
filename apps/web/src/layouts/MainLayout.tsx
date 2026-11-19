@@ -73,6 +73,7 @@ const MENU: MenuGroup[] = [
       { key: "/reports/picker-kpi", label: "Picker performance", description: "Lines and quantities picked per operator", perm: "report.read" },
       { key: "/reports/expiry", label: "Expiring stock", description: "Expired batches and those approaching their expiry date", perm: "report.read" },
       { key: "/reports/partner-ledger", label: "Partner ledger", description: "Quantities received from and shipped to each partner", perm: "report.read" },
+      { key: "/payables", label: "Supplier payables", description: "Receipts due for payment by credit terms, and settlement", perm: "cost.view" },
     ],
   },
   {
@@ -131,6 +132,7 @@ const MENU: MenuGroup[] = [
       { key: "/items", label: "Items", description: "SKUs, barcodes, units and tracking rules", perm: "item.read" },
       { key: "/locations", label: "Locations", description: "Warehouses, zones, racks and bins", perm: "location.read" },
       { key: "/reason-codes", label: "Reason codes", description: "Why stock was adjusted or returned", perm: "reason_code.read" },
+      { key: "/recipes", label: "Recipes", description: "Components that make a product: cost per unit and what stock can make", perm: "recipe.read", feature: "RECIPES" },
     ],
   },
   {

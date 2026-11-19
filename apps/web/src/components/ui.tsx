@@ -36,6 +36,18 @@ export const emptyLocale = (text: string) => ({ emptyText: <div className="wms-t
 export const formatQty = (v: number | null | undefined) =>
   v === null || v === undefined ? "" : v.toLocaleString(undefined, { maximumFractionDigits: 4 });
 
+/** Amounts (values of stock, receipts, payables): two decimals. Null (no price, or no cost.view) shows a dash */
+export const formatMoney = (v: number | null | undefined) =>
+  v === null || v === undefined ? "—" : v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/** Unit prices and costs: two to four decimals, so small per-piece costs stay readable */
+export const formatPrice = (v: number | null | undefined) =>
+  v === null || v === undefined ? "—" : v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+
+/** Change in percent with its sign, e.g. "+12.5%"; null when there is nothing to compare with */
+export const formatPct = (v: number | null | undefined) =>
+  v === null || v === undefined || !Number.isFinite(v) ? "—" : `${v > 0 ? "+" : ""}${v.toLocaleString(undefined, { maximumFractionDigits: 1 })}%`;
+
 export function PageHeader({
   title,
   description,

@@ -57,6 +57,8 @@ const TurnoverReportPage = lazy(() => import("@/pages/reports/TurnoverReportPage
 const PickerKpiPage = lazy(() => import("@/pages/reports/PickerKpiPage"));
 const ExpiryReportPage = lazy(() => import("@/pages/reports/ExpiryReportPage"));
 const PartnerLedgerPage = lazy(() => import("@/pages/reports/PartnerLedgerPage"));
+const PayablesPage = lazy(() => import("@/pages/reports/PayablesPage"));
+const RecipesPage = lazy(() => import("@/pages/RecipesPage"));
 const RepacksPage = lazy(() => import("@/pages/inventory/RepacksPage"));
 const RepackCreatePage = lazy(() => import("@/pages/inventory/RepackCreatePage"));
 const RepackDetailPage = lazy(() => import("@/pages/inventory/RepackDetailPage"));
@@ -129,6 +131,8 @@ export default function App() {
               <Route path="reports/picker-kpi" element={<PickerKpiPage />} />
               <Route path="reports/expiry" element={<ExpiryReportPage />} />
               <Route path="reports/partner-ledger" element={<PartnerLedgerPage />} />
+              <Route path="payables" element={<PayablesPage />} />
+              <Route path="recipes" element={<RecipesPage />} />
               <Route path="repacks" element={<RepacksPage />} />
               <Route path="repacks/new" element={<RepackCreatePage />} />
               <Route path="repacks/:id" element={<RepackDetailPage />} />

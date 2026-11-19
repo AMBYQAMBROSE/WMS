@@ -73,6 +73,10 @@ class DocumentHeader(Base, TenantScopedMixin):
     # Document-level location, e.g. the receiving staging location of a GRN
     location_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("location.id"), nullable=True)
     expected_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # Supplier payables (posted goods receipts): due = posting date + the supplier's credit terms, fixed at posting so
+    # later changes to the terms do not move old due dates; settled_on is set when accounts mark the receipt as paid
+    payment_due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    settled_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     posted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     remark: Mapped[str | None] = mapped_column(Unicode(400), nullable=True)
     # For documents that need a reason, such as adjustments
@@ -139,6 +143,9 @@ class DocumentLine(Base, TenantScopedMixin):
     # Time and user of line-by-line confirmation (count line: counted this round; pick line: picked); empty means not done yet
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     confirmed_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("user.id"), nullable=True)
+    # Purchase price per unit of this line (uom_id), excluding tax: entered on purchase order lines; a goods receipt line
+    # copies it from its order line, converted to the receipt line's unit, when the receipt is posted. Null = no price
+    unit_price: Mapped[Decimal | None] = mapped_column(Numeric(18, 6), nullable=True)
 
     document: Mapped[DocumentHeader] = relationship(back_populates="lines")
     item: Mapped[Item] = relationship(lazy="joined")

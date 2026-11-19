@@ -10,6 +10,7 @@ from app.api.v1 import (
     auth,
     business_partners,
     cart,
+    costing,
     cycle_counts,
     document_print,
     events,
@@ -68,6 +69,8 @@ api_router.include_router(extensions.asset_router)
 api_router.include_router(features.router)
 api_router.include_router(integration.router)
 api_router.include_router(reports.router)
+api_router.include_router(costing.payable_router)
+api_router.include_router(costing.recipe_router)
 api_router.include_router(imports.router)
 api_router.include_router(stock.router)
 api_router.include_router(trace.map_router)

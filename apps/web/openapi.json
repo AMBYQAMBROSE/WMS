@@ -8881,6 +8881,658 @@
         }
       }
     },
+    "/api/v1/reports/analytics": {
+      "get": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Analytics",
+        "description": "Dashboard trend analysis: purchases and losses per month over three years, the biggest SKUs this month and year\nagainst the same dates last year and the three-year average, and the top suppliers with credit terms and payables.\nValues are null without cost.view. Cached for a few minutes (it reads years of ledger).",
+        "operationId": "analytics_api_v1_reports_analytics_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Analytics"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/reports/pricing": {
+      "get": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Pricing",
+        "description": "Purchase price trend per SKU (average cost per base unit and month); for costing, cost.view only",
+        "operationId": "pricing_api_v1_reports_pricing_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pricing"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/stock-on-hand": {
+      "get": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Stock On Hand",
+        "description": "Real-time stock on hand as CSV, for finance or anyone who asks: every balance by location and batch, or one row per\nitem. With cost.view it adds the average purchase cost and the stock value.",
+        "operationId": "stock_on_hand_api_v1_reports_stock_on_hand_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "location",
+                "item"
+              ],
+              "type": "string",
+              "default": "location",
+              "title": "By"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "text/csv": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/payables": {
+      "get": {
+        "tags": [
+          "payables"
+        ],
+        "summary": "List Payables",
+        "description": "Posted goods receipts with their due date and value; open ones most urgent first",
+        "operationId": "list_payables_api_v1_payables_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "open",
+                    "overdue",
+                    "settled"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "partner_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Partner Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 2000,
+              "minimum": 1,
+              "default": 500,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayablePage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/payables/{grn_id}/settle": {
+      "post": {
+        "tags": [
+          "payables"
+        ],
+        "summary": "Settle Payable",
+        "operationId": "settle_payable_api_v1_payables__grn_id__settle_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "grn_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Grn Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettleIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/payables/{grn_id}/reopen": {
+      "post": {
+        "tags": [
+          "payables"
+        ],
+        "summary": "Reopen Payable",
+        "operationId": "reopen_payable_api_v1_payables__grn_id__reopen_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "grn_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Grn Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/recipes": {
+      "get": {
+        "tags": [
+          "recipes"
+        ],
+        "summary": "List Recipes",
+        "operationId": "list_recipes_api_v1_recipes_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "keyword",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Keyword"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RecipeRead"
+                  },
+                  "title": "Response List Recipes Api V1 Recipes Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "recipes"
+        ],
+        "summary": "Create Recipe",
+        "operationId": "create_recipe_api_v1_recipes_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecipeIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/recipes/overview": {
+      "get": {
+        "tags": [
+          "recipes"
+        ],
+        "summary": "Recipe Overview",
+        "description": "Active recipes with cost per unit (cost.view) and how many units current stock can make",
+        "operationId": "recipe_overview_api_v1_recipes_overview_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RecipeOverview"
+                  },
+                  "type": "array",
+                  "title": "Response Recipe Overview Api V1 Recipes Overview Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/recipes/{recipe_id}": {
+      "get": {
+        "tags": [
+          "recipes"
+        ],
+        "summary": "Get Recipe",
+        "operationId": "get_recipe_api_v1_recipes__recipe_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "recipe_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Recipe Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "recipes"
+        ],
+        "summary": "Update Recipe",
+        "operationId": "update_recipe_api_v1_recipes__recipe_id__put",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "recipe_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Recipe Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecipeIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "recipes"
+        ],
+        "summary": "Delete Recipe",
+        "operationId": "delete_recipe_api_v1_recipes__recipe_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "recipe_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Recipe Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/recipes/{recipe_id}/costing": {
+      "get": {
+        "tags": [
+          "recipes"
+        ],
+        "summary": "Recipe Costing",
+        "description": "Cost components (latest purchase cost of each), cost share, and how many units each component's stock allows",
+        "operationId": "recipe_costing_api_v1_recipes__recipe_id__costing_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "recipe_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Recipe Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeCosting"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/imports": {
       "get": {
         "tags": [
@@ -11077,6 +11729,97 @@
         ],
         "title": "AllocationResult"
       },
+      "Analytics": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "periods": {
+            "$ref": "#/components/schemas/AnalyticsPeriods"
+          },
+          "months": {
+            "items": {
+              "$ref": "#/components/schemas/MonthPoint"
+            },
+            "type": "array",
+            "title": "Months"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/AnalyticsTotals"
+          },
+          "purchases": {
+            "$ref": "#/components/schemas/ItemTrendPage"
+          },
+          "losses": {
+            "$ref": "#/components/schemas/ItemTrendPage"
+          },
+          "suppliers": {
+            "$ref": "#/components/schemas/SupplierSummary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "periods",
+          "months",
+          "totals",
+          "purchases",
+          "losses",
+          "suppliers"
+        ],
+        "title": "Analytics"
+      },
+      "AnalyticsPeriods": {
+        "properties": {
+          "mtd": {
+            "$ref": "#/components/schemas/PeriodRange"
+          },
+          "mtd_ly": {
+            "$ref": "#/components/schemas/PeriodRange"
+          },
+          "ytd": {
+            "$ref": "#/components/schemas/PeriodRange"
+          },
+          "ytd_ly": {
+            "$ref": "#/components/schemas/PeriodRange"
+          },
+          "last_year": {
+            "$ref": "#/components/schemas/PeriodRange"
+          },
+          "three_years": {
+            "$ref": "#/components/schemas/PeriodRange"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mtd",
+          "mtd_ly",
+          "ytd",
+          "ytd_ly",
+          "last_year",
+          "three_years"
+        ],
+        "title": "AnalyticsPeriods",
+        "description": "mtd / ytd: this month and year to date; *_ly: the same dates a year earlier; three_years: the three full years before this one"
+      },
+      "AnalyticsTotals": {
+        "properties": {
+          "purchases": {
+            "$ref": "#/components/schemas/PeriodTotals"
+          },
+          "losses": {
+            "$ref": "#/components/schemas/PeriodTotals"
+          }
+        },
+        "type": "object",
+        "required": [
+          "purchases",
+          "losses"
+        ],
+        "title": "AnalyticsTotals"
+      },
       "AskIn": {
         "properties": {
           "question": {
@@ -11890,6 +12633,19 @@
             ],
             "title": "Address"
           },
+          "credit_terms_days": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 3650.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credit Terms Days"
+          },
           "is_active": {
             "type": "boolean",
             "title": "Is Active",
@@ -11955,6 +12711,19 @@
               }
             ],
             "title": "Address"
+          },
+          "credit_terms_days": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 3650.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credit Terms Days"
           },
           "is_active": {
             "type": "boolean",
@@ -12054,6 +12823,19 @@
               }
             ],
             "title": "Address"
+          },
+          "credit_terms_days": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 3650.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credit Terms Days"
           },
           "is_active": {
             "anyOf": [
@@ -12897,6 +13679,30 @@
             "type": "integer",
             "title": "Row Version"
           },
+          "payment_due_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Due Date"
+          },
+          "settled_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Settled On"
+          },
           "count_locations": {
             "items": {
               "$ref": "#/components/schemas/CountLocationRead"
@@ -13009,6 +13815,9 @@
             },
             "type": "array",
             "title": "Trend"
+          },
+          "stock_alerts": {
+            "$ref": "#/components/schemas/StockAlerts"
           }
         },
         "type": "object",
@@ -13017,7 +13826,8 @@
           "today",
           "backlog",
           "stock",
-          "trend"
+          "trend",
+          "stock_alerts"
         ],
         "title": "Dashboard"
       },
@@ -13305,6 +14115,17 @@
             "type": "number",
             "title": "Qty Checked",
             "default": 0.0
+          },
+          "unit_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit Price"
           }
         },
         "type": "object",
@@ -13425,6 +14246,30 @@
           "row_version": {
             "type": "integer",
             "title": "Row Version"
+          },
+          "payment_due_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Due Date"
+          },
+          "settled_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Settled On"
           },
           "lines": {
             "items": {
@@ -13555,6 +14400,30 @@
           "row_version": {
             "type": "integer",
             "title": "Row Version"
+          },
+          "payment_due_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Due Date"
+          },
+          "settled_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Settled On"
           }
         },
         "type": "object",
@@ -14338,6 +15207,21 @@
             ],
             "title": "Shelf Life Days"
           },
+          "min_stock_qty": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Stock Qty"
+          },
           "is_active": {
             "type": "boolean",
             "title": "Is Active",
@@ -14513,6 +15397,17 @@
             ],
             "title": "Shelf Life Days"
           },
+          "min_stock_qty": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Stock Qty"
+          },
           "is_active": {
             "type": "boolean",
             "title": "Is Active",
@@ -14545,6 +15440,103 @@
           "id"
         ],
         "title": "ItemRead"
+      },
+      "ItemTrendPage": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/ItemTrendRow"
+            },
+            "type": "array",
+            "title": "Rows"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "rows"
+        ],
+        "title": "ItemTrendPage"
+      },
+      "ItemTrendRow": {
+        "properties": {
+          "item": {
+            "$ref": "#/components/schemas/ItemBrief"
+          },
+          "packing": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PackingUnit"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mtd": {
+            "type": "number",
+            "title": "Mtd"
+          },
+          "mtd_ly": {
+            "type": "number",
+            "title": "Mtd Ly"
+          },
+          "ytd": {
+            "type": "number",
+            "title": "Ytd"
+          },
+          "ytd_ly": {
+            "type": "number",
+            "title": "Ytd Ly"
+          },
+          "last_year": {
+            "type": "number",
+            "title": "Last Year"
+          },
+          "avg_3y": {
+            "type": "number",
+            "title": "Avg 3Y"
+          },
+          "ytd_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ytd Value"
+          },
+          "ytd_ly_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ytd Ly Value"
+          }
+        },
+        "type": "object",
+        "required": [
+          "item",
+          "packing",
+          "mtd",
+          "mtd_ly",
+          "ytd",
+          "ytd_ly",
+          "last_year",
+          "avg_3y"
+        ],
+        "title": "ItemTrendRow",
+        "description": "Base-unit quantities per period for one SKU; packing is its largest packing unit, for showing them in cartons/bales"
       },
       "ItemUpdate": {
         "properties": {
@@ -14636,6 +15628,21 @@
               }
             ],
             "title": "Shelf Life Days"
+          },
+          "min_stock_qty": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Stock Qty"
           },
           "is_active": {
             "anyOf": [
@@ -16649,6 +17656,51 @@
         ],
         "title": "MeResponse"
       },
+      "MonthPoint": {
+        "properties": {
+          "month": {
+            "type": "string",
+            "title": "Month"
+          },
+          "purchased_qty": {
+            "type": "number",
+            "title": "Purchased Qty"
+          },
+          "loss_qty": {
+            "type": "number",
+            "title": "Loss Qty"
+          },
+          "purchased_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purchased Value"
+          },
+          "loss_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Loss Value"
+          }
+        },
+        "type": "object",
+        "required": [
+          "month",
+          "purchased_qty",
+          "loss_qty"
+        ],
+        "title": "MonthPoint"
+      },
       "OccupancyArea": {
         "properties": {
           "id": {
@@ -16715,6 +17767,23 @@
         ],
         "title": "OccupancyArea",
         "description": "Bins grouped by their zone (or by warehouse for bins not under a zone)"
+      },
+      "PackingUnit": {
+        "properties": {
+          "uom": {
+            "$ref": "#/components/schemas/UomBrief"
+          },
+          "factor": {
+            "type": "number",
+            "title": "Factor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "uom",
+          "factor"
+        ],
+        "title": "PackingUnit"
       },
       "PartnerBrief": {
         "properties": {
@@ -16816,6 +17885,255 @@
           "password"
         ],
         "title": "PasswordReset"
+      },
+      "PayablePage": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "outstanding": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outstanding"
+          },
+          "overdue": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overdue"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/PayableRow"
+            },
+            "type": "array",
+            "title": "Rows"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "rows"
+        ],
+        "title": "PayablePage"
+      },
+      "PayableRow": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "doc_no": {
+            "type": "string",
+            "title": "Doc No"
+          },
+          "partner": {
+            "$ref": "#/components/schemas/PartnerBrief"
+          },
+          "posted_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Posted At"
+          },
+          "payment_due_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Payment Due Date"
+          },
+          "settled_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Settled On"
+          },
+          "credit_terms_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credit Terms Days"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "days_overdue": {
+            "type": "integer",
+            "title": "Days Overdue"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "doc_no",
+          "partner",
+          "posted_at",
+          "payment_due_date",
+          "settled_on",
+          "credit_terms_days",
+          "days_overdue",
+          "status"
+        ],
+        "title": "PayableRow"
+      },
+      "PeriodRange": {
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "format": "date",
+            "title": "End"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "end"
+        ],
+        "title": "PeriodRange"
+      },
+      "PeriodTotals": {
+        "properties": {
+          "mtd": {
+            "type": "number",
+            "title": "Mtd"
+          },
+          "mtd_ly": {
+            "type": "number",
+            "title": "Mtd Ly"
+          },
+          "ytd": {
+            "type": "number",
+            "title": "Ytd"
+          },
+          "ytd_ly": {
+            "type": "number",
+            "title": "Ytd Ly"
+          },
+          "last_year": {
+            "type": "number",
+            "title": "Last Year"
+          },
+          "avg_3y": {
+            "type": "number",
+            "title": "Avg 3Y"
+          },
+          "mtd_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mtd Value"
+          },
+          "mtd_ly_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mtd Ly Value"
+          },
+          "ytd_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ytd Value"
+          },
+          "ytd_ly_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ytd Ly Value"
+          },
+          "last_year_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Year Value"
+          },
+          "avg_3y_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg 3Y Value"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mtd",
+          "mtd_ly",
+          "ytd",
+          "ytd_ly",
+          "last_year",
+          "avg_3y"
+        ],
+        "title": "PeriodTotals",
+        "description": "All SKUs together per period, in base units; *_value at purchase price (losses: average cost), null without cost.view"
       },
       "PermissionRead": {
         "properties": {
@@ -16959,6 +18277,17 @@
             "title": "Qty Checked",
             "default": 0.0
           },
+          "unit_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit Price"
+          },
           "confirmer": {
             "anyOf": [
               {
@@ -17090,6 +18419,30 @@
           "row_version": {
             "type": "integer",
             "title": "Row Version"
+          },
+          "payment_due_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Due Date"
+          },
+          "settled_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Settled On"
           },
           "lines": {
             "items": {
@@ -17235,6 +18588,159 @@
         ],
         "title": "PreferenceRead"
       },
+      "PricePoint": {
+        "properties": {
+          "month": {
+            "type": "string",
+            "title": "Month"
+          },
+          "avg_cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Cost"
+          },
+          "qty": {
+            "type": "number",
+            "title": "Qty"
+          }
+        },
+        "type": "object",
+        "required": [
+          "month",
+          "qty"
+        ],
+        "title": "PricePoint"
+      },
+      "Pricing": {
+        "properties": {
+          "months": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Months"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/PricingRow"
+            },
+            "type": "array",
+            "title": "Rows"
+          }
+        },
+        "type": "object",
+        "required": [
+          "months",
+          "rows"
+        ],
+        "title": "Pricing"
+      },
+      "PricingRow": {
+        "properties": {
+          "item": {
+            "$ref": "#/components/schemas/ItemBrief"
+          },
+          "latest_cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Cost"
+          },
+          "latest_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest At"
+          },
+          "avg_cost_ytd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Cost Ytd"
+          },
+          "cost_year_ago": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Year Ago"
+          },
+          "change_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Pct"
+          },
+          "min_cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Cost"
+          },
+          "max_cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Cost"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/PricePoint"
+            },
+            "type": "array",
+            "title": "Points"
+          }
+        },
+        "type": "object",
+        "required": [
+          "item",
+          "latest_at",
+          "change_pct",
+          "points"
+        ],
+        "title": "PricingRow"
+      },
       "PurchaseOrderIn": {
         "properties": {
           "row_version": {
@@ -17317,6 +18823,21 @@
               }
             ],
             "title": "Qty"
+          },
+          "unit_price": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit Price"
           }
         },
         "type": "object",
@@ -17612,6 +19133,457 @@
           "reason"
         ],
         "title": "RecallSkipped"
+      },
+      "RecipeCostLine": {
+        "properties": {
+          "line_no": {
+            "type": "integer",
+            "title": "Line No"
+          },
+          "item": {
+            "$ref": "#/components/schemas/ItemBrief"
+          },
+          "uom": {
+            "$ref": "#/components/schemas/UomBrief"
+          },
+          "qty": {
+            "type": "number",
+            "title": "Qty"
+          },
+          "base_qty": {
+            "type": "number",
+            "title": "Base Qty"
+          },
+          "qty_per_unit": {
+            "type": "number",
+            "title": "Qty Per Unit"
+          },
+          "available": {
+            "type": "number",
+            "title": "Available"
+          },
+          "can_make": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Can Make"
+          },
+          "unit_cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit Cost"
+          },
+          "cost_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Source"
+          },
+          "cost_per_unit": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Per Unit"
+          },
+          "share_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "line_no",
+          "item",
+          "uom",
+          "qty",
+          "base_qty",
+          "qty_per_unit",
+          "available",
+          "can_make",
+          "cost_source",
+          "share_pct"
+        ],
+        "title": "RecipeCostLine"
+      },
+      "RecipeCosting": {
+        "properties": {
+          "recipe_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Recipe Id"
+          },
+          "complete": {
+            "type": "boolean",
+            "title": "Complete"
+          },
+          "missing_costs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Missing Costs"
+          },
+          "unit_cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit Cost"
+          },
+          "batch_cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batch Cost"
+          },
+          "can_make": {
+            "type": "number",
+            "title": "Can Make"
+          },
+          "bottleneck": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ItemBrief"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/RecipeCostLine"
+            },
+            "type": "array",
+            "title": "Lines"
+          }
+        },
+        "type": "object",
+        "required": [
+          "recipe_id",
+          "complete",
+          "missing_costs",
+          "can_make",
+          "bottleneck",
+          "lines"
+        ],
+        "title": "RecipeCosting"
+      },
+      "RecipeIn": {
+        "properties": {
+          "row_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Row Version",
+            "description": "The row_version of the record as you loaded it. If someone changed the record since, the save is refused with 409 instead of silently overwriting their change. Omit to save without the check."
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "product_item_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Product Item Id"
+          },
+          "output_qty": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Output Qty"
+          },
+          "remark": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 400
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remark"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "default": true
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/RecipeLineIn"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Lines"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "name",
+          "product_item_id",
+          "output_qty",
+          "lines"
+        ],
+        "title": "RecipeIn"
+      },
+      "RecipeLineIn": {
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Item Id"
+          },
+          "uom_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Uom Id"
+          },
+          "qty": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Qty"
+          }
+        },
+        "type": "object",
+        "required": [
+          "item_id",
+          "uom_id",
+          "qty"
+        ],
+        "title": "RecipeLineIn"
+      },
+      "RecipeLineRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "line_no": {
+            "type": "integer",
+            "title": "Line No"
+          },
+          "item": {
+            "$ref": "#/components/schemas/ItemBrief"
+          },
+          "uom": {
+            "$ref": "#/components/schemas/UomBrief"
+          },
+          "qty": {
+            "type": "number",
+            "title": "Qty"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "line_no",
+          "item",
+          "uom",
+          "qty"
+        ],
+        "title": "RecipeLineRead"
+      },
+      "RecipeOverview": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "product": {
+            "$ref": "#/components/schemas/ItemBrief"
+          },
+          "unit_cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit Cost"
+          },
+          "complete": {
+            "type": "boolean",
+            "title": "Complete"
+          },
+          "can_make": {
+            "type": "number",
+            "title": "Can Make"
+          },
+          "bottleneck": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ItemBrief"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "components": {
+            "type": "integer",
+            "title": "Components"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "name",
+          "product",
+          "complete",
+          "can_make",
+          "bottleneck",
+          "components"
+        ],
+        "title": "RecipeOverview"
+      },
+      "RecipeRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "product": {
+            "$ref": "#/components/schemas/ItemBrief"
+          },
+          "output_qty": {
+            "type": "number",
+            "title": "Output Qty"
+          },
+          "remark": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remark"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "row_version": {
+            "type": "integer",
+            "title": "Row Version"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/RecipeLineRead"
+            },
+            "type": "array",
+            "title": "Lines"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "name",
+          "product",
+          "output_qty",
+          "remark",
+          "is_active",
+          "row_version",
+          "updated_at",
+          "lines"
+        ],
+        "title": "RecipeRead"
       },
       "RecountIn": {
         "properties": {
@@ -18424,6 +20396,30 @@
             "type": "integer",
             "title": "Row Version"
           },
+          "payment_due_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Due Date"
+          },
+          "settled_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Settled On"
+          },
           "lines": {
             "items": {
               "$ref": "#/components/schemas/SalesOrderLineRead"
@@ -18450,6 +20446,20 @@
           "lines"
         ],
         "title": "SalesOrderRead"
+      },
+      "SettleIn": {
+        "properties": {
+          "settled_on": {
+            "type": "string",
+            "format": "date",
+            "title": "Settled On"
+          }
+        },
+        "type": "object",
+        "required": [
+          "settled_on"
+        ],
+        "title": "SettleIn"
       },
       "ShipmentCheckIn": {
         "properties": {
@@ -18809,6 +20819,30 @@
             "type": "integer",
             "title": "Row Version"
           },
+          "payment_due_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Due Date"
+          },
+          "settled_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Settled On"
+          },
           "lines": {
             "items": {
               "$ref": "#/components/schemas/DocumentLineRead"
@@ -18942,6 +20976,75 @@
           "available"
         ],
         "title": "ShortageReportRow"
+      },
+      "StockAlertRow": {
+        "properties": {
+          "item": {
+            "$ref": "#/components/schemas/ItemBrief"
+          },
+          "level": {
+            "type": "string",
+            "title": "Level"
+          },
+          "min_stock_qty": {
+            "type": "number",
+            "title": "Min Stock Qty"
+          },
+          "available": {
+            "type": "number",
+            "title": "Available"
+          },
+          "on_hand": {
+            "type": "number",
+            "title": "On Hand"
+          },
+          "shortfall": {
+            "type": "number",
+            "title": "Shortfall"
+          }
+        },
+        "type": "object",
+        "required": [
+          "item",
+          "level",
+          "min_stock_qty",
+          "available",
+          "on_hand",
+          "shortfall"
+        ],
+        "title": "StockAlertRow"
+      },
+      "StockAlerts": {
+        "properties": {
+          "alarm_count": {
+            "type": "integer",
+            "title": "Alarm Count"
+          },
+          "out_count": {
+            "type": "integer",
+            "title": "Out Count"
+          },
+          "warning_count": {
+            "type": "integer",
+            "title": "Warning Count"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/StockAlertRow"
+            },
+            "type": "array",
+            "title": "Rows"
+          }
+        },
+        "type": "object",
+        "required": [
+          "alarm_count",
+          "out_count",
+          "warning_count",
+          "rows"
+        ],
+        "title": "StockAlerts",
+        "description": "Items under their stock buffer (Item.min_stock_qty), most urgent first; rows holds the first 50"
       },
       "StockBalanceRead": {
         "properties": {
@@ -19172,6 +21275,177 @@
           "expiring_30d_qty"
         ],
         "title": "StockStats"
+      },
+      "SupplierRow": {
+        "properties": {
+          "partner": {
+            "$ref": "#/components/schemas/PartnerBrief"
+          },
+          "credit_terms_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credit Terms Days"
+          },
+          "ytd_qty": {
+            "type": "number",
+            "title": "Ytd Qty"
+          },
+          "ytd_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ytd Value"
+          },
+          "ytd_ly_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ytd Ly Value"
+          },
+          "share_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share Pct"
+          },
+          "receipts": {
+            "type": "integer",
+            "title": "Receipts"
+          },
+          "outstanding": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outstanding"
+          },
+          "overdue": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overdue"
+          },
+          "open_receipts": {
+            "type": "integer",
+            "title": "Open Receipts"
+          },
+          "overdue_receipts": {
+            "type": "integer",
+            "title": "Overdue Receipts"
+          },
+          "avg_days_to_settle": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Days To Settle"
+          },
+          "on_time_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "On Time Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "partner",
+          "credit_terms_days",
+          "ytd_qty",
+          "receipts",
+          "open_receipts",
+          "overdue_receipts",
+          "avg_days_to_settle",
+          "on_time_pct"
+        ],
+        "title": "SupplierRow"
+      },
+      "SupplierSummary": {
+        "properties": {
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/SupplierRow"
+            },
+            "type": "array",
+            "title": "Rows"
+          },
+          "outstanding": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outstanding"
+          },
+          "overdue": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overdue"
+          },
+          "open_receipts": {
+            "type": "integer",
+            "title": "Open Receipts"
+          },
+          "overdue_receipts": {
+            "type": "integer",
+            "title": "Overdue Receipts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rows",
+          "open_receipts",
+          "overdue_receipts"
+        ],
+        "title": "SupplierSummary"
       },
       "SystemStatus": {
         "properties": {

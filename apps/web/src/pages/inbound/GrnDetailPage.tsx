@@ -10,7 +10,8 @@ import { useCan } from "@/api/me";
 import type { DocumentSummary } from "@/api/types";
 import { PrintLabelsModal } from "@/components/labels";
 import StatusTag from "@/components/StatusTag";
-import { DESC_COLUMNS, DetailSkeleton, DocTitle, ErrorState, emptyLocale, formatQty } from "@/components/ui";
+import { DESC_COLUMNS, DetailSkeleton, DocTitle, ErrorState, emptyLocale, formatMoney, formatPrice, formatQty } from "@/components/ui";
+import { PayableStatus, SettleControls } from "@/components/payables";
 import {
   ActionButton,
   DocumentLinesTable,
@@ -88,6 +89,17 @@ export default function GrnDetailPage() {
           <Descriptions.Item label="Receiving location">{grn.location?.code} {grn.location?.name}</Descriptions.Item>
           <Descriptions.Item label="Posted">{formatDateTime(grn.posted_at) || <span className="wms-empty-value">Not yet</span>}</Descriptions.Item>
           <Descriptions.Item label="Remark">{grn.remark}</Descriptions.Item>
+          {grn.payment_due_date && can("cost.view") && (
+            <>
+              <Descriptions.Item label="Value">{formatMoney(grn.lines.reduce((sum, l) => sum + l.qty_actual * (l.unit_price ?? 0), 0))}</Descriptions.Item>
+              <Descriptions.Item label="Payment">
+                <Space wrap>
+                  <PayableStatus due={grn.payment_due_date} settledOn={grn.settled_on} />
+                  <SettleControls grnId={grn.id} settledOn={grn.settled_on} postedAt={grn.posted_at} />
+                </Space>
+              </Descriptions.Item>
+            </>
+          )}
         </Descriptions>
       </Card>
 
@@ -128,6 +140,12 @@ export default function GrnDetailPage() {
             { title: "Received", dataIndex: "qty_actual", align: "right", render: formatQty },
             { title: "Batch no.", dataIndex: "batch_no" },
             { title: "Expiry date", dataIndex: "expiry_date" },
+            ...(can("cost.view") && grn.status === "POSTED"
+              ? [
+                  { title: "Unit price", align: "right" as const, render: (_: unknown, l: (typeof grn.lines)[number]) => formatPrice(l.unit_price) },
+                  { title: "Amount", align: "right" as const, render: (_: unknown, l: (typeof grn.lines)[number]) => (l.unit_price == null ? "—" : formatMoney(l.qty_actual * l.unit_price)) },
+                ]
+              : []),
           ]}
         />
       </Card>

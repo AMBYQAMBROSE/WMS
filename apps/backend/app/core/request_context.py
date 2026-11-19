@@ -19,6 +19,9 @@ class RequestContext:
     user_id: uuid.UUID | None = None
     username: str | None = None
     tenant_id: uuid.UUID | None = None
+    # Purchase prices and stock values are serialized only for users with cost.view (app/schemas/document.py Price).
+    # Outside a user request (worker, integration pushes, scripts) the system sees them
+    can_view_costs: bool = True
 
 
 _current: ContextVar[RequestContext | None] = ContextVar("request_context", default=None)

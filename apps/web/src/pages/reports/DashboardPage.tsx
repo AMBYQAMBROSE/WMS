@@ -19,11 +19,14 @@ import dayjs from "dayjs";
 import { Link } from "react-router";
 
 import { apiClient } from "@/api/client";
-import type { Dashboard } from "@/api/types";
+import type { Analytics, Dashboard } from "@/api/types";
+import { PricingTrendCard, RecipeCard, SupplierCard } from "@/components/dashboard/CostingCards";
+import { StockAlarmBanner, StockBufferCard, StockExportButton } from "@/components/dashboard/StockAlarm";
+import TrendAnalysis from "@/components/dashboard/TrendAnalysis";
 import OccupancyHeatmap from "@/components/OccupancyHeatmap";
 import TrendChart from "@/components/TrendChart";
 import { ErrorState, IconTile, Kpi, KpiStrip, PageHeader, Pill, SectionTitle, StatCard, type Accent } from "@/components/ui";
-import { useMe } from "@/api/me";
+import { useCan, useFeature, useMe } from "@/api/me";
 import { useUiStore } from "@/stores/uiStore";
 
 // Categorical slots 1 and 2 of the reference palette (validated with the palette script as distinguishable for color
@@ -103,15 +106,29 @@ export default function DashboardPage() {
     // Live updates refetch it after every change; this only catches the date rolling over and missed events
     refetchInterval: 5 * 60_000,
   });
+  const can = useCan();
+  const feature = useFeature();
+  // Trends read years of history: cached on the server for minutes, so they refresh on their own timer instead of
+  // after every change like the figures above ("analytics" is not a live-update key)
+  const analytics = useQuery({
+    queryKey: ["analytics", "trends"],
+    queryFn: async () => (await apiClient.get<Analytics>("/reports/analytics")).data,
+    refetchInterval: 5 * 60_000,
+    staleTime: 60_000,
+  });
+  const recipesShown = feature("RECIPES") && can("recipe.read");
   const firstName = me?.display_name?.split(/\s+/)[0];
   const header = (
     <PageHeader
       title={`${greeting()}${firstName ? `, ${firstName}` : ""}`}
       description={data ? `${dayjs(data.date).format("dddd, MMMM D, YYYY")} · quantities in base units` : "Today's activity, open work and stock health at a glance"}
       extra={
-        <Typography.Text type="secondary" style={{ fontSize: 12.5, display: "inline-flex", alignItems: "center", gap: 6 }}>
-          <SyncOutlined spin={isFetching} aria-hidden /> Updates within seconds of any change
-        </Typography.Text>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <Typography.Text type="secondary" style={{ fontSize: 12.5, display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <SyncOutlined spin={isFetching} aria-hidden /> Updates within seconds of any change
+          </Typography.Text>
+          <StockExportButton />
+        </span>
       }
     />
   );
@@ -138,8 +155,11 @@ export default function DashboardPage() {
 
   return (
     // No dimming while refreshing: with live updates that happens often, and flicker would be noise
-    <div className="wms-dashboard" style={{ display: "grid", gap: 24 }}>
+    // minmax(0, 1fr): a wide table or chart inside must scroll on its own, not widen the whole page (phones)
+    <div className="wms-dashboard" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 24 }}>
       {header}
+
+      <StockAlarmBanner alerts={data.stock_alerts} />
 
       <div>
         <SectionTitle title="Today" />
@@ -215,6 +235,42 @@ export default function DashboardPage() {
           </Card>
         </Col>
       </Row>
+
+      <Row gutter={[16, 16]}>
+        <Col xs={24} xl={recipesShown ? 14 : 24}>
+          <StockBufferCard alerts={data.stock_alerts} />
+        </Col>
+        {recipesShown && (
+          <Col xs={24} xl={10}>
+            <RecipeCard />
+          </Col>
+        )}
+      </Row>
+
+      <div>
+        <SectionTitle title="Analysis" extra="This period against year to date, last year and the three-year trend · refreshed every few minutes" />
+        {analytics.data ? (
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16 }}>
+            <TrendAnalysis data={analytics.data} />
+            <Row gutter={[16, 16]}>
+              <Col xs={24} xl={can("cost.view") ? 12 : 24}>
+                <SupplierCard data={analytics.data} />
+              </Col>
+              {can("cost.view") && (
+                <Col xs={24} xl={12}>
+                  <PricingTrendCard />
+                </Col>
+              )}
+            </Row>
+          </div>
+        ) : analytics.isLoading ? (
+          <Card>
+            <Skeleton active paragraph={{ rows: 6 }} />
+          </Card>
+        ) : (
+          <ErrorState title="Could not load the trend analysis" error={analytics.error} onRetry={() => analytics.refetch()} />
+        )}
+      </div>
 
       <OccupancyHeatmap />
     </div>

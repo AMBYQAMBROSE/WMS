@@ -1843,3 +1843,68 @@ a.wms-list-row:hover {
 .wms-label-text {
   fill: #9ca3af;
 }
+
+/* Purchase order lines with a unit price column (users with cost.view) */
+.wms-lines--priced .wms-lines-head,
+.wms-lines--priced .wms-lines-row {
+  grid-template-columns: 36px minmax(220px, 1fr) 120px 140px 150px 36px;
+}
+@media (max-width: 767px) {
+  .wms-lines--priced .wms-lines-row > :nth-child(5) {
+    grid-row: auto;
+    grid-column: 2 / 4;
+  }
+  .wms-lines--priced .wms-lines-row > :nth-child(6) {
+    grid-row: 1;
+    grid-column: 4;
+  }
+}
+
+/* Low-stock alarm: blinks red until stock is back above the buffer. Without motion (reduced-motion setting) it stays
+   solid red: the red border, the icon and the "Below minimum" label carry the alarm, not the blinking alone */
+.wms-alarm {
+  border: 1px solid var(--wms-tone-red-fg);
+  border-radius: 10px;
+  background: var(--wms-tone-red-bg);
+  color: var(--wms-tone-red-fg);
+}
+.wms-alarm-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--wms-tone-red-fg);
+  flex: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .wms-alarm-blink {
+    animation: wms-alarm-blink 1s steps(2, jump-none) infinite;
+  }
+  .wms-alarm-dot {
+    animation: wms-alarm-dot 1s ease-in-out infinite;
+  }
+}
+@keyframes wms-alarm-blink {
+  0% {
+    background: var(--wms-tone-red-bg);
+    border-color: var(--wms-tone-red-fg);
+  }
+  100% {
+    background: transparent;
+    border-color: transparent;
+  }
+}
+@keyframes wms-alarm-dot {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 var(--wms-tone-red-fg);
+  }
+  50% {
+    opacity: 0.25;
+    box-shadow: 0 0 0 4px transparent;
+  }
+}
+.wms-alarm-row td:first-child {
+  box-shadow: inset 3px 0 0 var(--wms-tone-red-fg);
+}

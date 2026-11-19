@@ -4,7 +4,7 @@ import { InfoCircleOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { Checkbox, Select, Table, Tabs, Typography } from "antd";
 import dayjs from "dayjs";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 
 import { apiClient } from "@/api/client";
 import type { StockBalance, StockLedgerEntry } from "@/api/types";
@@ -49,7 +49,9 @@ function ListMeta({ count, noun }: { count: number | undefined; noun: string }) 
 const available = (r: StockBalance) => r.qty_on_hand - r.qty_allocated;
 
 function BalancesTab() {
-  const [itemId, setItemId] = useState<string>();
+  // ?item=<id>: opened from a link such as a dashboard low-stock alarm
+  const [params] = useSearchParams();
+  const [itemId, setItemId] = useState<string | undefined>(params.get("item") ?? undefined);
   const [locationId, setLocationId] = useState<string>();
   const [unavailable, setUnavailable] = useState(false);
 

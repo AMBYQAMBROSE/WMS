@@ -74,6 +74,7 @@ Pick → scan the pick list number (or choose it from the list) → go to the bi
 
 ## 7. Inventory operations
 
+- **Stock enquiry** (Inventory → Stock): balances by item, location and batch, with "available" (on hand − allocated) and expired stock marked. The movements tab is the full stock ledger, filtered by item, location or movement type. A batch number opens its batch trace.
 - **Move** (PDA or web): on the PDA it works like putaway: scan source location → item → quantity → target location. You can enter several lines and submit them together. Stock allocated to orders cannot be moved.
 - **Stock adjustment** (web): Inventory → Stock adjustments → New; choose a reason and enter positive or negative quantities. Clerks can only create adjustments; **they take effect only after a supervisor posts them**.
 - **Cycle count**:
@@ -81,10 +82,32 @@ Pick → scan the pick list number (or choose it from the list) → go to the bi
   2. Counters use the PDA: Count → choose the count → scan location → scan item → enter the quantity. For a batch that is not on the book, tap "Other batch".
   3. The supervisor reviews the differences, requests a recount if needed, and finally posts.
 
+## 7a. Returns, cross-docking, repacking and returnable assets
+
+These modules appear only when the administrator has switched them on (System → Feature flags).
+
+- **Customer return** (Returns & assets → Customer returns): best started from the shipped sales order with "Customer return". The lines are filled in with what can still be returned (shipped − already returned); lower them or delete lines. Choose a return reason. For each line choose **Restock** (goods go back into the location you pick) or **Scrap** (recorded only, no stock added). You cannot return more than was shipped, an item that is not on the order, or for another customer.
+- **Return to supplier** (Returns & assets → Returns to supplier): choose the supplier and a reason, then for each line choose the location the goods leave from; item, batch and free quantity are filled in. Stock allocated to orders cannot be returned.
+- **Cross-docking**: to ship goods straight from the receiving dock without putting them away, tick "Cross-dock: pick straight from the receiving dock" when allocating a sales order and choose the dock holding the goods. The pick list then takes them from the dock to staging.
+- **Repacking** (Inventory → Repacks): for unpacking, kitting or repackaging. Under "Consumed" enter what is taken out of stock (choose the location first), under "Produced" what comes out of the work. Post once the work is done: one posting deducts and adds everything together, and if any consumed line is short, nothing changes.
+- **Returnable assets** (Returns & assets → Returnable assets): pallets, crates and other assets lent to partners. Create the asset types once, then **Issue** when assets leave with a partner and **Return** when they come back. The list shows how many each partner still holds ("Outstanding"); you cannot take back more than is outstanding.
+
+Each of these documents is created as a draft and changes stock only when posted, like every other document; users with the posting permission can create and post in one step.
+
 ## 8. Warehouse supervisor
 
 - **Approvals**: supervisors post stock adjustments and cycle counts.
 - **Dashboard**: today's receipts and shipments, pending backlog (click a number to open the matching list), bin utilization and expiring stock.
+  - **Low-stock alarm**: give an item a **Minimum stock** (Master data → Items, in the base unit). When its available stock (on hand − allocated, all locations) falls below it, a red banner blinks at the top of the dashboard and the item blinks red in the **Stock buffer** card, with how much is short. Within 25% above the minimum it shows amber ("Near minimum"). The alarm stops on its own once stock is back above the minimum.
+  - **Export stock on hand (CSV)** (top right): the stock as it is right now, for finance or anyone who asks. "One row per item" gives totals per SKU; "By location and batch" gives every bin and batch. Users who may see costs also get the average purchase cost and the stock value.
+  - **Trend analysis**: switch between **Stock purchases** (goods received) and **Stock loss** (adjustments out and count losses). The tiles compare this month and the year to date with the same dates last year, and with the average of the three full years before; the chart lays this year over last year and the three-year average, month by month. The table lists the biggest SKUs; "Packing unit" shows them in cartons, bales, etc. (the item's largest packing unit) instead of the base unit. Your choice is remembered; the company default is set under System → Feature flags ("Purchases in packing units"). With cost permission, "Value" shows amounts instead of quantities.
+  - **Top suppliers this year**: the five biggest suppliers, their credit terms, what is outstanding and overdue, and how many days settling takes on average.
+  - **Stock pricing trend** (only for users with the "cost.view" permission): the average purchase cost per unit, month by month, per SKU, with the change on a year ago.
+  - **Recipes** (when switched on): cost per unit of each recipe and how many units current stock can make.
+  - Today's figures and alarms follow every change within seconds; the trend analysis refreshes every few minutes.
+- **Purchase prices**: enter an optional **Unit price** (excluding tax) on purchase order lines. Each goods receipt takes the price of its order line when posted. Prices, values, the pricing trend and payables are visible only to roles with the **cost.view** permission ("See purchase prices, stock values…"); nobody else sees them, on screen, in prints or in the audit log. Editing an order without that permission keeps its prices.
+- **Supplier payables** (Dashboard & reports → Supplier payables, cost.view): set **Credit terms (days)** on each supplier (Master data → Business partners). Every posted goods receipt is then due that many days after posting (empty terms = due on receipt). The list shows open, overdue and settled receipts with their amounts. The WMS records no invoices or payments: once accounts have paid, press **Settle** and enter the payment date (permission "payable.settle"); "Reopen" undoes it. Receipts posted before this feature existed have no due date and are not listed.
+- **Recipes** (Master data → Recipes, feature "Recipes"): for products made in-house. A recipe names the product, how much one batch makes, and the components with their quantity per batch (in the base unit or a packing unit). "Costing" shows the cost per unit from each component's latest purchase price (a component that has its own recipe is costed from it), each component's share of the cost, and how many units current stock can make, limited by the scarcest component. Recipes do not move stock; use Repacks to record production.
 - **Reports**: stock turnover, picker performance, expiring stock and partner ledger. After choosing dates, use "Export CSV" to open the data in Excel. With large data sets the page shows only the first 1000 rows; export for the full data.
 - **Importing orders**: Inbound → Purchase orders or Outbound → Sales orders → "Import from Excel". Download the template, enter one row per order line (rows with the same order ref become one order), then Validate and Import. Orders arrive as drafts: review them, tick them in the list and confirm them together.
 - **Cart orders**: orders placed from the shopping cart arrive in Sales orders as drafts, created by the person who ordered. Check and confirm them as usual; the person who ordered can withdraw a draft until it is confirmed.
@@ -120,12 +143,15 @@ Pick → scan the pick list number (or choose it from the list) → go to the bi
 | Task | Where | Notes |
 |---|---|---|
 | Users, roles | System → Users / Roles | Permission changes take effect immediately; do not give "post" permissions to regular operators |
-| Feature flags | System → Feature flags | Enable returns, cross-docking, repacking, returnable assets and over-receipt as needed |
+| Feature flags | System → Feature flags | Enable returns, cross-docking, repacking, returnable assets, recipes, purchases in packing units and over-receipt as needed |
+| Cost visibility | System → Roles | Purchase prices, stock values, the pricing trend and supplier payables need **cost.view**; settling payables needs **payable.settle**. Only the administrator has them after installing: grant them to finance or purchasing roles, not to warehouse operators |
 | Label layouts | System → Labels & printing | Set the label size and layout for item and location labels: a sheet of labels on an A4 office printer, or a roll on a thermal label printer. Start from common label stock, then "Test print": it outlines every label, so hold the print against a label sheet and adjust margins and gaps until they match. The default layout is used when nobody picks one; with none, a built-in A4 layout is used |
 | Reason codes | Master data → Reason codes | Adjustment reasons, return reasons |
 | Data import | System → Data import | Download template → fill in → validate → confirm import; nothing is imported unless every row is valid. Also imports purchase and sales orders |
 | Customer accounts | System → Users | For a customer or store that orders through the shopping cart: give the user the **Customer ordering** role and set "Customer account for". The account sees only the shopping cart, orders only for that customer and sees only that customer's orders. Do not give it other roles: those open the normal screens, which show every customer's data. Staff who order for many customers get the `cart.order` permission without a customer link |
 | Integrations | System → Integrations | Configure pushes to ERP and other external systems; check failures and resend in the push log (see integration.md) |
+| Audit log | System → Audit log | Who changed what and when, with old and new values. Filter by user, record type, action, or a code or document number |
+| System health | System → System health | Database, schema version, background worker, integration queue and monitoring status. "Needs attention" lists anything to fix; check it first when users report problems |
 | Backup, upgrade | On the server | See deployment.md |
 
 ## 9a. Ordering with the shopping cart
@@ -150,5 +176,8 @@ The cart is kept on the server, so it is still there after logging in on another
 | "Location is being counted" | Receiving and shipping resume after the count is posted or cancelled |
 | The PDA does not react to scans | Make sure the cursor is in the scan field; tap "Update master data" on the home screen and retry; new items must be created in the system first |
 | The PDA submit queue never empties | Check the network; open the queue to see why records failed (e.g. insufficient stock), fix the cause, then retry or delete the record |
+| The Returns, Repacks or Returnable assets menus are missing | The module is switched off; ask the administrator to enable it under System → Feature flags |
 | Document numbers have gaps | Normal: when a number is taken but saving fails, that number is skipped |
-| Dashboard numbers do not match what you just did | The dashboard can lag by up to 30 seconds; refresh shortly |
+| Dashboard numbers do not match what you just did | The dashboard can lag by up to 30 seconds; refresh shortly. The trend analysis refreshes every few minutes |
+| Prices, values or "Supplier payables" are missing | Your role lacks the cost.view permission; ask the administrator |
+| A recipe cost says "partial" | A component has no purchase price yet: enter unit prices on its next purchase order |

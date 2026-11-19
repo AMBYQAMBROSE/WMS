@@ -9,7 +9,7 @@ import { useCan } from "@/api/me";
 import type { Item } from "@/api/types";
 import MasterSearch, { MASTER_LIST_LIMIT } from "@/components/MasterSearch";
 import { useColumnPrefs } from "@/components/ListTools";
-import { FormSection, STICKY_HEADER, YesNo } from "@/components/ui";
+import { FormSection, STICKY_HEADER, YesNo, formatQty } from "@/components/ui";
 import CreateModal from "@/components/CreateModal";
 import { useMasterActionsColumn } from "@/components/MasterRowActions";
 import { UomSelect, useUoms } from "@/components/selects";
@@ -65,6 +65,12 @@ export default function ItemsPage() {
         ) : (
           <span className="wms-empty-value">—</span>
         ),
+    },
+    {
+      title: "Minimum stock",
+      dataIndex: "min_stock_qty",
+      align: "right",
+      render: (v: number | null, it: Item) => (v === null || v === undefined ? <span className="wms-empty-value">—</span> : `${formatQty(v)} ${uomCode(it.base_uom_id)}`),
     },
     { title: "Batch managed", dataIndex: "is_batch_managed", render: yesNo },
     { title: "Expiry managed", dataIndex: "is_expiry_managed", render: yesNo },
@@ -187,6 +193,18 @@ export default function ItemsPage() {
               </Form.Item>
               <Form.Item name="shelf_life_days" label="Shelf life (days)">
                 <InputNumber min={1} style={{ width: "100%" }} />
+              </Form.Item>
+            </FormSection>
+            <FormSection
+              title="Stock buffer"
+              description="Minimum stock in the base unit. When available stock (on hand minus allocated, all locations) falls below it, the dashboard raises a blinking red alarm; within 25% above it, a warning. Leave empty for no alarm."
+            >
+              <Form.Item noStyle dependencies={["base_uom_id"]}>
+                {({ getFieldValue }) => (
+                  <Form.Item name="min_stock_qty" label="Minimum stock">
+                    <InputNumber min={0} placeholder="No alarm" suffix={uomCode(getFieldValue("base_uom_id") ?? "")} style={{ width: "100%" }} />
+                  </Form.Item>
+                )}
               </Form.Item>
             </FormSection>
             <FormSection

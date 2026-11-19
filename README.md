@@ -77,6 +77,9 @@ Copy-Item .env.example .env          # edit the database connection string as ne
 alembic upgrade head                 # create tables
 $env:SEED_ADMIN_PASSWORD = "Admin@123"
 python -m scripts.seed               # tenant/permissions/admin/units of measure; safe to rerun; --preset picks an industry preset
+# Optional, dev/demo databases only: DELETES all master and business data, then simulates 60 days of a food distributor
+# (master data, PO/GRN/putaway, SO/pick/DO, returns, counts, recall, ERP events). Staff accounts get password Demo@2026
+python -m scripts.demo_data --confirm [--days 60]
 uvicorn app.main:app --port 8000
 # In another terminal: the integration push worker (optional without external systems; events queue up and are sent once it starts)
 python -m app.worker

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -29,6 +29,7 @@ import { apiClient } from "@/api/client";
 import { showError } from "@/api/errors";
 import { useCan } from "@/api/me";
 import type { Connector, ConnectorWithSecret, EventType, IntegrationJob, IntegrationJobDetail, IntegrationSummary } from "@/api/types";
+import { ModalForm } from "@/components/CreateModal";
 import { formatDateTime, preventEnterSubmit } from "@/components/documents";
 import { Pill, Toolbar, type Accent } from "@/components/ui";
 import { DOC_PATHS, DOC_TYPE_LABELS } from "@/constants/labels";
@@ -107,7 +108,7 @@ function ConnectorModal({
   onClose: () => void;
   onCreated: (c: ConnectorWithSecret) => void;
 }) {
-  const [form] = Form.useForm<ConnectorForm>();
+  const submitRef = useRef<(() => void) | null>(null);
   const queryClient = useQueryClient();
   const save = useMutation({
     mutationFn: async (v: ConnectorForm) => {
@@ -139,14 +140,13 @@ function ConnectorModal({
       title={editing ? `Edit connector ${editing.code}` : "New connector"}
       width={720}
       onCancel={onClose}
-      onOk={() => form.submit()}
+      onOk={() => submitRef.current?.()}
       confirmLoading={save.isPending}
       destroyOnHidden
     >
-      <Form
-        form={form}
-        layout="vertical"
-        preserve={false}
+      {/* A fresh form per opening; see ModalForm for why not a form instance kept on this modal with preserve={false} */}
+      <ModalForm<ConnectorForm>
+        submitRef={submitRef}
         onKeyDown={preventEnterSubmit}
         onFinish={(v) => save.mutate(v)}
         initialValues={
@@ -216,7 +216,7 @@ function ConnectorModal({
             </>
           )}
         </Form.List>
-      </Form>
+      </ModalForm>
     </Modal>
   );
 }

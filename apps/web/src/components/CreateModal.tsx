@@ -1,8 +1,9 @@
-import type { ReactNode } from "react";
+import { useRef } from "react";
+import type { ReactNode, RefObject } from "react";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Form, Modal, message } from "antd";
-import type { FormInstance } from "antd";
+import type { FormInstance, FormProps } from "antd";
 
 import { apiClient } from "@/api/client";
 import { showError } from "@/api/errors";
@@ -25,6 +26,32 @@ interface Props<T> {
 const clearedAsNull = (values: object) =>
   Object.fromEntries(Object.entries(values).map(([k, v]) => [k, v === undefined || v === "" ? null : v]));
 
+/**
+ * The form inside a modal with destroyOnHidden. It owns its form instance, so each opening gets a fresh one that starts
+ * from that record's initialValues alone; the modal's OK button submits it through `submitRef`.
+ *
+ * Why not one form instance on the modal: it outlives each opening, and leftover list values (an item's packing rows)
+ * were merged over the next record's initialValues. Clearing it on unmount (clearOnDestroy) also fires during React
+ * StrictMode's mount-unmount-mount and left every edit form empty in development. And no preserve={false}: with it,
+ * unmounting a Form.List row sets its values to undefined, so that same practice unmount emptied list rows.
+ */
+export function ModalForm<T extends object>({
+  submitRef,
+  children,
+  ...props
+}: Omit<FormProps<T>, "form" | "children"> & {
+  submitRef: RefObject<(() => void) | null>;
+  children: ReactNode | ((form: FormInstance<T>) => ReactNode);
+}) {
+  const [form] = Form.useForm<T>();
+  submitRef.current = () => form.submit();
+  return (
+    <Form<T> form={form} layout="vertical" {...props}>
+      {typeof children === "function" ? children(form) : children}
+    </Form>
+  );
+}
+
 export default function CreateModal<T extends object>({
   open,
   title,
@@ -36,7 +63,7 @@ export default function CreateModal<T extends object>({
   transform,
   children,
 }: Props<T>) {
-  const [form] = Form.useForm<T>();
+  const submitRef = useRef<(() => void) | null>(null);
   const queryClient = useQueryClient();
   const mutation = useMutation({
     mutationFn: (formValues: T): Promise<unknown> => {
@@ -48,7 +75,6 @@ export default function CreateModal<T extends object>({
     onSuccess: () => {
       message.success(record ? "Saved" : "Created");
       queryClient.invalidateQueries({ queryKey: [queryKey] });
-      form.resetFields();
       onClose();
     },
     onError: showError,
@@ -59,14 +85,13 @@ export default function CreateModal<T extends object>({
       open={open}
       title={title}
       onCancel={onClose}
-      onOk={() => form.submit()}
+      onOk={() => submitRef.current?.()}
       confirmLoading={mutation.isPending}
       destroyOnHidden
     >
-      {/* preserve={false}: values from one record must not leak into the next one opened */}
-      <Form form={form} layout="vertical" preserve={false} initialValues={initialValues} onFinish={(v) => mutation.mutate(v)}>
-        {children(form)}
-      </Form>
+      <ModalForm<T> submitRef={submitRef} initialValues={initialValues} onFinish={(v) => mutation.mutate(v)}>
+        {children}
+      </ModalForm>
     </Modal>
   );
 }

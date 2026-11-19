@@ -45,6 +45,8 @@ interface CartLine {
   name: string;
   uom_id: string;
   uom_code: string;
+  /** Code of the item's base unit (missing on carts saved before it was added) */
+  base_uom_code?: string;
   /** Base units per one of this unit; null when unknown (line copied from an old order) */
   factor: number | null;
   /** Available stock in base units when the line was added */
@@ -69,6 +71,12 @@ function useDebounced<T>(value: T, delay = 300) {
   return debounced;
 }
 
+/** "1 CTN = 24 PCS" for a non-base unit; null for the base unit or when the factor is unknown */
+function conversionText(uomCode: string, factor: number | null | undefined, baseCode: string | undefined) {
+  if (!factor || factor === 1 || !baseCode || uomCode === baseCode) return null;
+  return `1 ${uomCode} = ${formatQty(factor)} ${baseCode}`;
+}
+
 function StockPill({ available, uom }: { available: number; uom: string }) {
   if (available <= 0) return <Pill tone="slate" dot>Out of stock</Pill>;
   return (
@@ -85,35 +93,61 @@ function AddToCart({ item, inCart, onAdd }: { item: CatalogItem; inCart: number;
   const add = () => {
     if (qty && qty > 0) onAdd(uomId, qty);
   };
+  const uom = item.uoms.find((u) => u.id === uomId);
+  const conversion = uom ? conversionText(uom.code, uom.factor, item.base_uom.code) : null;
   return (
-    <Space.Compact>
-      <InputNumber
-        min={0.0001}
-        value={qty}
-        onChange={setQty}
-        onPressEnter={add}
-        style={{ width: 84 }}
-        aria-label={`Quantity of ${item.sku_code}`}
-      />
-      {item.uoms.length > 1 ? (
-        <Select
-          value={uomId}
-          onChange={setUomId}
-          style={{ width: 92 }}
-          options={item.uoms.map((u) => ({ value: u.id, label: u.code, title: u.factor === 1 ? u.name : `${u.name} = ${formatQty(u.factor)} ${item.base_uom.code}` }))}
-          aria-label={`Unit of ${item.sku_code}`}
-        />
-      ) : (
-        <Button disabled style={{ width: 64, cursor: "default" }}>
-          {item.base_uom.code}
-        </Button>
-      )}
-      <Badge count={inCart} size="small" offset={[-4, 2]}>
-        <Button type="primary" icon={<PlusOutlined />} onClick={add} disabled={!qty || qty <= 0} aria-label={`Add ${item.sku_code} to cart`}>
-          Add
-        </Button>
+    <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
+      {/* The badge wraps the whole group: inside Space.Compact a hovered/focused button is raised above the count and hides it */}
+      <Badge count={inCart} size="small" offset={[-4, 2]} title={`${inCart} in cart`} styles={{ indicator: { zIndex: 3 } }}>
+        <Space.Compact>
+          <InputNumber
+            min={0.0001}
+            value={qty}
+            onChange={setQty}
+            onPressEnter={add}
+            style={{ width: 84 }}
+            aria-label={`Quantity of ${item.sku_code}`}
+          />
+          {item.uoms.length > 1 ? (
+            <Select
+              value={uomId}
+              onChange={setUomId}
+              style={{ width: 92 }}
+              popupMatchSelectWidth={false}
+              options={item.uoms.map((u) => ({ value: u.id, label: u.code, title: u.factor === 1 ? u.name : `${u.name} = ${formatQty(u.factor)} ${item.base_uom.code}` }))}
+              optionRender={(o) => {
+                const u = item.uoms.find((x) => x.id === o.value);
+                const text = u ? conversionText(u.code, u.factor, item.base_uom.code) : null;
+                return text ? (
+                  <span>
+                    {u!.code}{" "}
+                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                      ({text})
+                    </Typography.Text>
+                  </span>
+                ) : (
+                  o.label
+                );
+              }}
+              aria-label={`Unit of ${item.sku_code}`}
+            />
+          ) : (
+            <Button disabled style={{ width: 64, cursor: "default" }}>
+              {item.base_uom.code}
+            </Button>
+          )}
+          <Button type="primary" icon={<PlusOutlined />} onClick={add} disabled={!qty || qty <= 0} aria-label={`Add ${item.sku_code} to cart`}>
+            Add
+          </Button>
+        </Space.Compact>
       </Badge>
-    </Space.Compact>
+      {conversion && (
+        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+          {conversion}
+          {qty && qty > 0 ? ` · ${formatQty(qty * uom!.factor)} ${item.base_uom.code}` : ""}
+        </Typography.Text>
+      )}
+    </div>
   );
 }
 
@@ -319,31 +353,44 @@ function CartPanel({
           <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Add items from the list" />
         ) : (
           <div style={{ maxHeight: 420, overflowY: "auto" }}>
-            {cart.lines.map((l, i) => (
-              <div
-                key={`${l.item_id}-${l.uom_id}`}
-                style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: "1px solid var(--ant-color-split)" }}
-              >
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={l.name}>
-                    {l.name}
+            {cart.lines.map((l, i) => {
+              const conversion = conversionText(l.uom_code, l.factor, l.base_uom_code);
+              return (
+                <div
+                  key={`${l.item_id}-${l.uom_id}`}
+                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: "1px solid var(--ant-color-split)" }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={l.name}>
+                      {l.name}
+                    </div>
+                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                      <span className="wms-mono">{l.sku_code}</span>
+                      {conversion && (
+                        <>
+                          {" · "}
+                          {conversion}
+                          {" · "}
+                          <span style={{ color: "var(--ant-color-text)" }}>
+                            = {formatQty(l.qty * l.factor!)} {l.base_uom_code}
+                          </span>
+                        </>
+                      )}
+                    </Typography.Text>
                   </div>
-                  <Typography.Text type="secondary" className="wms-mono" style={{ fontSize: 12 }}>
-                    {l.sku_code}
-                  </Typography.Text>
+                  <InputNumber
+                    size="small"
+                    min={0.0001}
+                    value={l.qty}
+                    onChange={(v) => v && v > 0 && setLine(i, { qty: v })}
+                    style={{ width: 76 }}
+                    aria-label={`Quantity of ${l.sku_code} in cart`}
+                  />
+                  <span style={{ width: 36, fontSize: 12.5 }}>{l.uom_code}</span>
+                  <Button size="small" type="text" icon={<DeleteOutlined />} onClick={() => setLine(i, null)} aria-label={`Remove ${l.sku_code}`} />
                 </div>
-                <InputNumber
-                  size="small"
-                  min={0.0001}
-                  value={l.qty}
-                  onChange={(v) => v && v > 0 && setLine(i, { qty: v })}
-                  style={{ width: 76 }}
-                  aria-label={`Quantity of ${l.sku_code} in cart`}
-                />
-                <span style={{ width: 36, fontSize: 12.5 }}>{l.uom_code}</span>
-                <Button size="small" type="text" icon={<DeleteOutlined />} onClick={() => setLine(i, null)} aria-label={`Remove ${l.sku_code}`} />
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -397,7 +444,14 @@ function OrderLines({ id }: { id: string }) {
       columns={[
         { title: "SKU", render: (_, l) => <span className="wms-mono">{l.item.sku_code}</span> },
         { title: "Item", render: (_, l) => l.item.name },
-        { title: "Ordered", align: "right", render: (_, l) => `${formatQty(l.qty_planned)} ${l.uom.code}` },
+        {
+          title: "Ordered",
+          align: "right",
+          render: (_, l) =>
+            l.uom.id === l.item.base_uom.id
+              ? `${formatQty(l.qty_planned)} ${l.uom.code}`
+              : `${formatQty(l.qty_planned)} ${l.uom.code} (${formatQty(l.ordered_base)} ${l.item.base_uom.code})`,
+        },
         { title: "Shipped", align: "right", render: (_, l) => `${formatQty(l.shipped)} ${l.item.base_uom.code}` },
       ]}
     />
@@ -503,7 +557,14 @@ export default function CartPage() {
     const lines = [...cart.lines];
     const existing = lines.findIndex((l) => l.item_id === line.item_id && l.uom_id === line.uom_id);
     if (existing >= 0) {
-      lines[existing] = { ...lines[existing]!, qty: lines[existing]!.qty + line.qty, available: line.available ?? lines[existing]!.available };
+      const old = lines[existing]!;
+      lines[existing] = {
+        ...old,
+        qty: old.qty + line.qty,
+        base_uom_code: line.base_uom_code ?? old.base_uom_code,
+        factor: line.factor ?? old.factor,
+        available: line.available ?? old.available,
+      };
     } else if (lines.length >= MAX_LINES) {
       message.warning(`A cart holds at most ${MAX_LINES} lines; place this order first`);
       return false;
@@ -518,9 +579,13 @@ export default function CartPage() {
     const uom = item.uoms.find((u) => u.id === uomId) ?? { ...item.base_uom, factor: 1 };
     const added = addLine({
       item_id: item.id, sku_code: item.sku_code, name: item.name, uom_id: uom.id, uom_code: uom.code,
-      factor: uom.factor, available: item.available, qty,
+      base_uom_code: item.base_uom.code, factor: uom.factor, available: item.available, qty,
     });
-    if (added) message.success({ content: `Added ${formatQty(qty)} ${uom.code} ${item.sku_code}`, key: "cart-add", duration: 1.5 });
+    if (added) {
+      const conversion = conversionText(uom.code, uom.factor, item.base_uom.code);
+      const base = conversion ? ` (${formatQty(qty * uom.factor)} ${item.base_uom.code})` : "";
+      message.success({ content: `Added ${formatQty(qty)} ${uom.code}${base} ${item.sku_code}`, key: "cart-add", duration: 1.5 });
+    }
   };
 
   const reorder = (order: SalesOrder) => {
@@ -532,7 +597,10 @@ export default function CartPage() {
       else
         lines.push({
           item_id: l.item.id, sku_code: l.item.sku_code, name: l.item.name, uom_id: l.uom.id, uom_code: l.uom.code,
-          factor: l.uom.id === l.item.base_uom.id ? 1 : null, available: null, qty: l.qty_planned,
+          base_uom_code: l.item.base_uom.code,
+          // The order line keeps both quantities, so the unit's factor follows from them
+          factor: l.uom.id === l.item.base_uom.id ? 1 : l.qty_planned > 0 ? l.ordered_base / l.qty_planned : null,
+          available: null, qty: l.qty_planned,
         });
     }
     if (lines.length > MAX_LINES) {

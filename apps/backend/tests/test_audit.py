@@ -1,7 +1,7 @@
 """Field-level audit log: what is recorded, how it reads, and that it follows the business transaction."""
 
 from tests.conftest import login
-from tests.helpers import Api, make_item, make_warehouse
+from tests.helpers import Api, make_item, make_warehouse, pallet
 
 
 def history(api: Api, entity_id: str) -> list[dict]:
@@ -102,7 +102,7 @@ def test_rolled_back_request_leaves_no_audit_row(client, admin_headers, unique):
 def test_audit_rows_carry_the_request_id(client, admin_headers, unique):
     api = Api(client, admin_headers)
     ea = next(u["id"] for u in api.get("/uoms") if u["code"] == "EA")
-    response = client.post("/api/v1/items", headers=admin_headers, json={"sku_code": f"RQ{unique}", "name": "x", "base_uom_id": ea})
+    response = client.post("/api/v1/items", headers=admin_headers, json={"sku_code": f"RQ{unique}", "name": "x", "base_uom_id": ea, "packings": pallet(api)})
     request_id = response.headers["x-request-id"]
     assert request_id
     assert history(api, response.json()["id"])[0]["request_id"] == request_id

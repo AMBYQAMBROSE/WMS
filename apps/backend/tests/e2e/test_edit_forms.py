@@ -36,7 +36,7 @@ def test_edit_form_shows_existing_packing_units(page: Page, client, admin_header
                         "packings": [{"uom_id": ctn, "factor": 12}, {"uom_id": plt, "factor": 480}]})
     two = f"PE{unique}B"
     api.post("/items", {"sku_code": two, "name": f"Item {two}", "base_uom_id": wh.ea,
-                        "packings": [{"uom_id": ctn, "factor": 6}]})
+                        "packings": [{"uom_id": plt, "factor": 300}]})
 
     sign_in(page)
     page.goto("/items")
@@ -46,7 +46,7 @@ def test_edit_form_shows_existing_packing_units(page: Page, client, admin_header
     expect(page.get_by_role("dialog")).to_be_hidden()
 
     _expect_packings(page, one, [("CTN", "12"), ("PLT", "480")])
-    _expect_packings(page, two, [("CTN", "6")])  # one row, not the previous item's two
+    _expect_packings(page, two, [("PLT", "300")])  # one row, not the previous item's two
 
 
 def test_edit_connector_shows_existing_headers(page: Page, client, admin_headers, unique):

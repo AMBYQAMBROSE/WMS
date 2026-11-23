@@ -26,8 +26,10 @@ from app.models.location import LOCATION_TYPES, STOCK_LOCATION_TYPES, Location
 from app.models.reason_code import REASON_CATEGORY_ADJUST, ReasonCode
 from app.schemas.document import AdjustmentIn, AdjustmentLineIn
 from app.schemas.document import PurchaseOrderIn, PurchaseOrderLineIn
+from app.schemas.item import ItemPackingIn
 from app.schemas.outbound import SalesOrderIn, SalesOrderLineIn
 from app.services.adjustment_service import AdjustmentService
+from app.services.item_service import PALLET_UOM_CODE, ItemService
 from app.services.purchase_order_service import PurchaseOrderService
 from app.services.sales_order_service import SalesOrderService
 
@@ -180,7 +182,11 @@ KINDS: dict[str, ImportKind] = {
             Column("min_stock_qty", "Minimum stock", number, False,
                    "In the base unit; the dashboard alarms when available stock falls below it", 100),
             Column("is_active", "Active", boolean, False, "Yes/No, default Yes", "Yes"),
+            Column("pallet_qty", "Qty per pallet", number, False,
+                   "Base units one pallet (PLT) holds. Required for new items and for items that have none yet; "
+                   "empty keeps an existing one", 480),
         ],
+        ["A bin holds one pallet, so every item needs its pallet quantity (not needed when the base unit is PLT)"],
     ),
     "locations": ImportKind(
         "locations", "Locations", ("location.create", "location.update"),
@@ -398,6 +404,18 @@ class ImportService:
             if item is not None and item.base_uom_id != uom.id:
                 result.error(n, "Base unit", "The base unit of an existing item cannot be changed by import (it affects existing stock and documents)")
                 continue
+            if uom.code != PALLET_UOM_CODE:
+                pallet = r.get("pallet_qty")
+                has_pallet = item is not None and any(p.from_uom.code == PALLET_UOM_CODE for p in item.packings)
+                if pallet is None and not has_pallet:
+                    result.error(n, "Qty per pallet", f"Enter how many {uom.code} one pallet holds (a bin holds one pallet)")
+                    continue
+                if pallet is not None and pallet <= 0:
+                    result.error(n, "Qty per pallet", "Must be greater than 0")
+                    continue
+                if pallet is not None and PALLET_UOM_CODE not in uoms:
+                    result.error(n, "Qty per pallet", f"Unit {PALLET_UOM_CODE} does not exist; add it under units of measure")
+                    continue
             planned.append((r, uom, item))
         if not write or result.error_count:
             result.created = sum(1 for _, _, i in planned if i is None)
@@ -416,6 +434,12 @@ class ImportService:
                                    "is_expiry_managed": False, "shelf_life_days": None, "min_stock_qty": None,
                                    "is_active": True}, is_new)
             self._audit(item)
+            if uom.code != PALLET_UOM_CODE and r.get("pallet_qty") is not None:
+                self.db.flush()
+                pallet_uom = uoms[PALLET_UOM_CODE]
+                packings = [ItemPackingIn(uom_id=p.from_uom_id, factor=p.factor) for p in item.packings if p.from_uom_id != pallet_uom.id]
+                packings.append(ItemPackingIn(uom_id=pallet_uom.id, factor=r["pallet_qty"]))
+                ItemService(self.db)._set_packings(item, packings, self.user_id)
         self.db.flush()
         result.committed = True
 

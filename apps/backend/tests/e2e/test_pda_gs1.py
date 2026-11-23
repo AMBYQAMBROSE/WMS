@@ -5,13 +5,13 @@ from playwright.sync_api import Page, expect
 from tests.e2e.test_labels import expect_pdf_preview, shot
 from tests.e2e.test_pda import pda_sign_in, scan
 from tests.e2e.test_smoke import sign_in
-from tests.helpers import Api, make_warehouse
+from tests.helpers import Api, make_warehouse, pallet
 
 GS = "\x1d"
 
 
 def tracked_item(api: Api, wh, unique: str, barcode: str) -> str:
-    return api.post("/items", {"sku_code": f"GS{unique}", "name": "GS1 item", "barcode": barcode, "base_uom_id": wh.ea,
+    return api.post("/items", {"sku_code": f"GS{unique}", "name": "GS1 item", "barcode": barcode, "base_uom_id": wh.ea, "packings": pallet(api),
                                "is_batch_managed": True, "is_expiry_managed": True})["id"]
 
 

@@ -14,6 +14,19 @@ from app.schemas.item import ItemCreate, ItemPackingIn, ItemUpdate
 from app.services.document_common import get_uom
 from app.services.master_guard import delete_item
 
+# A bin holds one pallet, so every item says how many base units its pallet (this packing unit) holds
+PALLET_UOM_CODE = "PLT"
+# Pallet size of items saved before the pallet quantity was required
+DEFAULT_PALLET_QTY = Decimal(500)
+
+
+def pallet_qty(item: Item) -> Decimal:
+    """Base units one pallet of the item holds: its PLT packing (1 when PLT is its base unit), else DEFAULT_PALLET_QTY"""
+    if item.base_uom.code == PALLET_UOM_CODE:
+        return Decimal(1)
+    plt = next((packing for packing in item.packings if packing.from_uom.code == PALLET_UOM_CODE), None)
+    return plt.factor if plt is not None else DEFAULT_PALLET_QTY
+
 
 class ItemService:
     def __init__(self, db: Session):
@@ -79,6 +92,7 @@ class ItemService:
         factor that documents already use cannot change or go away: that would silently change what those documents mean."""
         db, t = self.repo.db, item.tenant_id
         wanted: dict[uuid.UUID, Decimal] = {}
+        codes: set[str] = set()
         for p in packings:
             uom = get_uom(db, t, p.uom_id)
             if p.uom_id == item.base_uom_id:
@@ -86,6 +100,13 @@ class ItemService:
             if p.uom_id in wanted:
                 raise DomainError(f"Unit {uom.code} is listed twice for item {item.sku_code}")
             wanted[p.uom_id] = p.factor
+            codes.add(uom.code)
+        base = get_uom(db, t, item.base_uom_id).code
+        if PALLET_UOM_CODE not in codes and base != PALLET_UOM_CODE:
+            raise DomainError(
+                f"Item {item.sku_code}: enter how many {base} one pallet ({PALLET_UOM_CODE}) holds. Every item needs "
+                "a pallet quantity, because a bin holds one pallet"
+            )
 
         current = {
             c.from_uom_id: c

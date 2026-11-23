@@ -604,7 +604,7 @@ def create_items(sim: Sim, api: Api) -> None:
         "sku_code": sku, "name": name, "category": category, "base_uom_id": sim.uoms[base],
         "barcode": ean13(sim.suppliers[supplier].barcode, seq[supplier]), "is_batch_managed": True,
         "is_expiry_managed": True, "shelf_life_days": 180, "is_active": False,
-        "packings": [{"uom_id": sim.uoms["CTN"], "factor": str(per_ctn)}],
+        "packings": [{"uom_id": sim.uoms["CTN"], "factor": str(per_ctn)}, {"uom_id": sim.uoms["PLT"], "factor": str(per_ctn * 40)}],
     })
     print(f"Created {len(sim.items) + 1} items")
 
@@ -826,8 +826,12 @@ def receiving(sim: Sim, api: Api, rng, clock: Clock, day: REAL_DATE, tenant_id) 
             item = by_id[str(item_id).lower()]
             target = str(suggested).lower() if suggested else None
             if target is None:
+                # A bin holds one pallet: with no free bin in the zone the pallet waits on the dock (sheet stays open)
                 free = [b for b in sim.bins[item.zone] if b.lower() not in occupied]
-                target = (free or sim.bins[item.zone])[0]
+                if not free:
+                    complete = False
+                    break
+                target = free[0]
             occupied.add(target.lower())
             api.post(RECEIVER, f"/putaways/{sheet_id}/lines/{line_id}/put", {"to_location_id": target, "qty": q(qty)}, idem=True)
         if complete and clock.at(day, put_hour + 0.05):
@@ -1132,6 +1136,7 @@ def create_extra_master(sim: Sim, api: Api, tenant_id, password: str) -> None:
     kit_id = api.post("admin", "/items", {
         "sku_code": "KIT-9002", "name": "Kopitiam Breakfast Starter Kit", "category": "Gift Hampers",
         "base_uom_id": sim.uoms["BOX"], "barcode": ean13("9556199", 2),
+        "packings": [{"uom_id": sim.uoms["PLT"], "factor": "60"}],
     })["id"]
     for code, name, product, recipe in (
         ("RCP-HMP-01", "Festive Goodies Hamper - standard box", hamper.id, HAMPER_RECIPE),

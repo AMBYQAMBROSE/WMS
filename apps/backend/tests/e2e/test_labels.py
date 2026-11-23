@@ -5,7 +5,7 @@ import os
 from playwright.sync_api import Page, expect
 
 from tests.e2e.test_smoke import sign_in
-from tests.helpers import Api
+from tests.helpers import Api, pallet
 
 # Optional: where to save screenshots of the label screens for a visual check
 SHOTS = os.environ.get("E2E_SCREENSHOTS")
@@ -64,7 +64,7 @@ def test_label_layout_set_up_and_test_print(page: Page, errors, unique):
 def test_print_item_and_location_labels(page: Page, errors, client, admin_headers, unique):
     api = Api(client, admin_headers)
     ea = next(u["id"] for u in api.get("/uoms") if u["code"] == "EA")
-    api.post("/items", {"sku_code": f"PL{unique}", "name": "Label print item", "base_uom_id": ea})
+    api.post("/items", {"sku_code": f"PL{unique}", "name": "Label print item", "base_uom_id": ea, "packings": pallet(api)})
     wh = api.post("/locations", {"code": f"PW{unique}", "name": "Print warehouse", "location_type": "WAREHOUSE"})
     api.post("/locations", {"code": f"PB{unique}", "name": "Print bin", "location_type": "BIN", "parent_id": wh["id"]})
 

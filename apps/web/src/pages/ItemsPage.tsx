@@ -25,6 +25,8 @@ type ItemFormValues = Partial<Omit<Item, "packings">> & { packings?: PackingValu
 
 /** Units offered on a new item: carton and pallet rows ready for their quantities */
 const DEFAULT_PACKING_CODES = ["CTN", "PLT"];
+/** A bin holds one pallet, so every item must say how many base units its pallet holds */
+const PALLET_CODE = "PLT";
 
 /** Rows without a quantity mean "not packed this way" and are left out */
 const withPackings = (values: ItemFormValues) => ({
@@ -47,6 +49,13 @@ export default function ItemsPage() {
     queryFn: async () => (await apiClient.get<Item[]>("/items", { params: { limit: MASTER_LIST_LIMIT, keyword: keyword || undefined } })).data,
   });
   const uomCode = (id: string) => uoms?.find((u) => u.id === id)?.code ?? "";
+  const palletUom = uoms?.find((u) => u.code === PALLET_CODE);
+  /** An item saved before the pallet quantity was required gets an empty pallet row to fill in */
+  const editValues = (it: Item): ItemFormValues => {
+    const packings: PackingValues[] = it.packings.map((p) => ({ uom_id: p.uom.id, factor: p.factor }));
+    const needsPallet = palletUom && it.base_uom_id !== palletUom.id && !packings.some((p) => p.uom_id === palletUom.id);
+    return { ...it, packings: needsPallet ? [...packings, { uom_id: palletUom.id, factor: null }] : packings };
+  };
 
   const { columns, settings: columnSettings } = useColumnPrefs<Item>("items", [
     { title: "SKU", dataIndex: "sku_code", render: (v: string) => <span className="wms-mono">{v}</span> },
@@ -135,7 +144,7 @@ export default function ItemsPage() {
         record={editing}
         initialValues={
           editing
-            ? { ...editing, packings: editing.packings.map((p) => ({ uom_id: p.uom.id, factor: p.factor })) }
+            ? editValues(editing)
             : {
                 is_batch_managed: false,
                 is_expiry_managed: false,
@@ -209,16 +218,30 @@ export default function ItemsPage() {
             </FormSection>
             <FormSection
               title="Packing units"
-              description="How many base units one carton or pallet holds. Receipts and orders can then be entered in cartons or pallets, and stock is added or taken in base units. Leave a quantity empty if the item is not packed that way. A quantity cannot change once documents use it."
+              description="How many base units one carton or pallet holds. Receipts and orders can then be entered in cartons or pallets, and stock is added or taken in base units. The pallet quantity is required: a bin holds one pallet, and receipts are put away one pallet per bin. Leave other quantities empty if the item is not packed that way. A quantity cannot change once documents use it."
             >
               <Form.Item noStyle dependencies={["base_uom_id"]}>
                 {({ getFieldValue }) => {
                   const baseId = getFieldValue("base_uom_id") as string | undefined;
                   const base = baseId ? uomCode(baseId) : "";
                   const options = (uoms ?? []).filter((u) => u.id !== baseId).map((u) => ({ value: u.id, label: `${u.code} ${u.name}` }));
+                  const isPallet = (index: number) =>
+                    !!palletUom && (getFieldValue(["packings", index, "uom_id"]) as string | undefined) === palletUom.id;
                   return (
-                    <Form.List name="packings">
-                      {(fields, { add, remove }) => (
+                    <Form.List
+                      name="packings"
+                      rules={[
+                        {
+                          validator: async (_, rows: PackingValues[] | undefined) => {
+                            if (!palletUom || baseId === palletUom.id) return;
+                            if (!(rows ?? []).some((p) => p?.uom_id === palletUom.id)) {
+                              throw new Error(`Add a ${PALLET_CODE} row: every item needs its pallet quantity`);
+                            }
+                          },
+                        },
+                      ]}
+                    >
+                      {(fields, { add, remove }, { errors }) => (
                         <>
                           {fields.map((f) => (
                             <Row key={f.key} gutter={8} wrap={false} align="top">
@@ -242,7 +265,17 @@ export default function ItemsPage() {
                                 holds
                               </Col>
                               <Col flex="auto">
-                                <Form.Item name={[f.name, "factor"]}>
+                                <Form.Item
+                                  name={[f.name, "factor"]}
+                                  dependencies={[["packings", f.name, "uom_id"]]}
+                                  rules={[
+                                    {
+                                      validator: async (_, value) => {
+                                        if (isPallet(f.name) && !value) throw new Error("Required: base units per pallet");
+                                      },
+                                    },
+                                  ]}
+                                >
                                   <InputNumber
                                     min={0.0001}
                                     placeholder="Quantity"
@@ -262,6 +295,7 @@ export default function ItemsPage() {
                           <Button type="dashed" block icon={<PlusOutlined />} onClick={() => add({})}>
                             Add packing unit
                           </Button>
+                          <Form.ErrorList errors={errors} />
                         </>
                       )}
                     </Form.List>

@@ -3,12 +3,12 @@
 from datetime import UTC, date, datetime, timedelta
 
 from tests.conftest import login
-from tests.helpers import Api, Warehouse, make_warehouse
+from tests.helpers import Api, Warehouse, make_warehouse, pallet
 
 
 def batch_item(api: Api, wh: Warehouse, sku: str) -> str:
     return api.post("/items", {
-        "sku_code": sku, "name": f"Item {sku}", "base_uom_id": wh.ea, "is_batch_managed": True, "is_expiry_managed": True,
+        "sku_code": sku, "name": f"Item {sku}", "base_uom_id": wh.ea, "packings": pallet(api), "is_batch_managed": True, "is_expiry_managed": True,
     })["id"]
 
 

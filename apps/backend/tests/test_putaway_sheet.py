@@ -23,7 +23,7 @@ def test_receipt_into_dock_makes_a_sheet_put_away_in_two_bins(client, admin_head
     assert sheet["location"]["id"] == wh.dock_in
     [line] = sheet["lines"]
     assert (line["qty_planned"], line["qty_actual"], line["confirmed_at"]) == (10, 0, None)
-    assert line["to_location"] is None, "first receipt of the item: no bin to suggest"
+    assert line["to_location"]["id"] in (wh.bin, bin2), "one pallet, into an empty bin of the warehouse"
 
     # The bin is full after 6: the rest splits off as a new open line
     sheet = api.post(f"/putaways/{sheet['id']}/lines/{line['id']}/put", {"to_location_id": wh.bin, "qty": 6})
@@ -44,17 +44,81 @@ def test_receipt_into_dock_makes_a_sheet_put_away_in_two_bins(client, admin_head
     assert pages(print_doc(client, admin_headers, sheet["id"])) == 1
 
 
-def test_next_receipt_suggests_the_bin_holding_the_item(client, admin_headers, unique):
+def test_a_bin_holds_one_pallet_so_occupied_bins_are_skipped(client, admin_headers, unique):
     api = Api(client, admin_headers)
     wh = make_warehouse(api, unique)
+    bin2 = api.post("/locations", {"code": f"BIN2{unique}", "name": "Bin 2", "location_type": "BIN", "parent_id": wh.warehouse})["id"]
     item = make_item(api, wh, f"SG{unique}")
-    receive(api, wh, item, 5)
+    first = sheet_for(api, receive(api, wh, item, 5)["id"])
+    api.post(f"/putaways/{first['id']}/cancel")
     put_away(api, wh, item, 5)
 
-    grn = receive(api, wh, item, 3)
-    sheet = sheet_for(api, grn["id"])
-    assert sheet["lines"][0]["to_location"]["id"] == wh.bin
+    # BIN holds stock (even of the same item), so the next pallet goes to the empty bin
+    sheet = sheet_for(api, receive(api, wh, item, 3)["id"])
+    assert sheet["lines"][0]["to_location"]["id"] == bin2
     assert pages(print_doc(client, admin_headers, sheet["id"])) == 1
+
+    # BIN2 now has a pallet on its way: no bin is free, so the operator chooses one
+    sheet = sheet_for(api, receive(api, wh, item, 2)["id"])
+    assert sheet["lines"][0]["to_location"] is None
+
+
+def test_receipt_over_a_pallet_goes_to_one_empty_bin_per_pallet(client, admin_headers, unique):
+    api = Api(client, admin_headers)
+    wh = make_warehouse(api, unique)
+    bins = [wh.bin] + [
+        api.post("/locations", {"code": f"B{n}{unique}", "name": f"Bin {n}", "location_type": "BIN", "parent_id": wh.warehouse})["id"]
+        for n in range(2, 7)
+    ]
+    plt = next(u["id"] for u in api.get("/uoms") if u["code"] == "PLT")
+    packed = api.post("/items", {"sku_code": f"PP{unique}", "name": "Packed", "base_uom_id": wh.ea,
+                                 "packings": [{"uom_id": plt, "factor": 100}]})["id"]
+    plain = make_item(api, wh, f"PD{unique}", pallet_qty=500)
+
+    # Each item's own pallet quantity: 100 and 500
+    lines = sheet_for(api, receive(api, wh, packed, 250)["id"])["lines"] + sheet_for(api, receive(api, wh, plain, 1200)["id"])["lines"]
+    assert [(line["item"]["id"], line["qty_planned"]) for line in lines] == [
+        (packed, 100), (packed, 100), (packed, 50), (plain, 500), (plain, 500), (plain, 200),
+    ]
+    targets = [line["to_location"]["id"] for line in lines]
+    assert sorted(targets) == sorted(bins), "every pallet in its own bin"
+
+    # A pallet of exactly the pallet size stays one line
+    item = make_item(api, wh, f"PE{unique}", pallet_qty=500)
+    api.post("/locations", {"code": f"B7{unique}", "name": "Bin 7", "location_type": "BIN", "parent_id": wh.warehouse})
+    assert [line["qty_planned"] for line in sheet_for(api, receive(api, wh, item, 500)["id"])["lines"]] == [500]
+
+
+def test_receipts_posted_at_the_same_time_never_share_a_bin(client, admin_headers, unique):
+    """A receipt still posting holds row locks on the bins it claimed: another receipt skips them, without waiting"""
+    import threading
+    import uuid
+
+    from app.core.db import SessionLocal
+    from app.models.location import Location
+    from app.services.transfer_service import PutawayService
+
+    api = Api(client, admin_headers)
+    wh = make_warehouse(api, unique)
+    bin2 = api.post("/locations", {"code": f"BIN2{unique}", "name": "Bin 2", "location_type": "BIN", "parent_id": wh.warehouse})["id"]
+    item = make_item(api, wh, f"LK{unique}")
+
+    with SessionLocal() as other:
+        dock = other.get(Location, uuid.UUID(wh.dock_in))
+        [held] = PutawayService(other, dock.tenant_id, dock.created_by)._claim_bins(dock, 1)
+        result: dict = {}
+        posting = threading.Thread(target=lambda: result.update(grn=receive(api, wh, item, 3)))
+        try:
+            posting.start()
+            posting.join(30)
+            assert not posting.is_alive(), "the receipt must skip the locked bin, not wait for it"
+        finally:
+            other.rollback()
+            posting.join(30)
+
+    [line] = sheet_for(api, result["grn"]["id"])["lines"]
+    expected = ({wh.bin, bin2} - {str(held)}).pop()
+    assert line["to_location"]["id"] == expected
 
 
 def test_put_checks_quantity_target_and_resend(client, admin_headers, unique):

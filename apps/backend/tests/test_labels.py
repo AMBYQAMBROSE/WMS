@@ -2,7 +2,7 @@
 
 import re
 
-from tests.helpers import PREFIX, Api
+from tests.helpers import PREFIX, Api, pallet
 
 SHEET_3X8 = {
     "purpose": "ITEM", "media": "SHEET", "label_width_mm": 70, "label_height_mm": 36,
@@ -34,7 +34,7 @@ def make_items(api: Api, unique: str, count: int) -> list[str]:
     ids = []
     for i in range(count):
         # Every other item has no barcode: its label carries the SKU
-        body = {"sku_code": f"LBL{unique}{i}", "name": f"Label test item {i}", "base_uom_id": ea}
+        body = {"sku_code": f"LBL{unique}{i}", "name": f"Label test item {i}", "base_uom_id": ea, "packings": pallet(api)}
         if i % 2 == 0:
             body["barcode"] = f"69{unique}{i}"
         ids.append(api.post("/items", body)["id"])
@@ -63,7 +63,7 @@ def test_roll_prints_one_label_per_page(client, admin_headers, unique):
 def test_text_outside_latin_and_non_ascii_barcodes_print(client, admin_headers, unique):
     api = Api(client, admin_headers)
     ea = next(u["id"] for u in api.get("/uoms") if u["code"] == "EA")
-    item = api.post("/items", {"sku_code": f"CJK{unique}", "name": "测试商品 名称很长需要换行显示", "barcode": f"条码{unique}", "base_uom_id": ea})
+    item = api.post("/items", {"sku_code": f"CJK{unique}", "name": "测试商品 名称很长需要换行显示", "barcode": f"条码{unique}", "base_uom_id": ea, "packings": pallet(api)})
     # Code 128 cannot hold the barcode, so that label falls back to a QR code instead of failing
     assert pages(print_pdf(client, admin_headers, "/labels/items", {"item_ids": [item["id"]]})) == 1
 
@@ -136,7 +136,7 @@ def test_stock_labels_per_carton_of_a_receipt(client, admin_headers, unique):
 
     api = Api(client, admin_headers)
     wh = make_warehouse(api, unique)
-    item = api.post("/items", {"sku_code": f"STK{unique}", "name": "Batch item", "base_uom_id": wh.ea,
+    item = api.post("/items", {"sku_code": f"STK{unique}", "name": "Batch item", "base_uom_id": wh.ea, "packings": pallet(api),
                                "is_batch_managed": True, "is_expiry_managed": True})["id"]
     po = api.post("/purchase-orders", {"partner_id": wh.supplier, "lines": [{"item_id": item, "uom_id": wh.ea, "qty": 50}]})
     api.post(f"/purchase-orders/{po['id']}/confirm")

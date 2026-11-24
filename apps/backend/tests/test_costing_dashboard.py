@@ -14,7 +14,7 @@ from app.models.item import Item
 from app.services import report_service
 from app.services.analytics_service import AnalyticsService
 from tests.conftest import login
-from tests.helpers import Api, make_warehouse, put_away
+from tests.helpers import Api, make_warehouse, pallet, put_away
 
 
 @pytest.fixture(autouse=True)
@@ -53,7 +53,7 @@ def test_prices_follow_receipts_and_stay_hidden_without_cost_view(client, admin_
     wh = make_warehouse(admin, unique)
     ctn = _uom(admin, "CTN")
     item = admin.post("/items", {"sku_code": f"PR{unique}", "name": "Priced", "base_uom_id": wh.ea,
-                                 "packings": [{"uom_id": ctn, "factor": 12}]})["id"]
+                                 "packings": [{"uom_id": ctn, "factor": 12}, *pallet(admin)]})["id"]
     admin.call("PUT", f"/business-partners/{wh.supplier}", {"credit_terms_days": 30})
 
     # Ordered in eaches at 2.5, received in cartons: the receipt line's price is per carton
@@ -102,8 +102,9 @@ def test_dashboard_trends_compare_periods(client, admin_headers, unique):
     admin = Api(client, admin_headers)
     wh = make_warehouse(admin, unique)
     ctn = _uom(admin, "CTN")
+    # A pallet larger than the clock-based quantity below, so the whole receipt fits one bin
     item = admin.post("/items", {"sku_code": f"TR{unique}", "name": "Trend", "base_uom_id": wh.ea,
-                                 "packings": [{"uom_id": ctn, "factor": 10}]})["id"]
+                                 "packings": [{"uom_id": ctn, "factor": 10}, *pallet(admin, 10**11)]})["id"]
     admin.call("PUT", f"/business-partners/{wh.supplier}", {"credit_terms_days": 45})
     # The test database is shared and never cleaned: quantities growing with the clock keep this run's SKU and
     # supplier at the top of the ranked tables
@@ -131,7 +132,7 @@ def test_dashboard_trends_compare_periods(client, admin_headers, unique):
     purchase = data["purchases"]["rows"][0]
     assert purchase["item"]["id"] == item
     assert purchase["mtd"] == purchase["ytd"] == qty and purchase["ytd_ly"] == 0 and purchase["avg_3y"] == 0
-    assert purchase["packing"]["factor"] == 10 and purchase["packing"]["uom"]["code"] == "CTN"
+    assert purchase["packing"]["factor"] == 10**11 and purchase["packing"]["uom"]["code"] == "PLT"  # the largest packing
     assert purchase["ytd_value"] == qty
 
     loss = next(r for r in data["losses"]["rows"] if r["item"]["id"] == item)
@@ -154,9 +155,9 @@ def test_dashboard_trends_compare_periods(client, admin_headers, unique):
 def test_low_stock_alarm(client, admin_headers, unique):
     admin = Api(client, admin_headers)
     wh = make_warehouse(admin, unique)
-    out = admin.post("/items", {"sku_code": f"LO{unique}", "name": "Out", "base_uom_id": wh.ea, "min_stock_qty": 10})["id"]
-    below = admin.post("/items", {"sku_code": f"LB{unique}", "name": "Below", "base_uom_id": wh.ea, "min_stock_qty": 100})["id"]
-    fine = admin.post("/items", {"sku_code": f"LF{unique}", "name": "Fine", "base_uom_id": wh.ea, "min_stock_qty": 10})["id"]
+    out = admin.post("/items", {"sku_code": f"LO{unique}", "name": "Out", "base_uom_id": wh.ea, "packings": pallet(admin), "min_stock_qty": 10})["id"]
+    below = admin.post("/items", {"sku_code": f"LB{unique}", "name": "Below", "base_uom_id": wh.ea, "packings": pallet(admin), "min_stock_qty": 100})["id"]
+    fine = admin.post("/items", {"sku_code": f"LF{unique}", "name": "Fine", "base_uom_id": wh.ea, "packings": pallet(admin), "min_stock_qty": 10})["id"]
     _priced_receipt(admin, wh, below, wh.ea, 50, 1)
     _priced_receipt(admin, wh, fine, wh.ea, 50, 1)
 
@@ -179,10 +180,10 @@ def test_recipe_costing_and_what_stock_can_make(client, admin_headers, unique):
     admin = Api(client, admin_headers)
     wh = make_warehouse(admin, unique)
     ctn = _uom(admin, "CTN")
-    flour = admin.post("/items", {"sku_code": f"RA{unique}", "name": "Flour", "base_uom_id": wh.ea})["id"]
+    flour = admin.post("/items", {"sku_code": f"RA{unique}", "name": "Flour", "base_uom_id": wh.ea, "packings": pallet(admin)})["id"]
     sugar = admin.post("/items", {"sku_code": f"RB{unique}", "name": "Sugar", "base_uom_id": wh.ea,
-                                  "packings": [{"uom_id": ctn, "factor": 10}]})["id"]
-    cake = admin.post("/items", {"sku_code": f"RP{unique}", "name": "Cake", "base_uom_id": wh.ea})["id"]
+                                  "packings": [{"uom_id": ctn, "factor": 10}, *pallet(admin)]})["id"]
+    cake = admin.post("/items", {"sku_code": f"RP{unique}", "name": "Cake", "base_uom_id": wh.ea, "packings": pallet(admin)})["id"]
     _priced_receipt(admin, wh, flour, wh.ea, 100, 3)
     _priced_receipt(admin, wh, flour, wh.ea, 100, 2)  # the latest price counts
     _priced_receipt(admin, wh, sugar, wh.ea, 100, 0.5)
@@ -212,7 +213,7 @@ def test_recipe_costing_and_what_stock_can_make(client, admin_headers, unique):
         assert hidden["can_make"] == 50
 
         # A component without any price makes the costing incomplete (and with no stock, nothing can be made)
-        unpriced = admin.post("/items", {"sku_code": f"RU{unique}", "name": "Unpriced", "base_uom_id": wh.ea})["id"]
+        unpriced = admin.post("/items", {"sku_code": f"RU{unique}", "name": "Unpriced", "base_uom_id": wh.ea, "packings": pallet(admin)})["id"]
         updated = admin.call("PUT", f"/recipes/{recipe['id']}", {**body, "row_version": recipe["row_version"],
                                                                  "lines": [*body["lines"], {"item_id": unpriced, "uom_id": wh.ea, "qty": 1}]})
         costing = admin.get(f"/recipes/{updated['id']}/costing")
@@ -228,7 +229,7 @@ def test_recipe_costing_and_what_stock_can_make(client, admin_headers, unique):
 def test_stock_on_hand_export(client, admin_headers, unique):
     admin = Api(client, admin_headers)
     wh = make_warehouse(admin, unique)
-    item = admin.post("/items", {"sku_code": f"EX{unique}", "name": "Export", "base_uom_id": wh.ea})["id"]
+    item = admin.post("/items", {"sku_code": f"EX{unique}", "name": "Export", "base_uom_id": wh.ea, "packings": pallet(admin)})["id"]
     _priced_receipt(admin, wh, item, wh.ea, 20, 1.5)
     put_away(admin, wh, item, 5)
 

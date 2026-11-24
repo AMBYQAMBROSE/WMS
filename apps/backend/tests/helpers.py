@@ -64,8 +64,18 @@ def make_warehouse(api: Api, suffix: str) -> Warehouse:
     )
 
 
-def make_item(api: Api, wh: Warehouse, sku: str) -> str:
-    return api.post("/items", {"sku_code": sku, "name": f"Item {sku}", "base_uom_id": wh.ea})["id"]
+def uom_id(api: Api, code: str) -> str:
+    return next(u["id"] for u in api.get("/uoms") if u["code"] == code)
+
+
+def pallet(api: Api, qty: float = 100_000) -> list[dict]:
+    """The packings of an item whose pallet holds qty base units (every item needs one). The default is large, so
+    tests about other things can keep any quantity of one item in one bin."""
+    return [{"uom_id": uom_id(api, "PLT"), "factor": qty}]
+
+
+def make_item(api: Api, wh: Warehouse, sku: str, pallet_qty: float = 100_000) -> str:
+    return api.post("/items", {"sku_code": sku, "name": f"Item {sku}", "base_uom_id": wh.ea, "packings": pallet(api, pallet_qty)})["id"]
 
 
 def balance(api: Api, item_id: str, location_id: str) -> tuple[float, float]:

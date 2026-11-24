@@ -4,7 +4,7 @@ import datetime
 from dataclasses import dataclass
 
 from tests.e2e.flows.conftest import add_conversion
-from tests.helpers import Api
+from tests.helpers import Api, pallet
 
 TODAY = datetime.date.today()
 
@@ -68,7 +68,7 @@ def make_scenario(api: Api, u: str) -> Scenario:
     api.call("PUT", f"/locations/{locked}", {"is_locked": True, "row_version": row["row_version"]})
 
     def item(code, **flags):
-        return api.post("/items", {"sku_code": f"{code}{u}", "name": f"Item {code} {u}", "base_uom_id": ea, **flags})["id"]
+        return api.post("/items", {"sku_code": f"{code}{u}", "name": f"Item {code} {u}", "base_uom_id": ea, "packings": pallet(api), **flags})["id"]
 
     item_a = item("A")
     add_conversion(item_a, ctn, ea, 12)

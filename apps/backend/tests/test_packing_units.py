@@ -1,6 +1,6 @@
 """Packing units on the item master: receive and ship in cartons / pallets, stock is kept in the base unit."""
 
-from tests.helpers import Api, balance, make_warehouse
+from tests.helpers import Api, balance, make_warehouse, pallet
 
 
 def _uom(api: Api, code: str) -> str:
@@ -35,8 +35,9 @@ def test_receive_in_pallets_and_ship_in_cartons(client, admin_headers, unique):
     assert balance(api, item, wh.dock_in)[0] == 960
     assert api.get(f"/purchase-orders/{po['id']}")["status"] == "RECEIVED"
 
-    putaway = api.post("/putaways", {"lines": [{
-        "item_id": item, "uom_id": wh.ea, "qty": 960, "from_location_id": wh.dock_in, "to_location_id": wh.bin,
+    # A bin holds one pallet: one of the two goes to the bin (a putaway planned for the receipt replaces its sheet)
+    putaway = api.post("/putaways", {"ref_document_id": grn["id"], "lines": [{
+        "item_id": item, "uom_id": wh.ea, "qty": 480, "from_location_id": wh.dock_in, "to_location_id": wh.bin,
     }]})
     api.post(f"/putaways/{putaway['id']}/post")
 
@@ -44,12 +45,12 @@ def test_receive_in_pallets_and_ship_in_cartons(client, admin_headers, unique):
     so = api.post("/sales-orders", {"partner_id": wh.customer, "lines": [{"item_id": item, "uom_id": ctn, "qty": 5}]})
     api.post(f"/sales-orders/{so['id']}/confirm")
     pick = api.post(f"/sales-orders/{so['id']}/allocate", {"staging_location_id": wh.dock_out})["pick"]
-    assert balance(api, item, wh.bin) == (960, 60)
+    assert balance(api, item, wh.bin) == (480, 60)
     api.post(f"/picks/{pick['id']}/confirm-all")
     api.post(f"/picks/{pick['id']}/post")
     shipment = api.post("/shipments", {"so_id": so["id"]})
     api.post(f"/shipments/{shipment['id']}/post")
-    assert balance(api, item, wh.bin) == (900, 0)
+    assert balance(api, item, wh.bin) == (420, 0)
     assert balance(api, item, wh.dock_out)[0] == 0
 
 
@@ -74,7 +75,7 @@ def test_receipt_in_a_smaller_unit_must_come_out_exact(client, admin_headers, un
 def test_unit_without_packing_is_refused(client, admin_headers, unique):
     api = Api(client, admin_headers)
     wh = make_warehouse(api, unique)
-    item = api.post("/items", {"sku_code": f"PN{unique}", "name": "No packing", "base_uom_id": wh.ea})["id"]
+    item = api.post("/items", {"sku_code": f"PN{unique}", "name": "No packing", "base_uom_id": wh.ea, "packings": pallet(api)})["id"]
     api.call("POST", "/sales-orders", {"partner_id": wh.customer,
                                        "lines": [{"item_id": item, "uom_id": _uom(api, "CTN"), "qty": 1}]}, expect=400)
 
@@ -92,19 +93,28 @@ def test_packing_rules(client, admin_headers, unique):
     api.call("POST", "/items", {"sku_code": sku, "name": "x", "base_uom_id": wh.ea,
                                 "packings": [{"uom_id": ctn, "factor": 0}]}, expect=422)
 
-    item = api.post("/items", {"sku_code": sku, "name": "x", "base_uom_id": wh.ea, "packings": [{"uom_id": ctn, "factor": 12}]})
+    # Every item needs its pallet quantity (a bin holds one pallet), also when editing its packings
+    api.call("POST", "/items", {"sku_code": sku, "name": "x", "base_uom_id": wh.ea,
+                                "packings": [{"uom_id": ctn, "factor": 12}]}, expect=400)
+    api.call("POST", "/items", {"sku_code": sku, "name": "x", "base_uom_id": wh.ea}, expect=400)
+    assert api.post("/items", {"sku_code": f"PB{unique}", "name": "x", "base_uom_id": plt})["packings"] == [], \
+        "an item counted in pallets needs no pallet quantity"
+
+    plt400 = {"uom_id": plt, "factor": 400}
+    item = api.post("/items", {"sku_code": sku, "name": "x", "base_uom_id": wh.ea, "packings": [{"uom_id": ctn, "factor": 12}, plt400]})
+    api.call("PUT", f"/items/{item['id']}", {"row_version": item["row_version"], "packings": [{"uom_id": ctn, "factor": 12}]}, expect=400)
     # Not used yet: free to change
-    item = api.call("PUT", f"/items/{item['id']}", {"row_version": item["row_version"], "packings": [{"uom_id": ctn, "factor": 10}]})
-    assert [p["factor"] for p in item["packings"]] == [10]
+    item = api.call("PUT", f"/items/{item['id']}", {"row_version": item["row_version"], "packings": [{"uom_id": ctn, "factor": 10}, plt400]})
+    assert [p["factor"] for p in item["packings"]] == [10, 400]
     # Editing other fields leaves the packings alone
     item = api.call("PUT", f"/items/{item['id']}", {"row_version": item["row_version"], "name": "renamed"})
-    assert len(item["packings"]) == 1
+    assert len(item["packings"]) == 2
 
     api.post("/sales-orders", {"partner_id": wh.customer, "lines": [{"item_id": item["id"], "uom_id": ctn, "qty": 1}]})
-    # Used by a document: the factor is fixed and the unit cannot be dropped, but more units can be added
-    for packings in ([{"uom_id": ctn, "factor": 12}], []):
+    # Used by a document: the factor is fixed and the unit cannot be dropped, but other units can still change
+    for packings in ([{"uom_id": ctn, "factor": 12}, plt400], [plt400]):
         api.call("PUT", f"/items/{item['id']}", {"row_version": item["row_version"], "packings": packings}, expect=409)
     item = api.call("PUT", f"/items/{item['id']}", {
-        "row_version": item["row_version"], "packings": [{"uom_id": ctn, "factor": 10}, {"uom_id": plt, "factor": 400}],
+        "row_version": item["row_version"], "packings": [{"uom_id": ctn, "factor": 10}, {"uom_id": plt, "factor": 480}],
     })
-    assert [p["uom"]["code"] for p in item["packings"]] == ["CTN", "PLT"]
+    assert [(p["uom"]["code"], p["factor"]) for p in item["packings"]] == [("CTN", 10), ("PLT", 480)]

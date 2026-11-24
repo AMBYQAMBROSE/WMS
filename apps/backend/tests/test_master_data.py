@@ -1,13 +1,13 @@
 """Master data rules."""
 
-from tests.helpers import Api
+from tests.helpers import Api, pallet
 
 
 def test_duplicate_item_code_is_a_conflict(client, admin_headers, unique):
     api = Api(client, admin_headers)
     ea = next(u["id"] for u in api.get("/uoms") if u["code"] == "EA")
-    api.post("/items", {"sku_code": f"DUP{unique}", "name": "First", "base_uom_id": ea})
-    api.post("/items", {"sku_code": f"DUP{unique}", "name": "Second", "base_uom_id": ea}, expect=409)
+    api.post("/items", {"sku_code": f"DUP{unique}", "name": "First", "base_uom_id": ea, "packings": pallet(api)})
+    api.post("/items", {"sku_code": f"DUP{unique}", "name": "Second", "base_uom_id": ea, "packings": pallet(api)}, expect=409)
 
 
 def test_partner_type_is_validated(client, admin_headers, unique):
@@ -28,7 +28,7 @@ def test_item_search_reads_gs1_codes(client, admin_headers, unique):
     api = Api(client, admin_headers)
     ea = next(u["id"] for u in api.get("/uoms") if u["code"] == "EA")
     ean = f"69{int(unique, 16) % 10**11:011d}"  # 13 digits, unique per run
-    item = api.post("/items", {"sku_code": f"G{unique}", "name": "GS1 item", "barcode": ean, "base_uom_id": ea})
+    item = api.post("/items", {"sku_code": f"G{unique}", "name": "GS1 item", "barcode": ean, "base_uom_id": ea, "packings": pallet(api)})
     carton = f"]C101{ean.zfill(14)}17271231" + f"10L{unique}\x1d3024"
     assert [i["id"] for i in api.get("/items", keyword=carton)] == [item["id"]]
     label = f"(240)G{unique}(10)L1(17)270531(30)24"
